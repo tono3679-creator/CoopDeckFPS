@@ -1,0 +1,56 @@
+# Normalize text line endings in the repository.
+* text=auto
+
+# Unity YAML: always text, merged with Unity's Smart Merge when configured
+# (git config merge.unityyamlmerge.driver "<UnityYAMLMerge path> merge -p %O %B %A %A").
+*.unity    text merge=unityyamlmerge diff
+*.prefab   text merge=unityyamlmerge diff
+*.asset    text merge=unityyamlmerge diff
+*.mat      text merge=unityyamlmerge diff
+*.anim     text merge=unityyamlmerge diff
+*.controller text merge=unityyamlmerge diff
+*.overrideController text merge=unityyamlmerge diff
+*.physicMaterial text merge=unityyamlmerge diff
+*.meta     text merge=unityyamlmerge diff
+*.inputactions text
+
+# Code
+*.cs       text diff=csharp
+*.shader   text
+*.hlsl     text
+*.asmdef   text
+*.json     text
+*.md       text
+
+# Large binaries -> Git LFS
+# Textures / images
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.tga filter=lfs diff=lfs merge=lfs -text
+*.tif filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
+*.psd filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+*.hdr filter=lfs diff=lfs merge=lfs -text
+# Models
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.obj filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.glb filter=lfs diff=lfs merge=lfs -text
+*.gltf filter=lfs diff=lfs merge=lfs -text
+# Audio / video
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+*.ogg filter=lfs diff=lfs merge=lfs -text
+*.aif filter=lfs diff=lfs merge=lfs -text
+*.aiff filter=lfs diff=lfs merge=lfs -text
+*.flac filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.mov filter=lfs diff=lfs merge=lfs -text
+*.webm filter=lfs diff=lfs merge=lfs -text
+# Fonts / archives
+*.ttf filter=lfs diff=lfs merge=lfs -text
+*.otf filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.7z filter=lfs diff=lfs merge=lfs -text

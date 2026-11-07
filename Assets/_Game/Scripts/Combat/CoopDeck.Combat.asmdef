@@ -1,0 +1,16 @@
+{
+    "name": "CoopDeck.Combat",
+    "rootNamespace": "CoopDeck.Combat",
+    "references": [
+        "CoopDeck.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

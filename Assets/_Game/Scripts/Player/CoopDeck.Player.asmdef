@@ -1,0 +1,18 @@
+{
+    "name": "CoopDeck.Player",
+    "rootNamespace": "CoopDeck.Player",
+    "references": [
+        "CoopDeck.Core",
+        "CoopDeck.Combat",
+        "CoopDeck.Weapons"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

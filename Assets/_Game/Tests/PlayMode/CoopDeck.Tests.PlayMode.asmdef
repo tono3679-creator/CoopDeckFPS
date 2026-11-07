@@ -1,0 +1,24 @@
+{
+    "name": "CoopDeck.Tests.PlayMode",
+    "rootNamespace": "CoopDeck.Tests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "CoopDeck.Core",
+        "CoopDeck.Combat",
+        "CoopDeck.Weapons",
+        "CoopDeck.Player"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,29 @@
+{
+    "name": "CoopDeck.Tests.EditMode",
+    "rootNamespace": "CoopDeck.Tests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "CoopDeck.Core",
+        "CoopDeck.Combat",
+        "CoopDeck.Input",
+        "CoopDeck.Weapons",
+        "CoopDeck.Player",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

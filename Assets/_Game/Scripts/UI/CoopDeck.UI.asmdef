@@ -1,0 +1,21 @@
+{
+    "name": "CoopDeck.UI",
+    "rootNamespace": "CoopDeck.UI",
+    "references": [
+        "CoopDeck.Core",
+        "CoopDeck.Combat",
+        "CoopDeck.Weapons",
+        "CoopDeck.Player",
+        "Unity.InputSystem",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,29 @@
+{
+    "name": "CoopDeck.Editor",
+    "rootNamespace": "CoopDeck.EditorTools",
+    "references": [
+        "CoopDeck.Core",
+        "CoopDeck.Combat",
+        "CoopDeck.Input",
+        "CoopDeck.Effects",
+        "CoopDeck.Weapons",
+        "CoopDeck.Player",
+        "CoopDeck.Enemies",
+        "CoopDeck.UI",
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

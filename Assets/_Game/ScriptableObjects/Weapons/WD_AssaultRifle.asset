@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9f25c50914ddad4596f4b23505dd831, type: 3}
+  m_Name: WD_AssaultRifle
+  m_EditorClassIdentifier: CoopDeck.Weapons::CoopDeck.Weapons.WeaponDefinition
+  weaponId: weapon.assault_rifle
+  displayName: "\u30D7\u30ED\u30C8AR"
+  damage: 18
+  element: 0
+  headshotMultiplier: 2
+  range: 150
+  falloffStart: 40
+  minDamageFactor: 0.6
+  roundsPerMinute: 600
+  automatic: 1
+  magazineSize: 30
+  reloadTime: 1.7
+  pelletsPerShot: 1
+  baseSpread: 0.2
+  spreadPerShot: 0.2
+  maxBloom: 2.4
+  bloomRecovery: 7
+  movingSpread: 0.6
+  airborneSpread: 1.4
+  recoilPitch: 0.55
+  recoilYaw: 0.22
+  firstShotRecoilMultiplier: 1.3
+  muzzleFlashPrefab: {fileID: 4192602697150042217, guid: d4b62ce81d4b64d4bb1d6fc43745f2df, type: 3}
+  tracerPrefab: {fileID: 5022968376242788108, guid: dd68b56a7fca15f42a2fff58d52de7c0, type: 3}
+  impactPrefab: {fileID: 1236046108860414391, guid: ee63d3bd511fb6d43bda9d432f266d73, type: 3}
+  damageableImpactPrefab: {fileID: 3221108568880778782, guid: 72a8ab75422161640aa3dc1bab087562, type: 3}

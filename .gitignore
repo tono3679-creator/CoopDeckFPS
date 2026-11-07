@@ -1,0 +1,61 @@
+# Unity generated
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Local performance captures (screenshots + JSON); summarize results in Docs instead
+/PerfCaptures/
+
+# Asset Store tools / crash reports
+/[Aa]ssets/AssetStoreTools*
+crashlytics-build.properties
+sysinfo.txt
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity meta for ignored folders
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Builds / packages
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Secrets: MCP configs often hold API keys. Keep a sanitized example instead.
+.mcp.json
+*.env
+.env*
+
+# Claude Code local settings (per machine)
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
