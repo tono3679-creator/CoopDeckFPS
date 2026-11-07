@@ -692,9 +692,17 @@ namespace CoopDeck.EditorTools
 
         public const string FirstPersonArmsPath = FoxGunnerAssetFactory.ArtFolder + "/Models/FoxGunner_FPArms.fbx";
 
-        /// <summary>Shoulders below and behind the view-model camera, turned like the bladed stance so both hands reach.</summary>
-        public static readonly Vector3 FirstPersonShoulders = new Vector3(0.01f, -0.25f, 0.02f);
-        public const float FirstPersonYaw = 25f;
+        /// <summary>
+        /// Shoulders in ViewModel space, each on its own below the screen: the left forearm reaches in diagonally
+        /// from the lower left with the elbow just under the bottom edge, the right forearm follows its hand from the
+        /// lower right. The elbow hints (FPArms space = ViewModel space) bend the arms that way. Solved for the
+        /// lengthened first-person arms (fox_fp_arms.lengthen_arms) and the rifle placement in CharacterPrefabBuilder
+        /// with FoxAnimationCaptureTests.Tune_FirstPersonLayout.
+        /// </summary>
+        public static readonly Vector3 FirstPersonLeftShoulder = new Vector3(-0.224f, -0.304f, -0.143f);
+        public static readonly Vector3 FirstPersonRightShoulder = new Vector3(0.281f, -0.299f, -0.361f);
+        public static readonly Vector3 FirstPersonLeftElbow = new Vector3(-0.464f, 0.863f, -0.199f);
+        public static readonly Vector3 FirstPersonRightElbow = new Vector3(0.141f, 0.825f, -0.546f);
 
         static GameObject ConfigureFirstPersonArms()
         {
@@ -739,11 +747,10 @@ namespace CoopDeck.EditorTools
 
             Transform t = arms.transform;
             Transform Bone(string n) => Require(t, n);
-            Vector3 shoulderMid = (t.InverseTransformPoint(Bone("LeftArm").position) + t.InverseTransformPoint(Bone("RightArm").position)) * 0.5f;
-            Quaternion yaw = Quaternion.Euler(0f, FirstPersonYaw, 0f);
-            t.localRotation = yaw;
-            t.localPosition = FirstPersonShoulders - yaw * shoulderMid;
+            t.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
             t.localScale = Vector3.one;
+            Bone("LeftArm").position = viewModelRoot.TransformPoint(FirstPersonLeftShoulder);
+            Bone("RightArm").position = viewModelRoot.TransformPoint(FirstPersonRightShoulder);
 
             // the body's soft toon look minus its normal map (baked for the body mesh, not these arms)
             Material material = AssetDatabase.LoadAssetAtPath<Material>(FoxGunnerLookFactory.FirstPersonMaterialPath)
@@ -769,9 +776,10 @@ namespace CoopDeck.EditorTools
                 new[] { Bone("LeftArm"), Bone("LeftForeArm"), Bone("LeftHand") },
                 new[] { Bone("RightArm"), Bone("RightForeArm"), Bone("RightHand") });
             fp.SetDriver(driver); // LeftHandIK / CastHand: whether the left hand is on the rifle or casting right now
-            // elbows: fixed down-and-out directions (the body's hints are for its own shoulders and would lift the elbow into view)
+            // elbows: fixed hints for these shoulders (the body's are for its own shoulders and would lift the elbow into view)
             fp.ConfigureExtras(Require(bodyRoot, "FP_Grip_L"), null, null,
                 arms.GetComponentInChildren<SkinnedMeshRenderer>(true));
+            fp.SetElbowHints(FirstPersonLeftElbow, FirstPersonRightElbow);
             return arms;
         }
 

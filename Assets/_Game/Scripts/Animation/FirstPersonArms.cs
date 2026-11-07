@@ -9,7 +9,9 @@ namespace CoopDeck.Animation
     ///   right hand - the body's right-hand goal (pistol grip)
     ///   left hand  - FP_Grip_L (a handguard hold authored for first person) while the clips have the left hand on the
     ///                rifle, blending to the body's left-hand goal for reloads and casts
-    ///   elbows     - the body's elbow hints
+    ///   elbows     - fixed hints in this object's space (the body's elbow hints, when given, win)
+    /// The shoulders are not the body's: the view-model builder places each one below the screen so the forearms reach
+    /// in from the lower corners with the elbows out of view (the arms are separate pieces on Root).
     /// A small analytic two-bone IK bends each arm after the view model has bobbed and swayed (LateUpdate, late
     /// order), shares the wrist twist with the forearm (no candy-wrapper wrist), and the left hand opens (shape key
     /// "Open") while casting.
@@ -38,9 +40,9 @@ namespace CoopDeck.Animation
         [SerializeField] Transform rightArm;
         [SerializeField] Transform rightForeArm;
         [SerializeField] Transform rightHand;
-        [Tooltip("Fallback elbow directions in this object's space (when the body has no elbow hints).")]
-        [SerializeField] Vector3 leftElbow = new Vector3(-0.6f, -0.8f, 0f);
-        [SerializeField] Vector3 rightElbow = new Vector3(0.7f, -0.7f, -0.1f);
+        [Tooltip("Elbow directions in this object's space (when the body has no elbow hints).")]
+        [SerializeField] Vector3 leftElbow = new Vector3(-0.46f, 0.86f, -0.2f);
+        [SerializeField] Vector3 rightElbow = new Vector3(0.14f, 0.83f, -0.55f);
         [Tooltip("Share of the wrist twist the forearm takes (the rest stays in the wrist).")]
         [SerializeField, Range(0f, 1f)] float forearmTwist = 0.6f;
 
@@ -83,6 +85,13 @@ namespace CoopDeck.Animation
         }
 
         public void SetDriver(CharacterAnimatorDriver owner) => driver = owner;
+
+        /// <summary>Elbow directions in this object's space, used when the body gives no elbow hints.</summary>
+        public void SetElbowHints(Vector3 left, Vector3 right)
+        {
+            leftElbow = left;
+            rightElbow = right;
+        }
 
         void Awake() => CaptureRest();
 

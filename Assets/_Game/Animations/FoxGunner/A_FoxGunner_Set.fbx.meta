@@ -12267,9 +12267,9 @@ ModelImporter:
       scale: {x: 1.0000001, y: 1.0000002, z: 1}
     - name: FP_Grip_L
       parentName: Weapon
-      position: {x: -0.08592933, y: 0.3766363, z: -0.13884288}
-      rotation: {x: 0.5186602, y: -0.1319949, z: -0.17388906, w: 0.8266387}
-      scale: {x: 0.99999994, y: 0.99999994, z: 1}
+      position: {x: -0.06996359, y: 0.2740988, z: -0.022839528}
+      rotation: {x: -0.15324195, y: 0.20893528, z: -0.27751777, w: 0.92511994}
+      scale: {x: 1, y: 0.99999994, z: 0.99999994}
     - name: IK_Elbow_L
       parentName: Spine
       position: {x: 0.3274626, y: -0.091045745, z: 0.19050807}

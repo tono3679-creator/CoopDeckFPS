@@ -13,6 +13,7 @@ Output: Assets/_Game/Art/Characters/FoxGunner/Models/FoxGunner_FPArms.fbx (Gener
      rest hand frames so they fit the same grip: right hand around the pistol grip, left hand around the handguard
      with an "Open" shape key (palm thrust for casts); both rigid on their Hand bone
   4. armature with Root + per side Arm, ForeArm, Hand (rest = the body's), the body's material
+  5. arms lengthened for the view model (forearm x1.3, upper arm x1.1; stretch over bare skin, see lengthen_arms)
 --check renders the arms holding the Fire Rifle in the shared stance (before export).
 """
 import math
@@ -25,7 +26,8 @@ import numpy as np  # noqa: E402
 from mathutils import Matrix, Vector  # noqa: E402
 from mathutils.bvhtree import BVHTree  # noqa: E402
 
-from fox_common import FOX_SRC, REPO, TURN_FOR_UNITY, bake_rig_transform, export_fbx, script_args, select_only  # noqa: E402
+from fox_common import (FOX_SRC, REPO, TURN_FOR_UNITY, bake_rig_transform, export_fbx, script_args,  # noqa: E402
+                        select_only, smoothstep)
 from fox_fp_hands import build_hand, sample_uv_points  # noqa: E402
 
 OUT = os.path.join(REPO, "Assets", "_Game", "Art", "Characters", "FoxGunner", "Models", "FoxGunner_FPArms.fbx")
@@ -37,6 +39,10 @@ WRIST_CUT = 0.004       # forearm faces end here (metres past the wrist along th
 FOREARM_FACES = 14000   # both forearms together
 KEEP_DISTANCE = 0.012
 CHART_RADIUS = 0.03     # a forearm face takes its UVs from the UV-continuous body patch within this distance
+FP_FOREARM_SCALE = 1.3  # first-person bone lengths against the body's (see lengthen_arms)
+FP_UPPER_ARM_SCALE = 1.1
+FOREARM_STRETCH = (0.08, 0.42)  # stretch zones as fractions of the bone (head -> child): bare skin only
+UPPER_STRETCH = (0.45, 0.85)
 HAND_POSE = {"Right": ("pistol", False), "Left": ("handguard", True)}
 # first-person left grip shift (rifle space: right, forward, up): FirstPersonArms.leftGripShift, Unity (0, 0.035, 0.23)
 FP_LEFT_SHIFT = Vector((0.0, 0.23, 0.035))
@@ -320,6 +326,50 @@ def high_forearms(low, src_body, src_bones):
     return high
 
 
+def lengthen_arms(arm, arms):
+    """First-person arms longer than the body's. The view-model rifle sits further from the camera than the fox's own
+    eyes are from its rifle, and the left forearm has to reach in from the lower edge of the screen with the elbow
+    out of view (FirstPersonArms places the shoulders). Everything past a stretch zone moves out along the bone; the
+    zone is bare skin (upper arm middle, forearm between elbow and bracer), so the bracer, the elbow and the hand keep
+    their shape. Applied to every shape key."""
+    me = arms.data
+    groups = {g.index: g.name for g in arms.vertex_groups}
+    basis = [v.co.copy() for v in me.vertices]
+    shift = [Vector() for _ in basis]
+    bones = arm.data.bones
+    moves = {}
+    for side in ("Left", "Right"):
+        a, f, h = (bones[side + p].head_local.copy() for p in ARM_PARTS)
+        du, df = f - a, h - f
+        lu, lf = du.length, df.length
+        du, df = du / lu, df / lf
+        up, fore = du * lu * (FP_UPPER_ARM_SCALE - 1), df * lf * (FP_FOREARM_SCALE - 1)
+        moves[side] = (up, fore)
+        names = {side + p for p in ARM_PARTS}
+        for v in me.vertices:
+            if not any(groups[g.group] in names and g.weight > 0 for g in v.groups):
+                continue
+            p = basis[v.index]
+            ku = smoothstep(*UPPER_STRETCH, (p - a).dot(du) / lu)
+            kf = smoothstep(*FOREARM_STRETCH, (p - f).dot(df) / lf)
+            shift[v.index] = up * ku + fore * kf
+    for kb in me.shape_keys.key_blocks:
+        for i, s in enumerate(shift):
+            kb.data[i].co += s
+    for v, s in zip(me.vertices, shift):
+        v.co += s
+    select_only(arm)
+    bpy.ops.object.mode_set(mode="EDIT")
+    for side, (up, fore) in moves.items():
+        arm.data.edit_bones[side + "ForeArm"].translate(up)
+        arm.data.edit_bones[side + "Hand"].translate(up + fore)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    b = arm.data.bones
+    print("  lengthened arms: " + ", ".join(
+        f"{s} upper {(b[s + 'ForeArm'].head_local - b[s + 'Arm'].head_local).length:.3f} "
+        f"fore {(b[s + 'Hand'].head_local - b[s + 'ForeArm'].head_local).length:.3f}" for s in ("Left", "Right")))
+
+
 def main():
     args = script_args()
     check = args[args.index("--check") + 1] if "--check" in args else None
@@ -365,6 +415,7 @@ def main():
 
     if check:
         render_check(rig, arm, arms, check)
+    lengthen_arms(arm, arms)  # after the check render, which poses these bones with the body's own lengths
 
     for o in [o for o in bpy.data.objects if o not in (arm, arms)]:
         bpy.data.objects.remove(o, do_unlink=True)

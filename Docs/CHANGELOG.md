@@ -2,6 +2,30 @@
 
 形式：日付ごとに「追加 / 変更 / 修正 / 検証」。検証していないものは「検証」に書かない。
 
+## 2026-11-08 — 一人称の腕の構図を作り直し（銃を持つ腕が変に見える）
+
+詳細は `FOX_ANIMATION.md` §6「一人称の構図」。
+
+### 修正
+- 左手の握り `FP_Grip_L`（`fox_rig.py` の `FP_LEFT_*`）：指先が下を向く握りに前腕が下から来ていたため、手首が 125° 折れて手が籠手の上に折り返し、黒い塊が腕から生えているように見えていた。ハンドガードの左下を下から包み、指先が前腕の延長（前・右上）を向く握りに変更（手首の曲がり 5〜9°）。
+- 左前腕が画面下中央から垂直に立ち上がり、肘があごの下にあるように見えていた。
+
+### 変更
+- 一人称の腕を長く（`fox_fp_arms.lengthen_arms`：前腕 1.3 倍・上腕 1.1 倍、伸ばすのは素肌の部分だけで籠手・肘・手の形は保つ）。ビューモデルの銃はキツネ自身の目より遠くにあり、体と同じ長さでは肘を画面外に出せないため。
+- 肩を左右別々に画面の下へ配置し、肘のヒントを固定値に（`FoxGunnerAnimationFactory.FirstPersonLeftShoulder/RightShoulder/LeftElbow/RightElbow`、`FirstPersonArms.SetElbowHints`）。左前腕は左下から斜めに入り、肘は画面下端のすぐ外。右前腕は右手の向きに沿って右下から（手首の曲がり 24°）。旧 `FirstPersonShoulders` / `FirstPersonYaw` は削除。
+- ビューモデルの銃を 3.5 cm 上・2 cm 左へ、5° 前傾、ヨー -6° → -7°（`CharacterPrefabBuilder.ViewModelRootPosition` / `ViewModelRiflePitch`）。右手の指がグリップにかかるのが画面下端に見える。
+
+### 追加
+- 手動実行の `FoxAnimationCaptureTests.Tune_FirstPersonLayout`：JSON の候補ごとに一人称の画面と手首の拡大を撮り、画面上の肘の位置から肩と肘のヒントを解き、手首の曲がりを記録する（JSON がなければ現在の配置を撮る）。
+- テスト `FirstPersonArms_ReachInFromTheLowerCorners_WithStraightWrists`（左手は画面内・左肘は画面下端の外で手より左・右手は下端に届く・手首の曲がり 左 30° 右 40° 未満）。
+- `Capture_FirstPerson` にスプリントのコマを追加。
+
+### 検証
+- EditMode 234/234、PlayMode 60/60（手動実行の撮影 4 件を除く）、コンパイル警告 0。Windows ビルド成功。
+- 待機の手首の曲がり 左 5°（旧い握りでは 125°）・右 24°、手と目標のずれ 0.0 cm（待機・走り・スプリント・リロード・詠唱）、手首に残るねじれ最大 72°（上限 75°）。
+- 撮影 `FoxAnim_FirstPerson.png`（待機・走り・スプリント・リロード・詠唱）と、ビルドの実画面 `PerfCaptures/fp_view_after.png`（比較 `Screenshots/FoxAnim_FPArms_BeforeAfter.png`）：左前腕が左下から斜めに入り、左手の指がハンドガードにかかる。ゲーム画面ではカード欄が左前腕の下側を、弾数欄が右手（画面右下の角）を隠す。
+- ビルドの待機計測（`-perfrun 6 -perfidle`、1920×1080）：平均 60.0 FPS、1% Low 60.0。
+
 ## 2026-11-08 — Fox Gunner の高品質化（均一な 4K テクスチャ・法線マップ・4 万三角形の体）
 
 詳細は `CHARACTER_PIPELINE.md` §8・§8.1・§8.2。ボーン構成・アニメーション・配色は変えていない。外部ツール：Real-ESRGAN（BSD-3、ローカル実行、リポジトリには入れない）。

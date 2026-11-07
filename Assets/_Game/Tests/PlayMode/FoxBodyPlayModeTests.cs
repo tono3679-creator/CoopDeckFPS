@@ -268,6 +268,40 @@ namespace CoopDeck.Tests
         }
 
         [UnityTest]
+        public IEnumerator FirstPersonArms_ReachInFromTheLowerCorners_WithStraightWrists()
+        {
+            yield return Spawn();
+            for (int i = 0; i < 30; i++)
+            {
+                yield return null;
+            }
+
+            var arms = player.GetComponentInChildren<FirstPersonArms>(true);
+            Camera view = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "ViewModelCamera");
+            float bottom = -Mathf.Tan(view.fieldOfView * 0.5f * Mathf.Deg2Rad); // y/z of the lower screen edge
+            Vector3 Cam(Transform t) => view.transform.InverseTransformPoint(t.position);
+            Vector3 wristL = Cam(arms.Hand(true)), elbowL = Cam(arms.ForeArm(true)), wristR = Cam(arms.Hand(false));
+
+            // how far each hand is bent off its forearm line (twist excluded)
+            float Bend(bool left)
+            {
+                Transform lower = arms.ForeArm(left), hand = arms.Hand(left);
+                Vector3 axis = (hand.position - lower.position).normalized;
+                Quaternion off = hand.rotation * Quaternion.Inverse(lower.rotation * arms.RestHandInForearm(left));
+                return Vector3.Angle(axis, off * axis);
+            }
+
+            Debug.Log($"[FoxBody] first-person layout: left wrist {wristL} elbow {elbowL} right wrist {wristR} (screen bottom y/z {bottom:0.000}); " +
+                      $"wrist bend left {Bend(true):0} right {Bend(false):0} deg");
+            Assert.That(wristL.y / wristL.z, Is.GreaterThan(bottom + 0.1f), "the left hand is well inside the view");
+            Assert.That(elbowL.y / elbowL.z, Is.LessThan(bottom), "the left elbow stays under the lower edge");
+            Assert.That(elbowL.x, Is.LessThan(wristL.x - 0.05f), "the left forearm reaches in from the lower left, not straight up");
+            Assert.That(wristR.y / wristR.z, Is.GreaterThan(bottom * 1.15f), "the right hand on the grip reaches the lower edge");
+            Assert.That(Bend(true), Is.LessThan(30f), "the left hand continues its forearm (no hand folded back over the bracer)");
+            Assert.That(Bend(false), Is.LessThan(40f), "the right hand continues its forearm");
+        }
+
+        [UnityTest]
         public IEnumerator Spine_FollowsTheAimPitch_AndTheTailAndEarsMove()
         {
             yield return Spawn();

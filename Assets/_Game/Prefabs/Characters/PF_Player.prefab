@@ -314,7 +314,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: CoopDeck.Weapons::CoopDeck.Weapons.HitscanWeapon
   definition: {fileID: 11400000, guid: 674b5d9c1f314fe409d2fdaa8de1d57e, type: 2}
-  muzzle: {fileID: 5134348620016228708}
+  muzzle: {fileID: 4921463813378929296}
   autoReloadWhenEmpty: 1
 --- !u!114 &8297622115542364290
 MonoBehaviour:
@@ -415,7 +415,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e5c01330f86d584086ee27139424dfd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: CoopDeck.Skills::CoopDeck.Skills.SkillCaster
-  castOrigin: {fileID: 5134348620016228708}
+  castOrigin: {fileID: 4921463813378929296}
 --- !u!114 &5909787761985430556
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -649,12 +649,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4729467613804656937}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.05233596, z: 0, w: 0.9986295}
+  m_LocalRotation: {x: 0.043538027, y: -0.060990438, z: 0.0026629, w: 0.9971848}
   m_LocalPosition: {x: 0.01, y: -0.035, z: 0.11}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 8698853563469716442}
+  - {fileID: 7974897410495183720}
   m_Father: {fileID: 6393328595422660705}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7774752182584291561
@@ -683,7 +683,7 @@ Transform:
   m_GameObject: {fileID: 7774752182584291561}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.15, y: -0.135, z: 0.42}
+  m_LocalPosition: {x: 0.13, y: -0.1, z: 0.42}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -975,7 +975,7 @@ PrefabInstance:
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 7280933753367746040, guid: 53696aa68101680448e869a441648868, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 5183314511979727919}
+      addedObject: {fileID: 4963677660268701659}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 53696aa68101680448e869a441648868, type: 3}
 --- !u!4 &1360200702952631671 stripped
@@ -1018,19 +1018,19 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.022404753
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.3129412
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.077979036
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.976296
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
       propertyPath: m_LocalRotation.x
@@ -1038,7 +1038,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.21643962
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
       propertyPath: m_LocalRotation.z
@@ -1068,9 +1068,33 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 8
       objectReference: {fileID: 0}
+    - target: {fileID: -4917417739322394520, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.28100005
+      objectReference: {fileID: 0}
+    - target: {fileID: -4917417739322394520, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.2990001
+      objectReference: {fileID: 0}
+    - target: {fileID: -4917417739322394520, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.36099985
+      objectReference: {fileID: 0}
     - target: {fileID: -4776646476052087322, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
       propertyPath: m_Layer
       value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: -4201868661844533950, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.22399999
+      objectReference: {fileID: 0}
+    - target: {fileID: -4201868661844533950, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.3039999
+      objectReference: {fileID: 0}
+    - target: {fileID: -4201868661844533950, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.14299995
       objectReference: {fileID: 0}
     - target: {fileID: -1619774781138787218, guid: 7c891bbeb35859944802e12e1432e13e, type: 3}
       propertyPath: m_Layer
@@ -1189,27 +1213,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a87e0ab17701a649b98cf531159a3e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: CoopDeck.Animation::CoopDeck.Animation.FirstPersonArms
-  bodyRifle: {fileID: 5183314511979727919}
+  bodyRifle: {fileID: 4963677660268701659}
   bodyGoalLeft: {fileID: 3127051842904390136}
   bodyGoalRight: {fileID: 5505411116998951981}
   bodyGripLeft: {fileID: 7959235037398087710}
   bodyElbowLeft: {fileID: 0}
   bodyElbowRight: {fileID: 0}
   driver: {fileID: 3098560322674543400}
-  viewRifle: {fileID: 8698853563469716442}
+  viewRifle: {fileID: 7974897410495183720}
   leftArm: {fileID: 2874025827108825220}
   leftForeArm: {fileID: 3440439116038748308}
   leftHand: {fileID: 3045366313919507577}
   rightArm: {fileID: 6452729640381074862}
   rightForeArm: {fileID: 2466044632042681978}
   rightHand: {fileID: 4522017531190449624}
-  leftElbow: {x: -0.6, y: -0.8, z: 0}
-  rightElbow: {x: 0.7, y: -0.7, z: -0.1}
+  leftElbow: {x: -0.464, y: 0.863, z: -0.199}
+  rightElbow: {x: 0.141, y: 0.825, z: -0.546}
   forearmTwist: 0.6
   skin: {fileID: 7076767597450041633}
   openShape: Open
   openSpeed: 12
---- !u!1001 &8698853563469716441
+--- !u!1001 &7974897410495183719
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -1294,17 +1318,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1b7804ad110c11b43aa1c4eda3f944cf, type: 3}
---- !u!4 &5134348620016228708 stripped
+--- !u!4 &4921463813378929296 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4392140455817718089, guid: 1b7804ad110c11b43aa1c4eda3f944cf, type: 3}
-  m_PrefabInstance: {fileID: 8698853563469716441}
+  m_PrefabInstance: {fileID: 7974897410495183719}
   m_PrefabAsset: {fileID: 0}
---- !u!4 &8698853563469716442 stripped
+--- !u!4 &7974897410495183720 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4348805650514148354, guid: 1b7804ad110c11b43aa1c4eda3f944cf, type: 3}
-  m_PrefabInstance: {fileID: 8698853563469716441}
+  m_PrefabInstance: {fileID: 7974897410495183719}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &8913989963229868077
+--- !u!1001 &8698853563469716441
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -1381,8 +1405,8 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1b7804ad110c11b43aa1c4eda3f944cf, type: 3}
---- !u!4 &5183314511979727919 stripped
+--- !u!4 &4963677660268701659 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4348805650514148354, guid: 1b7804ad110c11b43aa1c4eda3f944cf, type: 3}
-  m_PrefabInstance: {fileID: 8913989963229868077}
+  m_PrefabInstance: {fileID: 8698853563469716441}
   m_PrefabAsset: {fileID: 0}

@@ -246,9 +246,12 @@ def build():
 
 # First-person left-hand grip on the handguard (rifle space: right, forward, up). The body's own left hand holds the
 # magazine well (its arms are short); in first person the camera sits close enough for a classic handguard hold.
-FP_LEFT_PALM = Vector((-0.064, 0.400, 0.092))
-FP_LEFT_ALONG = Vector((0.15, 0.40, -0.90))     # wrist -> knuckles: down the left side, fingers wrap under
-FP_LEFT_PALM_NORMAL = Vector((0.92, 0.0, 0.40))  # the palm presses on the left side (thumb over the top)
+# The hand cups the lower left of the handguard and points along the forearm, which reaches in from the lower left
+# of the screen (FirstPersonArms): the wrist stays nearly straight. The old side hold pointed the fingers down while
+# the forearm came from below, folding the hand back over the bracer.
+FP_LEFT_PALM = Vector((-0.040, 0.310, 0.055))
+FP_LEFT_ALONG = Vector((0.45, 0.80, 0.40))      # wrist -> knuckles: forward, toward the right side, a little up
+FP_LEFT_PALM_NORMAL = Vector((0.55, 0.0, 0.80))  # the palm faces up and in, under the handguard
 
 
 def add_first_person_grip(arm):

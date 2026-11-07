@@ -108,14 +108,15 @@ namespace CoopDeck.Tests
         {
             int rows = (shots.Count + cols - 1) / cols;
             int w = shots[0].image.width;
-            var sheet = new Texture2D(w * cols, H * rows, TextureFormat.RGB24, false);
-            Color[] fill = Enumerable.Repeat(new Color(0.12f, 0.12f, 0.14f), w * cols * H * rows).ToArray();
+            int h = shots[0].image.height;
+            var sheet = new Texture2D(w * cols, h * rows, TextureFormat.RGB24, false);
+            Color[] fill = Enumerable.Repeat(new Color(0.12f, 0.12f, 0.14f), w * cols * h * rows).ToArray();
             sheet.SetPixels(fill);
             for (int i = 0; i < shots.Count; i++)
             {
                 int cx = i % cols;
                 int cy = rows - 1 - i / cols;
-                sheet.SetPixels(cx * w, cy * H, w, H, shots[i].image.GetPixels());
+                sheet.SetPixels(cx * w, cy * h, w, h, shots[i].image.GetPixels());
             }
 
             sheet.Apply();
@@ -427,8 +428,8 @@ namespace CoopDeck.Tests
             data.renderType = type;
             RenderTexture previous = RenderTexture.active;
             RenderTexture.active = wide;
-            var image = new Texture2D(W * 2, H, TextureFormat.RGB24, false);
-            image.ReadPixels(new Rect(0, 0, W * 2, H), 0, 0);
+            var image = new Texture2D(wide.width, wide.height, TextureFormat.RGB24, false);
+            image.ReadPixels(new Rect(0, 0, wide.width, wide.height), 0, 0);
             image.Apply();
             RenderTexture.active = previous;
             shots.Add((label, image));
@@ -452,6 +453,10 @@ namespace CoopDeck.Tests
             commands.Next.Move = Vector2.up;
             yield return Frames(20);
             FirstPerson("FP run");
+            commands.Next.SprintHeld = true;
+            yield return Frames(40);
+            FirstPerson("FP sprint");
+            commands.Next.SprintHeld = false;
             commands.Next.Move = Vector2.zero;
             yield return Frames(30);
             commands.Next.FireHeld = true; // empty a few rounds so the reload happens
@@ -468,8 +473,299 @@ namespace CoopDeck.Tests
             yield return Frames(9);
             FirstPerson("FP cast");
             yield return Frames(60);
-            Save("FoxAnim_FirstPerson", 2);
+            Save("FoxAnim_FirstPerson", 3);
         }
+
+        // ------------------------------------------------------------------ first-person layout tuning
+
+        [System.Serializable]
+        public class FpVariant
+        {
+            public string label;
+            public Vector3 vmRoot;          // ViewModel in camera space
+            public Vector3 rifleOffset;     // ViewModel/Rifle
+            public Vector3 rifleEuler;
+            public Vector3 shoulders;       // shoulder midpoint in ViewModel space
+            public float armsYaw;
+            public Vector3 leftElbow;       // FirstPersonArms fallback elbow directions (arms space)
+            public Vector3 rightElbow;
+            public bool gripOverride;       // FP_Grip_L in HeldRifle space
+            public Vector3 gripPos;
+            public Vector3 gripEuler;
+            public bool perArm;             // each shoulder placed on its own (ViewModel space)
+            public Vector3 leftShoulder;
+            public Vector3 rightShoulder;
+            public float gripRoll;          // authored FP_Grip_L rolled about the rifle's forward axis through gripAxis
+            public float gripSlide;         // and slid along it (HeldRifle space, metres)
+            public Vector3 gripAxis;
+            public float foreArmScale;      // bone length scales (0 = unchanged)
+            public float upperArmScale;
+            public bool auto;               // shoulders and elbow hints solved from where the elbows should be on screen
+            public Vector2 leftElbowVp;
+            public Vector3 leftUpperDir;    // camera space, elbow -> shoulder
+            public Vector2 rightElbowVp;
+            public Vector3 rightUpperDir;
+            public bool gripFrame;          // left grip from palm point, finger direction and palm normal (HeldRifle space)
+            public Vector3 palm;
+            public Vector3 along;
+            public Vector3 normal;
+            public float leftNatural;       // 0..1: elbow pulled toward the straight-wrist line of the hand
+            public float rightNatural;
+        }
+
+        /// <summary>Test-only: holds FP_Grip_L at a tuned pose after the Animator has written the body (before FirstPersonArms).</summary>
+        [DefaultExecutionOrder(150)]
+        public class GripOverride : MonoBehaviour
+        {
+            public Transform grip;
+            public Transform rifle;
+            public Vector3 position;
+            public Quaternion rotation = Quaternion.identity;
+            public bool active;
+
+            void LateUpdate()
+            {
+                if (active)
+                {
+                    grip.SetPositionAndRotation(rifle.TransformPoint(position), rifle.rotation * rotation);
+                }
+            }
+        }
+
+        [System.Serializable]
+        public class FpVariantList
+        {
+            public FpVariant[] variants;
+        }
+
+        /// <summary>
+        /// Renders first-person layout variants (view-model placement, shoulders, elbows, left grip, arm lengths) from
+        /// a JSON file (env FP_TUNE, default Logs/fp_tune.json; without one, the generated layout as it is): the
+        /// player's view plus a close view of the left wrist, and logs where hands and elbows land on screen and how
+        /// far each wrist bends. With "auto", shoulders and elbow hints are solved from where the elbows should be
+        /// (the numbers to copy into FoxGunnerAnimationFactory.FirstPerson*). Screenshots/FoxAnim_FPTune.png.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Tune_FirstPersonLayout()
+        {
+            string path = System.Environment.GetEnvironmentVariable("FP_TUNE");
+            if (string.IsNullOrEmpty(path))
+            {
+                path = "Logs/fp_tune.json";
+            }
+
+            FpVariantList list = File.Exists(path) ? JsonUtility.FromJson<FpVariantList>(File.ReadAllText(path)) : null;
+            var commands = new ScriptedCommands();
+            yield return Spawn(commands);
+            wide = new RenderTexture(W * 4, H * 2, 24) { antiAliasing = 4 };
+            spawned.Add(wide);
+            var sideTarget = new RenderTexture(H * 2, H * 2, 24) { antiAliasing = 4 };
+            spawned.Add(sideTarget);
+            foreach (Renderer r in player.transform.Find("BodyVisual").GetComponentsInChildren<Renderer>(true))
+            {
+                r.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+            }
+
+            Camera viewCam = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "ViewModelCamera");
+            var arms = player.GetComponentInChildren<FirstPersonArms>(true);
+            Transform armsT = arms.transform;
+            Transform vm = armsT.parent;
+            Transform rifle = vm.Find("Rifle");
+            var vmAnimator = vm.GetComponent<CoopDeck.Player.ViewModelAnimator>();
+            Transform bodyRifle = player.GetComponentsInChildren<Transform>(true).First(x => x.name == "HeldRifle");
+            Transform grip = player.GetComponentsInChildren<Transform>(true).First(x => x.name == "FP_Grip_L");
+            Transform B(string n) => armsT.GetComponentsInChildren<Transform>(true).First(x => x.name == n);
+            Vector3 shoulderMid = (armsT.InverseTransformPoint(B("LeftArm").position) + armsT.InverseTransformPoint(B("RightArm").position)) * 0.5f;
+            Vector3 leftArmLocal = B("LeftArm").localPosition, rightArmLocal = B("RightArm").localPosition;
+            Vector3 gripLocalPos = grip.localPosition;
+            Quaternion gripLocalRot = grip.localRotation;
+            Vector3 gripRifle0 = bodyRifle.InverseTransformPoint(grip.position);
+            Quaternion gripRifleRot0 = Quaternion.Inverse(bodyRifle.rotation) * grip.rotation;
+            var gripHold = player.AddComponent<GripOverride>();
+            gripHold.grip = grip;
+            gripHold.rifle = bodyRifle;
+            var boneLocal = new Dictionary<string, Vector3>();
+            foreach (string s in new[] { "Left", "Right" })
+            {
+                boneLocal[s + "ForeArm"] = B(s + "ForeArm").localPosition;
+                boneLocal[s + "Hand"] = B(s + "Hand").localPosition;
+            }
+            Debug.Log($"[FPTune] arms: upper {Vector3.Distance(B("LeftArm").position, B("LeftForeArm").position):0.000} fore {Vector3.Distance(B("LeftForeArm").position, B("LeftHand").position):0.000} " +
+                      $"shoulder width {Vector3.Distance(B("LeftArm").position, B("RightArm").position):0.000}; grip in HeldRifle pos {F(bodyRifle.InverseTransformPoint(grip.position))} " +
+                      $"euler {F((Quaternion.Inverse(bodyRifle.rotation) * grip.rotation).eulerAngles)}; socket {F(bodyRifle.InverseTransformPoint(bodyRifle.GetComponentsInChildren<Transform>(true).First(x => x.name == "LeftHandGrip").position))}; " +
+                      $"rifle bounds {bodyRifle.GetComponentInChildren<MeshFilter>(true).sharedMesh.bounds}; vm {F(vm.localPosition)} rifle {F(rifle.localPosition)} {F(rifle.localEulerAngles)} arms {F(armsT.localPosition)} {F(armsT.localEulerAngles)}");
+            System.Reflection.FieldInfo Field(string n) => typeof(FirstPersonArms).GetField(n, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // how far the hand is bent off the forearm line (twist excluded)
+            float Bend(bool left)
+            {
+                Transform lower = arms.ForeArm(left), hand = arms.Hand(left);
+                Vector3 axis = (hand.position - lower.position).normalized;
+                Quaternion off = hand.rotation * Quaternion.Inverse(lower.rotation * arms.RestHandInForearm(left));
+                return Vector3.Angle(axis, off * axis);
+            }
+
+            if (list == null)
+            {
+                // no file: one variant that reproduces the generated layout (applying it changes nothing)
+                list = new FpVariantList
+                {
+                    variants = new[]
+                    {
+                        new FpVariant
+                        {
+                            label = "generated layout", vmRoot = vm.localPosition, rifleOffset = rifle.localPosition,
+                            rifleEuler = rifle.localEulerAngles, shoulders = armsT.localPosition + shoulderMid,
+                            armsYaw = armsT.localEulerAngles.y,
+                            leftElbow = (Vector3)Field("leftElbow").GetValue(arms), rightElbow = (Vector3)Field("rightElbow").GetValue(arms),
+                        },
+                    },
+                };
+            }
+
+            var side = new GameObject("SideCam").AddComponent<Camera>();
+            side.cullingMask = 1 << GameLayers.ViewModelIndex;
+            side.clearFlags = CameraClearFlags.SolidColor;
+            side.backgroundColor = new Color(0.25f, 0.27f, 0.32f);
+            side.nearClipPlane = 0.01f;
+            side.fieldOfView = 42f;
+            spawned.Add(side.gameObject);
+
+            foreach (FpVariant v in list.variants)
+            {
+                vm.localPosition = v.vmRoot;
+                vm.localRotation = Quaternion.identity;
+                vmAnimator.Configure(player.GetComponent<FpsCharacter>(), vm);
+                rifle.SetLocalPositionAndRotation(v.rifleOffset, Quaternion.Euler(v.rifleEuler));
+                Quaternion yaw = Quaternion.Euler(0f, v.armsYaw, 0f);
+                armsT.SetLocalPositionAndRotation(v.shoulders - yaw * shoulderMid, yaw);
+                Field("leftElbow").SetValue(arms, v.leftElbow);
+                Field("rightElbow").SetValue(arms, v.rightElbow);
+                // the Animator rewrites FP_Grip_L every frame: hold the tuned pose from LateUpdate instead
+                gripHold.active = false;
+                grip.SetLocalPositionAndRotation(gripLocalPos, gripLocalRot);
+                if (v.gripOverride)
+                {
+                    gripHold.position = v.gripPos;
+                    gripHold.rotation = Quaternion.Euler(v.gripEuler);
+                    gripHold.active = true;
+                }
+                else if (v.gripFrame)
+                {
+                    // the authored grip's frame (fox_rig FP_LEFT_*: Blender rifle space right/forward/up -> x/z/y here)
+                    var palm0 = new Vector3(-0.040f, 0.055f, 0.310f);
+                    Quaternion basis0 = Quaternion.LookRotation(new Vector3(0.45f, 0.40f, 0.80f), new Vector3(0.55f, 0.80f, 0f));
+                    Quaternion basis1 = Quaternion.LookRotation(v.along, v.normal);
+                    Quaternion r1 = basis1 * Quaternion.Inverse(basis0) * gripRifleRot0;
+                    Vector3 wristInHand = Quaternion.Inverse(gripRifleRot0) * (gripRifle0 - palm0);
+                    gripHold.position = v.palm + r1 * wristInHand;
+                    gripHold.rotation = r1;
+                    gripHold.active = true;
+                }
+                else if (v.gripRoll != 0f || v.gripSlide != 0f)
+                {
+                    Quaternion roll = Quaternion.AngleAxis(v.gripRoll, Vector3.forward);
+                    gripHold.position = v.gripAxis + roll * (gripRifle0 - v.gripAxis) + Vector3.forward * v.gripSlide;
+                    gripHold.rotation = roll * gripRifleRot0;
+                    gripHold.active = true;
+                }
+
+                B("LeftArm").localPosition = leftArmLocal;
+                B("RightArm").localPosition = rightArmLocal;
+                foreach (string s in new[] { "Left", "Right" })
+                {
+                    B(s + "ForeArm").localPosition = boneLocal[s + "ForeArm"] * (v.upperArmScale > 0f ? v.upperArmScale : 1f);
+                    B(s + "Hand").localPosition = boneLocal[s + "Hand"] * (v.foreArmScale > 0f ? v.foreArmScale : 1f);
+                }
+
+                if (v.perArm)
+                {
+                    B("LeftArm").position = vm.TransformPoint(v.leftShoulder);
+                    B("RightArm").position = vm.TransformPoint(v.rightShoulder);
+                }
+
+                yield return Frames(4);
+                if (v.auto)
+                {
+                    Solve("Left", v.leftElbowVp, v.leftUpperDir, "leftElbow");
+                    Solve("Right", v.rightElbowVp, v.rightUpperDir, "rightElbow");
+                }
+
+                // shoulder at the end of the upper arm from the wanted elbow; the hint points the IK elbow there
+                void Solve(string s, Vector2 elbowVp, Vector3 upperDir, string field)
+                {
+                    float l1 = Vector3.Distance(B(s + "Arm").position, B(s + "ForeArm").position);
+                    float l2 = Vector3.Distance(B(s + "ForeArm").position, B(s + "Hand").position);
+                    Vector3 wrist = arms.GoalPosition(s == "Left");
+                    Ray ray = viewCam.ViewportPointToRay(new Vector3(elbowVp.x, elbowVp.y, 0f));
+                    Vector3 w = wrist - ray.origin;
+                    float dw = Vector3.Dot(ray.direction, w);
+                    float disc = dw * dw - w.sqrMagnitude + l2 * l2;
+                    float t = disc >= 0f ? dw - Mathf.Sqrt(disc) : dw;
+                    if (disc >= 0f && Vector3.Dot(ray.direction * t, viewCam.transform.forward) < 0.15f)
+                    {
+                        t = dw + Mathf.Sqrt(disc); // the near solution would put the elbow (and shoulder) at the lens
+                    }
+                    Vector3 elbow = ray.origin + ray.direction * t;
+                    float natural = s == "Left" ? v.leftNatural : v.rightNatural;
+                    if (natural > 0f)
+                    {
+                        // the hand already holds its goal rotation: the forearm line that leaves the wrist straight
+                        bool left = s == "Left";
+                        Transform lower = arms.ForeArm(left), hand = arms.Hand(left);
+                        Vector3 localAxis = Quaternion.Inverse(lower.rotation) * (hand.position - lower.position).normalized;
+                        Vector3 straight = hand.rotation * Quaternion.Inverse(arms.RestHandInForearm(left)) * localAxis;
+                        Vector3 toElbow = Vector3.Lerp((elbow - wrist).normalized, -straight, natural).normalized;
+                        elbow = wrist + toElbow * l2;
+                    }
+
+                    Vector3 shoulder = elbow + viewCam.transform.TransformDirection(upperDir.normalized) * l1;
+                    B(s + "Arm").position = shoulder;
+                    Vector3 axis = (wrist - shoulder).normalized;
+                    Vector3 pole = elbow - (shoulder + axis * Vector3.Dot(elbow - shoulder, axis));
+                    Vector3 hint = armsT.InverseTransformDirection(pole.normalized);
+                    Field(field).SetValue(arms, hint);
+                    Debug.Log($"[FPTune] {v.label} {s}: l1 {l1:0.000} l2 {l2:0.000} elbow vp {F(viewCam.WorldToViewportPoint(elbow))} " +
+                              $"{(disc >= 0f ? "" : $"UNREACHABLE by {(Mathf.Sqrt(-disc)) * 100f:0.0} cm ")}shoulder (vm) {F(vm.InverseTransformPoint(shoulder))} hint (arms) {F(hint)} " +
+                              $"wrist cam {F(viewCam.transform.InverseTransformPoint(wrist))}");
+                }
+
+                yield return Frames(12);
+                FirstPerson("FPT " + v.label);
+                Texture2D fpImage = shots[shots.Count - 1].image;
+                shots.RemoveAt(shots.Count - 1);
+
+                Transform cam = viewCam.transform;
+                side.transform.position = cam.TransformPoint(new Vector3(-0.42f, -0.32f, 0.48f));
+                side.transform.LookAt(cam.TransformPoint(new Vector3(0.03f, -0.16f, 0.68f)));
+                side.targetTexture = sideTarget;
+                side.Render();
+                side.targetTexture = null;
+                RenderTexture previous = RenderTexture.active;
+                RenderTexture.active = sideTarget;
+                var sideImage = new Texture2D(H * 2, H * 2, TextureFormat.RGB24, false);
+                sideImage.ReadPixels(new Rect(0, 0, H * 2, H * 2), 0, 0);
+                sideImage.Apply();
+                RenderTexture.active = previous;
+
+                var row = new Texture2D(W * 4 + H * 2, H * 2, TextureFormat.RGB24, false);
+                row.SetPixels(0, 0, W * 4, H * 2, fpImage.GetPixels());
+                row.SetPixels(W * 4, 0, H * 2, H * 2, sideImage.GetPixels());
+                row.Apply();
+                Object.Destroy(fpImage);
+                Object.Destroy(sideImage);
+                shots.Add(("FPT " + v.label, row));
+
+                Vector3 Vp(Transform x) => viewCam.WorldToViewportPoint(x.position);
+                Debug.Log($"[FPTune] {v.label}: viewport L hand {F(Vp(B("LeftHand")))} L elbow {F(Vp(B("LeftForeArm")))} L shoulder {F(Vp(B("LeftArm")))} | " +
+                          $"R hand {F(Vp(B("RightHand")))} R elbow {F(Vp(B("RightForeArm")))} R shoulder {F(Vp(B("RightArm")))} | " +
+                          $"goal error L {Vector3.Distance(B("LeftHand").position, arms.GoalPosition(true)) * 100f:0.0} cm R {Vector3.Distance(B("RightHand").position, arms.GoalPosition(false)) * 100f:0.0} cm; wrist bend L {Bend(true):0} R {Bend(false):0} deg");
+            }
+
+            Save("FoxAnim_FPTune", 1);
+        }
+
+        static string F(Vector3 v) => $"({v.x:0.000}, {v.y:0.000}, {v.z:0.000})";
     }
 }
 #endif
