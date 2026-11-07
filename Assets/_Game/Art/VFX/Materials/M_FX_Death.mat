@@ -28,6 +28,7 @@ Material:
     - _Falloff: 1.4
     - _Intensity: 2.5
     - _Radial: 1
+    - _Ring: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 0.5, b: 0.3, a: 1}
   m_BuildTextureStacks: []

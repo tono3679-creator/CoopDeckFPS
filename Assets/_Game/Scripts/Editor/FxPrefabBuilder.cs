@@ -150,10 +150,17 @@ namespace CoopDeck.EditorTools
 
             foreach (ParticleSystem ps in root.GetComponentsInChildren<ParticleSystem>())
             {
-                // Authored for a 1 m radius: the caster scales the root to the effect radius.
+                // Authored for a 1 m radius: the caster scales the root to the effect radius. The
+                // flat ground glow scales fully; sparks and the column only spread over the larger
+                // area (Shape) so a 6 m skill does not throw 6x larger, 6x faster blobs at the camera.
                 ParticleSystem.MainModule m = ps.main;
-                m.scalingMode = ParticleSystemScalingMode.Hierarchy;
+                bool flat = ps == glow;
+                m.scalingMode = flat ? ParticleSystemScalingMode.Hierarchy : ParticleSystemScalingMode.Shape;
                 m.simulationSpace = ParticleSystemSimulationSpace.Local;
+                if (!flat)
+                {
+                    ps.GetComponent<ParticleSystemRenderer>().maxParticleSize = 0.18f;
+                }
             }
 
             AddFlashLight(root, color, 8f);
@@ -248,7 +255,7 @@ namespace CoopDeck.EditorTools
             });
         }
 
-        static void AddFlashLight(GameObject root, Color color, float range)
+        internal static void AddFlashLight(GameObject root, Color color, float range)
         {
             var lightGo = new GameObject("Light");
             lightGo.transform.SetParent(root.transform, false);
@@ -264,7 +271,7 @@ namespace CoopDeck.EditorTools
             EditorUtil.SetFloat(flash, "peakIntensity", 6f);
         }
 
-        static GameObject EnsureIn(string folder, string name, bool overwrite, System.Func<GameObject> build)
+        internal static GameObject EnsureIn(string folder, string name, bool overwrite, System.Func<GameObject> build)
         {
             string path = $"{folder}/{name}.prefab";
             if (!overwrite && EditorUtil.Exists(path))
@@ -379,7 +386,7 @@ namespace CoopDeck.EditorTools
             return root;
         }
 
-        static ParticleSystem AddSystem(GameObject root, string name, Material material)
+        internal static ParticleSystem AddSystem(GameObject root, string name, Material material)
         {
             var go = new GameObject(name);
             go.transform.SetParent(root.transform, false);
@@ -393,7 +400,7 @@ namespace CoopDeck.EditorTools
             return ps;
         }
 
-        static void Configure(ParticleSystem ps, (float min, float max) lifetime, (float min, float max) speed,
+        internal static void Configure(ParticleSystem ps, (float min, float max) lifetime, (float min, float max) speed,
             (float min, float max) size, Color colorA, Color colorB, short burst, int max)
         {
             ParticleSystem.MainModule main = ps.main;
@@ -426,7 +433,7 @@ namespace CoopDeck.EditorTools
             sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1f, 1f, 0.2f));
         }
 
-        static void SetShape(ParticleSystem ps, ParticleSystemShapeType type, float radius, float angle)
+        internal static void SetShape(ParticleSystem ps, ParticleSystemShapeType type, float radius, float angle)
         {
             ParticleSystem.ShapeModule shape = ps.shape;
             shape.enabled = true;
@@ -435,7 +442,7 @@ namespace CoopDeck.EditorTools
             shape.angle = angle;
         }
 
-        static void Stretch(ParticleSystem ps, float velocityScale)
+        internal static void Stretch(ParticleSystem ps, float velocityScale)
         {
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
             renderer.renderMode = ParticleSystemRenderMode.Stretch;

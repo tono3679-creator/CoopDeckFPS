@@ -371,6 +371,7 @@ GameObject:
   - component: {fileID: 4781936829819158829}
   - component: {fileID: 2480294522623045171}
   - component: {fileID: 280020997816094501}
+  - component: {fileID: 8932259960315902105}
   - component: {fileID: 6113850377799226520}
   m_Layer: 0
   m_Name: PlayerCamera
@@ -455,6 +456,23 @@ AudioListener:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1596935862680662429}
   m_Enabled: 1
+--- !u!114 &8932259960315902105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1596935862680662429}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd6e6d02d9e6cd942a36291606daedda, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CoopDeck.Effects::CoopDeck.Effects.CameraShaker
+  maxAngle: 0.9
+  maxOffset: 0.035
+  decay: 3.2
+  frequency: 22
+  falloffDistance: 30
 --- !u!114 &6113850377799226520
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -830,6 +848,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: CoopDeck.Skills::CoopDeck.Skills.DeckController
   startingDeck: {fileID: 11400000, guid: a6d34a923be0ee84099c40c14b50cd5f, type: 2}
+  practiceDeck: {fileID: 11400000, guid: 0df31fa39dec13541b44219d1c62060b, type: 2}
   startingItems:
   - {fileID: 11400000, guid: 24170b86587469b49be8b99695f615fd, type: 2}
   - {fileID: 11400000, guid: ef7b5c63e61fc2f4db353ee92119a8f0, type: 2}

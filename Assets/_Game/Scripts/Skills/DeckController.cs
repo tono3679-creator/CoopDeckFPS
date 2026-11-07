@@ -19,6 +19,8 @@ namespace CoopDeck.Skills
     public class DeckController : MonoBehaviour
     {
         [SerializeField] DeckDefinition startingDeck;
+        [Tooltip("Optional: the same cards arranged for trying element combos (F7 debug key). Same deck rules.")]
+        [SerializeField] DeckDefinition practiceDeck;
         [SerializeField] List<GaugeItemDefinition> startingItems = new List<GaugeItemDefinition>();
         [Tooltip("0 = a different shuffle every run. Any other value gives a repeatable deck order.")]
         [SerializeField] int randomSeed;
@@ -93,6 +95,27 @@ namespace CoopDeck.Skills
             DeckRebuilt?.Invoke();
         }
 
+        public bool HasPracticeDeck => practiceDeck != null;
+        public bool UsingPracticeDeck { get; private set; }
+
+        /// <summary>
+        /// Debug / practice: rebuilds the run with the combo practice deck (or back to the
+        /// starting deck). It is a normal deck: gauges, discards, draws and reshuffles are unchanged.
+        /// </summary>
+        public bool SetPracticeDeck(bool enabled)
+        {
+            DeckDefinition deck = enabled ? practiceDeck : startingDeck;
+            if (deck == null)
+            {
+                return false;
+            }
+
+            UsingPracticeDeck = enabled;
+            Rebuild(deck.cards, deck.handSize, startingItems, randomSeed);
+            Notice?.Invoke(enabled ? "コンボ練習デッキに切り替えました（F7 で戻す）" : "初期デッキに戻しました");
+            return true;
+        }
+
         public void SetCharacter(FpsCharacter newCharacter, SkillCaster newCaster)
         {
             Unsubscribe();
@@ -161,7 +184,7 @@ namespace CoopDeck.Skills
 
             SetSelectedSlot(slot);
             SkillCastReport report = caster != null && caster.IsInitialized
-                ? caster.CastCard(result.Card.Definition)
+                ? caster.CastCard(result.Card.Definition, result.Card.UpgradeLevel)
                 : new SkillCastReport { Card = result.Card.Definition };
             CardActivated?.Invoke(result, report);
             return true;

@@ -29,6 +29,7 @@ namespace CoopDeck.AI
 
         NavMeshAgent agent;
         EnemyActor actor;
+        CombatStatus status;
         readonly EnemyStateMachine machine = new EnemyStateMachine();
         ICombatActor target;
         float repathTimer;
@@ -58,6 +59,7 @@ namespace CoopDeck.AI
         {
             agent = GetComponent<NavMeshAgent>();
             actor = GetComponent<EnemyActor>();
+            status = GetComponent<CombatStatus>();
             ApplyDefinition();
         }
 
@@ -147,6 +149,11 @@ namespace CoopDeck.AI
                 Recover = def.recover,
                 Cooldown = def.cooldown,
             };
+
+            if (agent != null && status != null)
+            {
+                agent.speed = def.moveSpeed * status.MoveSpeedMultiplier; // ice / gravity slow
+            }
 
             EnemyIntent intent = machine.Tick(dt, perception, tuning);
             ApplyMovement(intent, dt);

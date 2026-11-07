@@ -44,6 +44,7 @@ namespace CoopDeck.Skills
         int areaMask = Physics.DefaultRaycastLayers;
         readonly List<Health> targets = new List<Health>();
         readonly HashSet<Health> visited = new HashSet<Health>();
+        readonly List<Health> affectedEnemies = new List<Health>();
 
         /// <summary>Raised when a cast's effects have been applied (immediately, or after impactDelay).</summary>
         public event Action<SkillCastReport> EffectsApplied;
@@ -63,7 +64,8 @@ namespace CoopDeck.Skills
             castOrigin = origin;
         }
 
-        public SkillCastReport CastCard(CardDefinition card)
+        /// <param name="upgradeLevel">The card copy's upgrade level; carried to the element hits (combo tier).</param>
+        public SkillCastReport CastCard(CardDefinition card, int upgradeLevel = 0)
         {
             if (card == null || !IsInitialized)
             {
@@ -90,11 +92,11 @@ namespace CoopDeck.Skills
             if (card.impactDelay > 0f)
             {
                 PlayFx(card.telegraphFx, point + Vector3.up * 0.05f, Quaternion.identity, card.MaxRadius);
-                StartCoroutine(ResolveLater(card, point, primary));
+                StartCoroutine(ResolveLater(card, point, primary, upgradeLevel));
                 return new SkillCastReport { Card = card, Point = point, PrimaryTarget = primary, Delayed = true };
             }
 
-            return Resolve(card, point, primary, origin);
+            return Resolve(card, point, primary, origin, upgradeLevel);
         }
 
         Vector3 ResolveAimPoint(CardDefinition card, Ray ray, out Health primary)
@@ -121,21 +123,22 @@ namespace CoopDeck.Skills
             return end;
         }
 
-        IEnumerator ResolveLater(CardDefinition card, Vector3 point, Health primary)
+        IEnumerator ResolveLater(CardDefinition card, Vector3 point, Health primary, int upgradeLevel)
         {
             yield return new WaitForSeconds(card.impactDelay);
             if (IsInitialized)
             {
-                Resolve(card, point, primary, point + Vector3.up * 8f);
+                Resolve(card, point, primary, point + Vector3.up * 8f, upgradeLevel);
             }
         }
 
-        SkillCastReport Resolve(CardDefinition card, Vector3 center, Health primary, Vector3 origin)
+        SkillCastReport Resolve(CardDefinition card, Vector3 center, Health primary, Vector3 origin, int upgradeLevel)
         {
             var report = new SkillCastReport { Card = card, Point = center, PrimaryTarget = primary };
             CombatStatus ownerStatus = owner.Status;
             float damageMultiplier = ownerStatus != null ? ownerStatus.Model.OutgoingDamageMultiplier : 1f;
             visited.Clear();
+            affectedEnemies.Clear();
 
             foreach (SkillEffectSpec effect in card.effects)
             {
@@ -240,8 +243,35 @@ namespace CoopDeck.Skills
                 PlayFx(card.impactFx, center, Quaternion.identity, 0f);
             }
 
+            RaiseElementHits(card, upgradeLevel);
             EffectsApplied?.Invoke(report);
             return report;
+        }
+
+        /// <summary>
+        /// One element hit per enemy this cast reached (damage, burn, mark or pull), after all
+        /// of the card's damage was applied. The combo system listens; the caster does not know it.
+        /// </summary>
+        void RaiseElementHits(CardDefinition card, int upgradeLevel)
+        {
+            if (card.element == Element.None || affectedEnemies.Count == 0)
+            {
+                return;
+            }
+
+            int ownerId = CombatantRegistry.IdOf(owner);
+            Health[] hit = affectedEnemies.ToArray(); // a combo may cause further skill-free damage
+            affectedEnemies.Clear();
+            foreach (Health enemy in hit)
+            {
+                if (enemy == null)
+                {
+                    continue;
+                }
+
+                CombatEvents.RaiseElementHit(new ElementHit(enemy, card.element, owner, ownerId, owner.Team,
+                    enemy.transform.position + Vector3.up * FxHeight, upgradeLevel));
+            }
         }
 
         void ApplyDamage(CardDefinition card, SkillEffectSpec effect, Health primary, float multiplier, ref SkillCastReport report)
@@ -253,7 +283,7 @@ namespace CoopDeck.Skills
 
             Vector3 from = castOrigin != null ? castOrigin.position : owner.Position;
             report.DamageDealt += Hit(card, primary, effect.amount * multiplier, from);
-            Count(primary, ref report, isEnemy: true);
+            Count(primary, ref report, isEnemy: true); // counted even if this hit killed it: the killing blow can finish a combo
 
             // Chain: jump to the nearest enemy not hit yet, with reduced damage.
             var chained = new HashSet<Health> { primary };
@@ -303,6 +333,7 @@ namespace CoopDeck.Skills
             if (isEnemy)
             {
                 report.EnemiesAffected++;
+                affectedEnemies.Add(target);
             }
             else
             {

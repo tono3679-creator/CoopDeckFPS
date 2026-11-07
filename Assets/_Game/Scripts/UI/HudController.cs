@@ -28,6 +28,7 @@ namespace CoopDeck.UI
         static readonly Color KillColor = new Color(1f, 0.25f, 0.3f, 1f);
         static readonly Color SkillHitColor = new Color(0.75f, 0.6f, 1f, 1f);
         static readonly Color CriticalColor = new Color(1f, 0.55f, 0.15f, 1f);
+        static readonly Color ComboColor = new Color(1f, 0.5f, 0.95f, 1f);
         static readonly Color ShieldColor = new Color(0.55f, 0.9f, 1f, 1f);
 
         RectTransform root;
@@ -115,10 +116,11 @@ namespace CoopDeck.UI
             HudKit.AddOutline(pausedText);
             pausedText.gameObject.SetActive(false);
 
-            hintText = HudKit.CreateText("Hint", root, 18, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(1700f, 60f));
+            hintText = HudKit.CreateText("Hint", root, 18, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0f, -52f), new Vector2(1700f, 84f));
             hintText.text =
                 "WASD 移動 / Shift 走る / Ctrl 回避 / Space ジャンプ / 左クリック 射撃 / R リロード / Q・E・F スキル / 1・2・3 カード選択 / G アイテム使用 / T アイテム切替 / F1 ヒント / F3 性能\n" +
-                "パッド: RT 射撃 / LB・RB・Y スキル / 十字← → カード選択 / 十字↑ アイテム使用 / 十字↓ アイテム切替 / A ジャンプ / B 回避 / X リロード / L3 走る";
+                "パッド: RT 射撃 / LB・RB・Y スキル / 十字← → カード選択 / 十字↑ アイテム使用 / 十字↓ アイテム切替 / A ジャンプ / B 回避 / X リロード / L3 走る\n" +
+                "コンボ（4 秒以内）: 氷＋雷 / 火＋重力 / 火＋雷　F4 エフェクト品質 / F6 コンボ段階 / F7 練習デッキ";
             hintText.color = new Color(1f, 1f, 1f, 0.8f);
             HudKit.AddOutline(hintText, 0.5f);
             hintText.gameObject.SetActive(showControlsHint);
@@ -202,7 +204,13 @@ namespace CoopDeck.UI
             bool killed = e.Result.Killed;
             bool headshot = e.Result.IsHeadshot;
             bool critical = (e.Result.Flags & DamageFlags.Critical) != 0;
-            bool skill = e.Info.Kind == DamageKind.Skill || e.Info.Kind == DamageKind.Status;
+            bool combo = e.Info.Kind == DamageKind.Combo;
+            bool skill = e.Info.Kind == DamageKind.Skill || e.Info.Kind == DamageKind.Status || combo;
+            if (combo)
+            {
+                SpawnDamageNumber(e.Info.Point, e.Result.Damage, true, killed, true, false, ComboColor);
+                return;
+            }
             if (e.Info.Kind != DamageKind.Status)
             {
                 hitMarkerTimer = 0.14f;
@@ -438,7 +446,7 @@ namespace CoopDeck.UI
             perfText.text =
                 $"FPS {frameMonitor.AverageFps:0}  (1% low {frameMonitor.OnePercentLowFps:0})\n" +
                 $"{frameMonitor.AverageMs:0.0} ms  (worst {frameMonitor.WorstMs:0.0})\n" +
-                $"Tier {PerformanceSettings.Tier} / Quality {quality}{(PerformanceBootstrap.Uncapped ? " / uncapped" : "")}\n" +
+                $"Tier {PerformanceSettings.Tier} / Quality {quality} / VFX {PerformanceSettings.Vfx}{(PerformanceBootstrap.Uncapped ? " / uncapped" : "")}\n" +
                 $"{Screen.width}x{Screen.height}  vSync {QualitySettings.vSyncCount}";
         }
     }

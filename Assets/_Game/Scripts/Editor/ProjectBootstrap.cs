@@ -66,16 +66,18 @@ namespace CoopDeck.EditorTools
 
             List<CardDefinition> cards = CardDataFactory.EnsureCards(skillFx, overwriteIcons: false);
             DeckDefinition starterDeck = CardDataFactory.EnsureStarterDeck(cards);
+            DeckDefinition practiceDeck = CardDataFactory.EnsurePracticeDeck(cards);
             List<GaugeItemDefinition> items = CardDataFactory.EnsureGaugeItems();
+            ComboAssetSet combos = ComboAssetFactory.EnsureCombos();
 
             bool overwriteAnimations = Array.IndexOf(Environment.GetCommandLineArgs(), "-coopdeckOverwriteAnimations") >= 0;
             AnimationSet animations = AnimationAssetFactory.EnsureAnimations(overwriteAnimations);
             GameObject windupFx = FxPrefabBuilder.EnsureEnemyWindupFx(overwrite: true);
             EnemySet enemies = EnemyFactory.EnsureEnemies(materials, fx, skillFx, windupFx, animations);
 
-            GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials, starterDeck, items, animations.Humanoid);
+            GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials, starterDeck, items, animations.Humanoid, practiceDeck);
             GameObject dummy = CharacterPrefabBuilder.BuildTargetDummy(materials, fx);
-            SandboxSceneBuilder.Build(player, dummy, materials, volume, enemies);
+            SandboxSceneBuilder.Build(player, dummy, materials, volume, enemies, combos);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();

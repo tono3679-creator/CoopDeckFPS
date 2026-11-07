@@ -1,6 +1,7 @@
 // Cheap additive glow for particles and line renderers (muzzle flash, sparks, tracers).
 // No texture: the soft shape is computed from UVs, so it costs one ALU-only pass.
 // _Radial = 1: round dot (particles). _Radial = 0: soft band across V (line renderers).
+// _Ring > 0: a soft ring of that thickness instead (shockwaves); 0 keeps the shapes above.
 Shader "CoopDeck/FX/Additive Soft"
 {
     Properties
@@ -9,6 +10,7 @@ Shader "CoopDeck/FX/Additive Soft"
         _Intensity ("Intensity", Range(0, 10)) = 1
         _Radial ("Radial (1) / Band (0)", Range(0, 1)) = 1
         _Falloff ("Falloff Power", Range(0.2, 8)) = 1.5
+        _Ring ("Ring Thickness (0 = off)", Range(0, 1)) = 0
     }
 
     SubShader
@@ -43,6 +45,7 @@ Shader "CoopDeck/FX/Additive Soft"
                 half _Intensity;
                 half _Radial;
                 half _Falloff;
+                half _Ring;
             CBUFFER_END
 
             struct Attributes
@@ -73,9 +76,15 @@ Shader "CoopDeck/FX/Additive Soft"
             half4 frag(Varyings input) : SV_Target
             {
                 float2 centered = input.uv * 2.0 - 1.0;
-                half radial = saturate(1.0 - length(centered));
+                half dist = length(centered);
+                half radial = saturate(1.0 - dist);
                 half band = saturate(1.0 - abs(centered.y));
-                half mask = pow(max(lerp(band, radial, _Radial), 0.0001), _Falloff);
+                half shape = lerp(band, radial, _Radial);
+                // Ring: brightest at (1 - thickness/2) from the centre, fading inward and to the edge.
+                half thickness = max(_Ring, 0.001);
+                half ring = saturate(1.0 - abs(dist - (1.0 - thickness * 0.5)) / (thickness * 0.5));
+                shape = lerp(shape, ring, step(0.0005, _Ring));
+                half mask = pow(max(shape, 0.0001), _Falloff);
                 half3 rgb = input.color.rgb * _BaseColor.rgb * (_Intensity * mask * input.color.a * _BaseColor.a);
                 // Additive: fade toward black in fog instead of toward the fog color.
                 rgb = MixFogColor(rgb, half3(0, 0, 0), input.fogFactor);

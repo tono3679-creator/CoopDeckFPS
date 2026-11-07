@@ -15,6 +15,7 @@ namespace CoopDeck.Effects
         [SerializeField] bool scaleWithEffectDensity = true;
 
         ParticleSystem[] systems;
+        VfxQualityGate[] gates;
         float[] baseRates;
         short[][] baseBurstMin;
         short[][] baseBurstMax;
@@ -82,13 +83,31 @@ namespace CoopDeck.Effects
         public void Play()
         {
             CacheSystems();
+            ApplyQualityGates();
             ApplyDensity(scaleWithEffectDensity ? PerformanceSettings.EffectDensity : 1f);
             remaining = lifetime;
 
             foreach (ParticleSystem ps in systems)
             {
+                if (!ps.gameObject.activeInHierarchy)
+                {
+                    continue; // a quality-gated layer that is switched off
+                }
+
                 ps.Clear(true);
                 ps.Play(true);
+            }
+        }
+
+        void ApplyQualityGates()
+        {
+            gates ??= GetComponentsInChildren<VfxQualityGate>(true);
+            foreach (VfxQualityGate gate in gates)
+            {
+                if (gate != null && gate.gameObject != gameObject)
+                {
+                    gate.gameObject.SetActive(gate.AllowedNow);
+                }
             }
         }
 

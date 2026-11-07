@@ -2,9 +2,11 @@ using System;
 using System.Collections;
 using System.IO;
 using CoopDeck.Combat;
+using CoopDeck.Combos;
 using CoopDeck.Core;
 using CoopDeck.Enemies;
 using CoopDeck.Player;
+using CoopDeck.Skills;
 using UnityEngine;
 
 namespace CoopDeck.UI.Diagnostics
@@ -12,12 +14,14 @@ namespace CoopDeck.UI.Diagnostics
     /// <summary>
     /// Unattended performance capture for builds.
     ///
-    ///   CoopDeckFPS.exe -perfrun 30 [-perfout C:\path\result.json] [-perfidle] [-perfarena] [-tier handheld] [-uncapped]
+    ///   CoopDeckFPS.exe -perfrun 30 [-perfout C:\path\result.json] [-perfidle] [-perfarena] [-perfpractice]
+    ///                   [-vfx low|medium|high] [-tier handheld] [-uncapped]
     ///
     /// Waits 3 s, measures for N seconds while the autopilot shoots (unless -perfidle), writes a
     /// JSON result and a screenshot next to it, then quits. -perfarena starts the player inside the
     /// combat arena so enemy waves (AI, NavMesh, projectiles) are part of the measurement; the
-    /// player cannot die during that run so the fight keeps going.
+    /// player cannot die during that run so the fight keeps going. -perfpractice switches to the
+    /// combo practice deck so element combos happen often; the JSON counts them.
     /// </summary>
     public class AutoPerfRunner : MonoBehaviour
     {
@@ -39,6 +43,9 @@ namespace CoopDeck.UI.Diagnostics
             public bool arena;
             public int waveReached;
             public int maxEnemiesAlive;
+            public bool practiceDeck;
+            public int combosTriggered;
+            public string vfx;
             public float seconds;
             public int frames;
             public float averageFps;
@@ -59,6 +66,8 @@ namespace CoopDeck.UI.Diagnostics
         WaveDirector director;
         bool measuring;
         int maxEnemiesAlive;
+        bool practice;
+        int combos;
         FrameTimeMonitor monitor;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -79,6 +88,7 @@ namespace CoopDeck.UI.Diagnostics
             runner.outputPath = PerformanceBootstrap.GetArgValue(args, "-perfout");
             runner.autopilot = Array.IndexOf(args, "-perfidle") < 0;
             runner.arena = Array.IndexOf(args, "-perfarena") >= 0;
+            runner.practice = Array.IndexOf(args, "-perfpractice") >= 0;
         }
 
         void Update()
@@ -87,6 +97,19 @@ namespace CoopDeck.UI.Diagnostics
             {
                 maxEnemiesAlive = Mathf.Max(maxEnemiesAlive, director.AliveEnemies.Count);
             }
+        }
+
+        void CountCombo(ComboReport report)
+        {
+            if (measuring)
+            {
+                combos++;
+            }
+        }
+
+        void OnDestroy()
+        {
+            ComboEvents.Triggered -= CountCombo;
         }
 
         /// <summary>Moves the player into the arena (facing the spawn side) so the waves start.</summary>
@@ -130,10 +153,25 @@ namespace CoopDeck.UI.Diagnostics
                 EnterArena(player);
             }
 
+            if (practice && player != null && player.TryGetComponent(out DeckController deckController))
+            {
+                yield return null; // the deck is built in the controller's Awake/Start
+                deckController.SetPracticeDeck(true);
+            }
+
+            ComboEvents.Triggered += CountCombo;
+
             if (autopilot && player != null)
             {
                 FpsLook look = player.Look;
                 var pilot = new AutopilotCommandSource(look != null ? () => look.Pitch : null);
+                if (practice)
+                {
+                    // Combo stress: skills only, every 0.8 s, so enemies live long enough for
+                    // element pairs to land within the 4 s window (the rifle kills them in ~1 s).
+                    pilot.SkillInterval = 0.8f;
+                    pilot.FireWeapon = false;
+                }
                 if (director != null && look != null)
                 {
                     // Fight the waves: track the nearest enemy's chest instead of sweeping.
@@ -189,6 +227,9 @@ namespace CoopDeck.UI.Diagnostics
                 arena = arena && director != null,
                 waveReached = director != null ? director.Schedule.WaveNumber : 0,
                 maxEnemiesAlive = maxEnemiesAlive,
+                practiceDeck = practice,
+                combosTriggered = combos,
+                vfx = PerformanceSettings.Vfx.ToString(),
                 seconds = duration,
                 frames = monitor.SampleCount,
                 averageFps = monitor.AverageFps,
@@ -204,7 +245,7 @@ namespace CoopDeck.UI.Diagnostics
 
             File.WriteAllText(Path.GetFullPath(outputPath), JsonUtility.ToJson(result, true));
             Debug.Log($"[AutoPerfRunner] avg {result.averageFps:0.0} fps, 1% low {result.onePercentLowFps:0.0} fps, worst {result.worstMs:0.0} ms, " +
-                      $"arena {result.arena} (wave {result.waveReached}, max {result.maxEnemiesAlive} enemies) -> {outputPath}");
+                      $"arena {result.arena} (wave {result.waveReached}, max {result.maxEnemiesAlive} enemies), combos {result.combosTriggered}, vfx {result.vfx} -> {outputPath}");
 
             yield return null;
             Application.Quit();

@@ -3,6 +3,7 @@ using CoopDeck.Animation;
 using CoopDeck.Cards;
 using CoopDeck.Combat;
 using CoopDeck.Core;
+using CoopDeck.Effects;
 using CoopDeck.Enemies;
 using CoopDeck.Input;
 using CoopDeck.Items;
@@ -27,7 +28,8 @@ namespace CoopDeck.EditorTools
         public const float EyeHeight = 1.62f;
 
         public static GameObject BuildPlayer(InputActionAsset input, WeaponDefinition weapon, MovementProfile movement, MaterialSet m,
-            DeckDefinition starterDeck, List<GaugeItemDefinition> startingItems, RuntimeAnimatorController bodyController)
+            DeckDefinition starterDeck, List<GaugeItemDefinition> startingItems, RuntimeAnimatorController bodyController,
+            DeckDefinition practiceDeck = null)
         {
             EditorUtil.EnsureFolder(GamePaths.CharacterPrefabs);
 
@@ -61,6 +63,7 @@ namespace CoopDeck.EditorTools
             var caster = root.AddComponent<SkillCaster>();
             var deckController = root.AddComponent<DeckController>();
             EditorUtil.SetObject(deckController, "startingDeck", starterDeck);
+            EditorUtil.SetObject(deckController, "practiceDeck", practiceDeck);
             EditorUtil.SetObjectArray(deckController, "startingItems", startingItems.ToArray());
             EditorUtil.SetObject(deckController, "character", character);
             EditorUtil.SetObject(deckController, "caster", caster);
@@ -90,6 +93,7 @@ namespace CoopDeck.EditorTools
             camera.fieldOfView = 68f;
             camera.cullingMask = ~(1 << GameLayers.ViewModelIndex);
             cameraGo.AddComponent<AudioListener>();
+            cameraGo.AddComponent<CameraShaker>(); // small, capped shake for combos (aim ray comes from the pivot)
             UniversalAdditionalCameraData cameraData = camera.GetUniversalAdditionalCameraData();
             cameraData.renderPostProcessing = true;
             cameraData.antialiasing = AntialiasingMode.FastApproximateAntialiasing;

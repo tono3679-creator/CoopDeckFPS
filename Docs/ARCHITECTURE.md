@@ -41,24 +41,28 @@ CoopDeck.Core      （依存なし）  CharacterCommands, ICharacterCommandSourc
    │     └── CoopDeck.AI  EnemyStateMachine（純 C#）, EnemyBrain（NavMeshAgent）    ← Combat, Effects, Enemies, Animation
    ├── CoopDeck.Player   MovementProfile, MotorMath, FpsMotor, FpsLook,
    │                     FpsCharacter, ViewModelAnimator, PlayerRespawn           ← Combat, Weapons, Animation
-   ├── CoopDeck.Skills   SkillCaster（効果の実行）, DeckController（キャラ⇔デッキ⇔アイテム）
+   ├── CoopDeck.Skills   SkillCaster（効果の実行・属性ヒットの発行）, DeckController（キャラ⇔デッキ⇔アイテム、練習デッキ）
    │                                                                              ← Combat, Effects, Cards, Deck, Items, Player
+   ├── CoopDeck.Combos   ComboDefinition（SO）, ComboRule/ComboResolver/ComboDamageBudget（純 C#）,
+   │                     ComboSystem, ComboEvents, ElementAuraPresenter（属性の見た目）  ← Core, Combat, Effects
    └── CoopDeck.UI       HudController, DeckHud, HudKit, WorldHealthBar, FrameTimeMonitor,
-                         DamageFeedbackHud（被弾方向・ダウン表示）, ArenaHud（ウェーブ表示）,
-                         Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, Cards, Deck, Items, Skills, Enemies, InputSystem, uGUI
+                         DamageFeedbackHud（被弾方向・ダウン表示）, ArenaHud（ウェーブ表示）, ComboHud（コンボ名・F4/F6/F7）,
+                         Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, Cards, Deck, Items, Skills, Enemies, Combos, InputSystem, uGUI
+   （Combat に ElementAuraModel、Effects に CameraShaker・LightningArcFx・SpiralTrailFx・RadiusScaledFx・VfxQualityGate を追加）
 
-CoopDeck.Editor           ProjectBootstrap ほか生成ツール（カード・アイコン・スキル VFX・仮リグ・アニメ・敵 Prefab・NavMesh 含む）
+CoopDeck.Editor           ProjectBootstrap ほか生成ツール（カード・アイコン・スキル VFX・仮リグ・アニメ・敵 Prefab・NavMesh・コンボと VFX 含む）
                           ← 全ランタイム + URP + Unity.AI.Navigation + Unity.Animation.Rigging
-CoopDeck.Tests.EditMode   111 テスト（純ロジック・デッキ規則・アイテム・状態効果・敵の状態遷移・ウェーブ・移動ブレンド・
-                          弱点・生成データ（カード／Animator／敵 Prefab／シーンの NavMesh）・入力定義・ティア判定）
-CoopDeck.Tests.PlayMode   28 テスト（移動・射撃・デッキ×FPS 統合・仮想キーボード/ゲームパッド・各スキル効果・
-                          敵の追跡と攻撃・回避・敵弾・ウェーブ進行・NavMesh 上の吸引・入力遅延）
+CoopDeck.Tests.EditMode   157 テスト（純ロジック・デッキ規則・アイテム・状態効果・属性・コンボ判定・敵の状態遷移・ウェーブ・
+                          移動ブレンド・弱点・生成データ（カード／Animator／敵 Prefab／シーン／コンボと VFX）・入力定義・ティア・VFX 品質）
+CoopDeck.Tests.PlayMode   37 テスト（移動・射撃・デッキ×FPS 統合・仮想キーボード/ゲームパッド・各スキル効果・敵の追跡と攻撃・
+                          回避・敵弾・ウェーブ進行・NavMesh 上の吸引・入力遅延・コンボ 3 種・連鎖防止・協力・デッキ循環×コンボ）
 ```
 
 - **`CoopDeck.Player` は `CoopDeck.Input` を参照しない。** 入力は `ICharacterCommandSource` 経由でのみ届く。
 - `CoopDeck.Player` と `CoopDeck.AI` はお互いを参照しない。敵はプレイヤーを `CombatantRegistry`（`ICombatActor`）経由でだけ知る。
-- 予定アセンブリ（フォルダのみ作成済み）：`Combos` `NPC` `Networking` `Save`。
-  - `Combos` → `Combat`、`NPC` → `Player` `Deck` `Combat`（敵 AI の状態機械の考え方を流用）、`Networking` → 全体（逆参照はしない）。
+- `CoopDeck.Skills` と `CoopDeck.Combos` もお互いを参照しない。スキルは `CombatEvents.ElementHitApplied` を出すだけで、コンボの存在を知らない。
+- 予定アセンブリ（フォルダのみ作成済み）：`NPC` `Networking` `Save`。
+  - `NPC` → `Player` `Deck` `Combat`（敵 AI の状態機械の考え方を流用）、`Networking` → 全体（逆参照はしない）。
 
 ---
 
@@ -82,8 +86,13 @@ FpsCharacter.Step(dt)
   6. SkillSlotRequested(slot) → DeckController.UseSlot
         ├─ DeckState.TryUseCard（ゲージ消費・CD開始・0 なら捨て札→ドロー／再シャッフル）
         └─ SkillCaster.CastCard（照準レイ／自分中心 → 効果を順に適用 → VFX を FxPool で再生）
+              └─ 届いた敵ごとに CombatEvents.ElementHitApplied（属性・詠唱者 ID・チーム・カード強化段階）
+                    └─ ComboSystem → ComboResolver（CombatStatus.Elements に付与 or 相方を消費してコンボ）
+                          └─ コンボのダメージ（ComboDamage）→ ComboEvents.Triggered/Finished → ComboHud・VFX・画面揺れ
   7. ItemUseRequested / ItemCycleRequested → GaugeItemInventory → DeckState.RestoreCharge
 ```
+
+コンボは手札・ゲージに触れない（`DeckState` を参照しない）。コンボのダメージは属性ヒットを出さないので連鎖しない。詳細は `CARD_SYSTEM.md` §8「実装」。
 
 射撃（4）とスキル（6）は同じフレーム内の別処理で、互いの状態（弾数・ゲージ）に触れない。攻撃力強化だけは `ICombatActor.Status` 経由で両方のダメージに乗る。
 
@@ -225,11 +234,12 @@ Health.Died → EnemyActor                    コライダー無効化・撃破 
 | MSAA | 2x | なし |
 | 影 | 70 m / 2048 / 4 カスケード / ソフト | 35 m / 1024 / 2 カスケード / ハード |
 | SSAO | テンプレート既定 | 無効 |
-| エフェクト粒子数 | 1.0 | 0.55、エフェクト用ライト無効 |
+| エフェクト品質（VFX） | 高（粒子 1.0・エフェクト用ライトあり） | 中（粒子 0.55・ライトなし）。低（0.3・追加の層なし・画面揺れ半分）も選べる |
 | フレームペース | vSync 1 | 120 Hz パネルなら vSync 2（=60fps）、それ以外は 60fps 上限 |
 
 - 判定（`PerformanceBootstrap`、シーン読み込み前）：コマンドライン `-tier high|handheld` → 端末名に `ROG Ally`/`RC71L`/`RC72L` → GPU 名が型番なしの内蔵 Radeon → それ以外は High。
 - `-uncapped` で vSync とフレーム上限を外す（余力の計測用）。
+- VFX 品質はティアに従う（High→高、Handheld→中）。プレイ中は F4、起動時は `-vfx low|medium|high` で変更でき、変更後はティアに追従しない。追加の層は `VfxQualityGate` で省略、粒子数は `PooledFx` が品質の倍率で調整。`-noshake` で画面揺れなし。
 - 品質レベル名は `High` / `Handheld`（テンプレートの `PC` / `Mobile` を改名）。
 
 ### 無人計測
@@ -240,6 +250,7 @@ Builds\Windows\CoopDeckFPS.exe -perfrun 30 -perfout C:\temp\perf.json [-tier han
 
 3 秒待機後に 30 秒間計測し（既定は自動操縦で視点を振りながら連射）、JSON（平均 FPS・1% Low・最悪 ms・ティア・解像度・GPU 等）と同名の PNG スクリーンショットを書き出して終了する。結果は `DEVELOPMENT_PLAN.md` の記録表に転記する。
 `-perfarena` はプレイヤーを敵アリーナに置き（計測中は倒れない）、自動操縦が最寄りの敵を狙って戦う。JSON に到達ウェーブと最大同時敵数が入る。
+`-perfpractice` はコンボ練習デッキでスキルだけを 0.8 秒ごとに使い、コンボ回数を数える（`-vfx` と組み合わせて品質ごとに比較）。
 
 ---
 
@@ -285,6 +296,9 @@ Assets/_Game/
   Prefabs/Enemies/PF_Enemy_Slasher.prefab, PF_Enemy_Shooter.prefab, PF_EnemyProjectile.prefab
   Prefabs/VFX/FX_Enemy_Windup.prefab                      敵の攻撃予兆
   Scenes/Sandbox_Phase1_NavMesh.asset                     シーンの NavMesh データ（敵アリーナはシーン北西）
+  ScriptableObjects/Combos/CB_*.asset                     コンボ 3 種（3 段階の数値と VFX 参照）
+  ScriptableObjects/Cards/Decks/DD_ComboPractice.asset    コンボ練習デッキ（既存カード 12 枚）
+  Prefabs/Combos/FX_Combo_*.prefab, FX_Aura_*.prefab      コンボ VFX（3 種×3 段階＋連鎖・爆発・雷弧）と属性オーラ 4 種
 ```
 
 テンプレート由来の `Assets/Settings`（PC/Mobile アセット）、`Assets/Scenes/SampleScene`、`TutorialInfo` は削除せず残している（現在は未使用）。
@@ -299,6 +313,7 @@ Assets/_Game/
 | 2 モーション（実装済み・仮） | 本番モデルは `AC_PlaceholderHumanoid` と同じパラメータ名で Humanoid の Controller を作り、`CharacterAnimatorDriver` の Animator を差し替える。一人称は現状プロシージャル（`ViewModelAnimator`） |
 | 2.5 通信 | `ICharacterCommandSource` のネットワーク版、`FpsCharacter.Step` を固定ティックで呼ぶ。敵はホストだけで `EnemyBrain` を動かし、クライアントには位置・状態・攻撃イベントを送る想定 |
 | 3 デッキ（実装済み） | 報酬は `DeckState.AddCard`、強化は `UpgradeCard`（強化表は未実装）、パッシブは `DeckState.Passives` |
-| 4 コンボ | `CombatEvents.DamageApplied` を購読、`DamageInfo.Element`・`CombatStatus.Model.LastElement` と `DamageFlags.ComboDamage` で連鎖制御 |
+| 4 コンボ（実装済み） | 新コンボは `ComboDefinition` アセットの追加（種類は ChainBurst / Singularity / Explosion）。段階は `CardRuntime.UpgradeLevel`。オンラインではホストの `ComboSystem` だけが判定し、`ComboEvents` をクライアントへ送る想定 |
+| 4 NPC × コンボ | NPC の `SkillCaster` が同じ `ElementHit` を出すので、プレイヤー⇔NPC の協力コンボ（×1.3）はそのまま成立する |
 | 4 NPC | NPC 用の `ICharacterCommandSource` がスキル枠を押すだけで `DeckController` が同じ規則でカードを使う（8 枚・2 枠は `Rebuild` の引数） |
 | 5 演出 | `WeaponDefinition` / 将来の `CardDefinition` が参照するエフェクト Prefab を差し替え、`PooledFx` で粒子数をティア調整 |

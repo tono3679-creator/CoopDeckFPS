@@ -14,10 +14,17 @@ namespace CoopDeck.Combat
     public class CombatStatus : MonoBehaviour
     {
         readonly StatusEffectsModel model = new StatusEffectsModel();
+        readonly ElementAuraModel elements = new ElementAuraModel();
         readonly List<DotTick> ticks = new List<DotTick>();
         Health health;
 
         public StatusEffectsModel Model => model;
+
+        /// <summary>Elements on this actor (combo partners). Kept until the end of the frame of death so a killing blow can still finish a combo.</summary>
+        public ElementAuraModel Elements => elements;
+
+        /// <summary>Movement factor from elements (Ice / Gravity slow). AI applies it to its agent.</summary>
+        public float MoveSpeedMultiplier => elements.MoveSpeedMultiplier;
 
         /// <summary>Raised when a status is added (UI refresh).</summary>
         public event Action Changed;
@@ -47,15 +54,25 @@ namespace CoopDeck.Combat
 
         void OnDied(Health dead, DamageInfo info) => model.Clear();
 
-        void OnRevived(Health revived) => model.Clear();
+        void OnRevived(Health revived)
+        {
+            model.Clear();
+            elements.Clear(includeCooldowns: true);
+        }
 
         void Update()
         {
             ticks.Clear();
             model.Tick(Time.deltaTime, ticks);
+            elements.Tick(Time.deltaTime);
             if (health == null)
             {
                 return;
+            }
+
+            if (!health.IsAlive && elements.ActiveCount > 0)
+            {
+                elements.Clear(); // the dead keep no elements (cleared a frame later, see Elements)
             }
 
             foreach (DotTick tick in ticks)

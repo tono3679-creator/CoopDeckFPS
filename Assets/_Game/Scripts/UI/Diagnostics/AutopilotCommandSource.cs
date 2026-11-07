@@ -23,6 +23,9 @@ namespace CoopDeck.UI.Diagnostics
         /// <summary>Seconds between skill-card uses (cycles through the three slots). 0 disables skills.</summary>
         public float SkillInterval { get; set; } = 2.2f;
 
+        /// <summary>False: never pulls the trigger (skills only), e.g. so enemies live long enough for combos.</summary>
+        public bool FireWeapon { get; set; } = true;
+
         /// <summary>
         /// Optional point to aim at (e.g. the nearest enemy's chest). When it returns a value the
         /// autopilot turns toward it and only fires once on target; null keeps the sweep.
@@ -78,8 +81,8 @@ namespace CoopDeck.UI.Diagnostics
             {
                 Move = new Vector2(Mathf.Sin(time * 0.8f) * 0.6f, 0f),
                 LookDelta = new Vector2(yawDelta, pitchDelta),
-                FireHeld = firing,
-                FirePressed = firing && time % cycle < deltaTime,
+                FireHeld = firing && FireWeapon,
+                FirePressed = firing && FireWeapon && time % cycle < deltaTime,
             };
 
             // Skills fire alongside the gun, like a player would.

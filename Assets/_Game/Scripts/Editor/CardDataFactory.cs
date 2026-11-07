@@ -190,6 +190,51 @@ namespace CoopDeck.EditorTools
             return deck;
         }
 
+        public const string PracticeDeckPath = CardFolder + "/Decks/DD_ComboPractice.asset";
+
+        /// <summary>
+        /// Combo practice deck (F7 in play): 12 copies of the existing elemental attack cards, so
+        /// the pairs for all three combos (ice + lightning, fire + gravity, fire + lightning) show
+        /// up in hand together often. Same rules as any deck. Kept as-is once it exists.
+        /// </summary>
+        public static DeckDefinition EnsurePracticeDeck(List<CardDefinition> cards)
+        {
+            var deck = AssetDatabase.LoadAssetAtPath<DeckDefinition>(PracticeDeckPath);
+            if (deck != null)
+            {
+                return deck;
+            }
+
+            (string id, int copies)[] recipe =
+            {
+                ("card.ice_lance", 2), ("card.frost_nova", 1), ("card.chain_lightning", 3),
+                ("card.flame_vortex", 2), ("card.incendiary", 1), ("card.gravity_spike", 2), ("card.gravity_collapse", 1),
+            };
+
+            var list = new List<CardDefinition>();
+            foreach ((string id, int copies) in recipe)
+            {
+                CardDefinition card = cards.Find(c => c != null && c.cardId == id);
+                if (card == null)
+                {
+                    throw new System.InvalidOperationException($"Practice deck: card '{id}' is missing");
+                }
+
+                for (int i = 0; i < copies; i++)
+                {
+                    list.Add(card);
+                }
+            }
+
+            deck = ScriptableObject.CreateInstance<DeckDefinition>();
+            deck.deckId = "deck.combo_practice";
+            deck.handSize = 3;
+            deck.cards = list;
+            AssetDatabase.CreateAsset(deck, PracticeDeckPath);
+            AssetDatabase.SaveAssets();
+            return deck;
+        }
+
         public static List<GaugeItemDefinition> EnsureGaugeItems()
         {
             EditorUtil.EnsureFolder(ItemFolder);

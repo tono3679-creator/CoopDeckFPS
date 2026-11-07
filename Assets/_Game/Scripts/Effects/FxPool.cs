@@ -80,9 +80,9 @@ namespace CoopDeck.Effects
 
         internal static void Release(PooledFx fx)
         {
-            if (fx == null)
+            if (fx == null || !fx.gameObject.activeSelf)
             {
-                return;
+                return; // already back in the pool (lifetime end and an early release in the same frame)
             }
 
             fx.gameObject.SetActive(false);

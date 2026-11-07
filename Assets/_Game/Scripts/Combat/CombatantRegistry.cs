@@ -11,8 +11,31 @@ namespace CoopDeck.Combat
     public static class CombatantRegistry
     {
         static readonly List<ICombatActor> Actors = new List<ICombatActor>();
+        static readonly Dictionary<ICombatActor, int> Ids = new Dictionary<ICombatActor, int>();
+        static int nextId = 1;
 
         public static IReadOnlyList<ICombatActor> All => Actors;
+
+        /// <summary>
+        /// Stable id for an actor within the session (attacker / applier records, co-op credit).
+        /// Assigned on first use and kept after the actor unregisters, so a dead applier still
+        /// matches. 0 for null. Networking will map its object ids onto these.
+        /// </summary>
+        public static int IdOf(ICombatActor actor)
+        {
+            if (actor == null || actor is Object o && o == null)
+            {
+                return 0;
+            }
+
+            if (!Ids.TryGetValue(actor, out int id))
+            {
+                id = nextId++;
+                Ids[actor] = id;
+            }
+
+            return id;
+        }
 
         public static void Register(ICombatActor actor)
         {
@@ -61,6 +84,8 @@ namespace CoopDeck.Combat
         static void ResetStatics()
         {
             Actors.Clear();
+            Ids.Clear();
+            nextId = 1;
         }
     }
 }

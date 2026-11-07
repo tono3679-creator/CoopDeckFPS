@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CoopDeck.Combos;
 using CoopDeck.Enemies;
 using CoopDeck.Player;
 using CoopDeck.Skills;
@@ -20,7 +21,8 @@ namespace CoopDeck.EditorTools
     {
         public const string NavMeshDataPath = GamePaths.Root + "/Scenes/Sandbox_Phase1_NavMesh.asset";
 
-        public static void Build(GameObject playerPrefab, GameObject dummyPrefab, MaterialSet m, VolumeProfile volumeProfile, EnemySet enemies)
+        public static void Build(GameObject playerPrefab, GameObject dummyPrefab, MaterialSet m, VolumeProfile volumeProfile, EnemySet enemies,
+            ComboAssetSet combos = null)
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -48,6 +50,16 @@ namespace CoopDeck.EditorTools
             EditorUtil.SetObject(damageHud, "player", player.GetComponent<FpsCharacter>());
             var arenaHud = hud.AddComponent<ArenaHud>();
             EditorUtil.SetObject(arenaHud, "director", director);
+            var comboHud = hud.AddComponent<ComboHud>();
+            EditorUtil.SetObject(comboHud, "deck", player.GetComponent<DeckController>());
+
+            if (combos != null)
+            {
+                // Element combos (host-side rules) and the element auras on enemies.
+                var comboGo = new GameObject("ComboSystem");
+                comboGo.AddComponent<ComboSystem>().Configure(new List<ComboDefinition>(combos.Combos));
+                comboGo.AddComponent<ElementAuraPresenter>().Configure(combos.FireAura, combos.IceAura, combos.LightningAura, combos.GravityAura);
+            }
 
             EditorUtil.EnsureFolder(System.IO.Path.GetDirectoryName(GamePaths.SandboxScene)?.Replace('\\', '/'));
             EditorSceneManager.SaveScene(scene, GamePaths.SandboxScene);

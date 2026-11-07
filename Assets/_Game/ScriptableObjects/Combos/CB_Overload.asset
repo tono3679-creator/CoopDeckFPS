@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a6e67feb4bdf5343acebf77c8ea0dad, type: 3}
+  m_Name: CB_Overload
+  m_EditorClassIdentifier: CoopDeck.Combos::CoopDeck.Combos.ComboDefinition
+  comboId: combo.overload
+  displayName: "\u30AA\u30FC\u30D0\u30FC\u30ED\u30FC\u30C9"
+  color: {r: 1, g: 0.78, b: 0.3, a: 1}
+  elementA: 1
+  elementB: 3
+  kind: 2
+  window: 4
+  cooldown: 3
+  coopMultiplier: 1.3
+  tiers:
+  - damage: 55
+    radius: 4
+    chainCount: 3
+    chainRange: 8
+    chainFalloff: 0.85
+    pullRadius: 7
+    pullSpeed: 9
+    pullDuration: 0.9
+    shake: 0.22
+    fx: {fileID: 7562449736728186082, guid: 502fbf688eed36744b6319cb96f6516c, type: 3}
+    hitFx: {fileID: 0}
+  - damage: 75
+    radius: 6
+    chainCount: 3
+    chainRange: 8
+    chainFalloff: 0.85
+    pullRadius: 7
+    pullSpeed: 9
+    pullDuration: 0.9
+    shake: 0.3
+    fx: {fileID: 6466710617551028769, guid: 373aa0b4cfed14b4fa5a5bfac9bec9ce, type: 3}
+    hitFx: {fileID: 0}
+  - damage: 105
+    radius: 8.5
+    chainCount: 3
+    chainRange: 8
+    chainFalloff: 0.85
+    pullRadius: 7
+    pullSpeed: 9
+    pullDuration: 0.9
+    shake: 0.42
+    fx: {fileID: 4587946437328740121, guid: 3b7539a34af94ad4e853022a0766ffd0, type: 3}
+    hitFx: {fileID: 0}
+  arcFx: {fileID: 0}

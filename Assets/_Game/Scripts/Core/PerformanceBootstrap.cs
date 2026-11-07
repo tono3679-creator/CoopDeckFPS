@@ -10,6 +10,8 @@ namespace CoopDeck.Core
     /// Command line (built player):
     ///   -tier high | -tier handheld   force a tier
     ///   -uncapped                     no vsync / frame cap (for measuring headroom)
+    ///   -vfx low | medium | high      effect detail (default follows the tier)
+    ///   -noshake                      no camera shake from combos and explosions
     /// </summary>
     public static class PerformanceBootstrap
     {
@@ -38,6 +40,23 @@ namespace CoopDeck.Core
             }
 
             Apply(DetectedTier);
+
+            if (TryParseVfxArg(args, out VfxQuality vfx))
+            {
+                PerformanceSettings.SetVfxQuality(vfx);
+            }
+
+            if (HasArg(args, "-noshake"))
+            {
+                PerformanceSettings.ScreenShakeScale = 0f;
+            }
+        }
+
+        static bool TryParseVfxArg(string[] args, out VfxQuality quality)
+        {
+            string value = GetArgValue(args, "-vfx");
+            quality = VfxQuality.High;
+            return !string.IsNullOrEmpty(value) && PerformanceSettings.TryParseVfx(value, out quality);
         }
 
         /// <summary>Applies a tier: quality level, frame pacing and effect scaling.</summary>
