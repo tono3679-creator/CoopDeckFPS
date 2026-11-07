@@ -80,7 +80,9 @@ namespace CoopDeck.EditorTools
             GameObject windupFx = FxPrefabBuilder.EnsureEnemyWindupFx(overwrite: true);
             EnemySet enemies = EnemyFactory.EnsureEnemies(materials, fx, skillFx, windupFx, animations);
 
-            GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials, starterDeck, items, animations.Humanoid, practiceDeck);
+            // The player's full-body model (Meshy → Blender → Unity, Docs/CHARACTER_PIPELINE.md). The NPC keeps the placeholder rig.
+            FoxGunnerAssets fox = FoxGunnerAssetFactory.EnsureAll(overwriteAnimations);
+            GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials, starterDeck, items, fox.BodyPrefab, practiceDeck);
             GameObject dummy = CharacterPrefabBuilder.BuildTargetDummy(materials, fx);
             NpcAssetSet npc = NpcFactory.EnsureNpc(movement, rifle, allCards, npcDecks, animations.Humanoid);
             SandboxSceneBuilder.Build(player, dummy, materials, volume, enemies, combos, npc.Prefab);

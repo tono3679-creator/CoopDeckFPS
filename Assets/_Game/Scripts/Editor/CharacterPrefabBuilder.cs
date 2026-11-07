@@ -28,7 +28,7 @@ namespace CoopDeck.EditorTools
         public const float EyeHeight = 1.62f;
 
         public static GameObject BuildPlayer(InputActionAsset input, WeaponDefinition weapon, MovementProfile movement, MaterialSet m,
-            DeckDefinition starterDeck, List<GaugeItemDefinition> startingItems, RuntimeAnimatorController bodyController,
+            DeckDefinition starterDeck, List<GaugeItemDefinition> startingItems, GameObject bodyPrefab,
             DeckDefinition practiceDeck = null)
         {
             EditorUtil.EnsureFolder(GamePaths.CharacterPrefabs);
@@ -73,16 +73,23 @@ namespace CoopDeck.EditorTools
             EditorUtil.SetObject(deckController, "character", character);
             EditorUtil.SetObject(deckController, "caster", caster);
 
-            // Full-body placeholder rig with the shared Animator (others will see it; the local player sees its shadow).
-            RigParts bodyRig = PlaceholderRigBuilder.Build(root.transform, m.PlayerBody, m.Glove, m.PlayerBody, m.GunGlow, shadowsOnly: true);
-            bodyRig.Visual.name = "BodyVisual";
-            var bodyAnimator = bodyRig.Visual.gameObject.AddComponent<Animator>();
-            bodyAnimator.runtimeAnimatorController = bodyController;
+            // Full-body model (Fox Gunner, Humanoid, PF_FoxGunner_Body) kept as a nested prefab so model updates
+            // flow in. Others will see it; the local player only sees its shadow. Its controller matches the
+            // run cycle to the ground speed itself, so the driver's playback-rate parameter goes unused.
+            var body = (GameObject)PrefabUtility.InstantiatePrefab(bodyPrefab, root.transform);
+            body.name = "BodyVisual";
+            body.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+            var bodyAnimator = body.GetComponent<Animator>();
             bodyAnimator.applyRootMotion = false;
+            bodyAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate; // bones may drive sockets/IK even when off screen
+            foreach (Renderer bodyRenderer in body.GetComponentsInChildren<Renderer>(true))
+            {
+                bodyRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+            }
+
             var bodyDriver = root.AddComponent<CharacterAnimatorDriver>();
-            bodyDriver.Configure(bodyAnimator, motor, movement != null ? movement.walkSpeed : 6.5f, 4f);
+            bodyDriver.Configure(bodyAnimator, motor, movement != null ? movement.walkSpeed : 6.5f, FoxGunnerAssetFactory.RunClipSpeed);
             EditorUtil.SetObject(character, "bodyAnimator", bodyDriver);
-            GameObject body = bodyRig.Visual.gameObject;
 
             var pivot = new GameObject("CameraPivot");
             pivot.transform.SetParent(root.transform, false);

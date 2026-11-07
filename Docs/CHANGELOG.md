@@ -2,6 +2,24 @@
 
 形式：日付ごとに「追加 / 変更 / 修正 / 検証」。検証していないものは「検証」に書かない。
 
+## 2026-11-07 — プレイヤーの本番モデル「Fox Gunner」（Meshy → Blender → Unity）
+
+有料サービス Meshy を使用（ユーザー承認済み、35 クレジット：複数画像からの 3D 生成 30＋自動リギング 5）。Blender 5.2.3（GPL、winget の公式版）を追加。手順は `CHARACTER_PIPELINE.md`。
+
+### 追加
+- 三面図から作ったトゥーン調のキツネのキャラクター：FBX（Humanoid、15,350 三角形、24 ボーン、身長 1.6 m）、2K テクスチャ、歩き・走りのクリップ、仮の待機クリップ（歩行の平均姿勢＋呼吸）、`AC_FoxGunner_TP`、`PF_FoxGunner_Body`。GLB は `ArtSource/FoxGunner/Export/`。
+- トゥーンシェーダー `CoopDeck/Character/Toon`（2 階調＋落ち影、追加ライト、環境光、リム、輪郭線、Forward+ 対応）。
+- Blender スクリプト `ArtSource/Tools/inspect_character.py`（検査）と `prepare_for_unity.py`（頂点の結合・法線の平滑化・原点と縮尺と向きの修正・書き出し）。
+- `FoxGunnerAssetFactory`（取り込み設定・明示的な Humanoid の骨対応・マテリアル・Animator・Prefab・プレビュー画像。メニュー `CoopDeck > Art > Import Fox Gunner`）。
+
+### 変更
+- `PF_Player` の `BodyVisual` を仮リグからこのモデルに差し替え（入れ子 Prefab、影のみ描画）。`ProjectBootstrap` がモデルの資産も生成する。NPC は仮リグのまま。
+- 走りクリップを移動速度に合わせて速く再生（6.5 m/s で約 1.6 倍、9.5 m/s で約 2.4 倍）。
+
+### 検証
+- EditMode 207/207、PlayMode 54/54（Unity 6000.5.4f1）。追加：`FoxGunnerAssetTests`（10 件）、`PlayerBodyPlayModeTests`（6.5 m/s 走行で接地中の足の滑り 0.25 m/s）。
+- エディターで描画を確認（`Screenshots/FoxGunner_Preview.png`、`PlayerBody_Preview.png`）：トゥーン陰影・輪郭線・影、一人称カメラから前方に体の影が映る。
+
 ## 2026-11-07 — Phase 4：NPC 仲間 AI と協力コンボ
 
 Unity は 6000.5.4f1 のまま。追加パッケージ・外部素材・有料サービスなし（効果音はエディターで合成した仮音源）。

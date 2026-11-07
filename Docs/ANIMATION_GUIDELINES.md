@@ -106,7 +106,8 @@ Down（IsDown = true） → Revive（Revive トリガー） → Locomotion
 
 使われ方：
 - 敵：`PF_Enemy_Slasher` は `AC_PlaceholderHumanoid`、`PF_Enemy_Shooter` は `AOC_Shooter`。速度は NavMeshAgent から。
-- プレイヤー：`PF_Player` の `BodyVisual` に同じ Controller。影だけ描画（自分のカメラにメッシュは映らない）。速度は `FpsMotor` から。
+- プレイヤー：2026-11-07 に本番モデル「Fox Gunner」（Humanoid、`PF_FoxGunner_Body`）へ差し替え。`BodyVisual` は入れ子の Prefab で、Controller は `AC_FoxGunner_TP`（パラメータ名は同じ）。影だけ描画（自分のカメラにメッシュは映らない）。速度は `FpsMotor` から。詳細は `CHARACTER_PIPELINE.md`。
+- NPC（ヴォルト）は引き続き仮リグと `AC_PlaceholderHumanoid`。
 - 一人称の腕・武器はクリップではなく `ViewModelAnimator` のプロシージャル動作（Phase 2 で待機時の呼吸を追加）。
 
 ---
