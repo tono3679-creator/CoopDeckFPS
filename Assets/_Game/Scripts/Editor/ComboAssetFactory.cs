@@ -16,6 +16,7 @@ namespace CoopDeck.EditorTools
         public GameObject IceAura;
         public GameObject LightningAura;
         public GameObject GravityAura;
+        public GameObject CoopFx;
     }
 
     /// <summary>
@@ -124,8 +125,20 @@ namespace CoopDeck.EditorTools
                 overload.tiers[t].hitFx = null;
             }
 
+            // Co-op overlay (shared by the three combos) and the combo sounds.
+            GameObject coopFx = Fx("FX_Combo_Coop", BuildCoopBurst);
+            set.CoopFx = coopFx;
+            superconductor.sound = ProceduralAudioFactory.EnsureComboSound(ProceduralAudioFactory.ComboSound.Superconductor, false);
+            superconductor.coopSound = ProceduralAudioFactory.EnsureComboSound(ProceduralAudioFactory.ComboSound.Superconductor, true);
+            singularity.sound = ProceduralAudioFactory.EnsureComboSound(ProceduralAudioFactory.ComboSound.Singularity, false);
+            singularity.coopSound = ProceduralAudioFactory.EnsureComboSound(ProceduralAudioFactory.ComboSound.Singularity, true);
+            overload.sound = ProceduralAudioFactory.EnsureComboSound(ProceduralAudioFactory.ComboSound.Overload, false);
+            overload.coopSound = ProceduralAudioFactory.EnsureComboSound(ProceduralAudioFactory.ComboSound.Overload, true);
+
             foreach (ComboDefinition combo in new[] { superconductor, singularity, overload })
             {
+                combo.coopFx = coopFx;
+                if (combo.coopShakeMultiplier < 1f) combo.coopShakeMultiplier = 1.4f;
                 EditorUtility.SetDirty(combo);
                 set.Combos.Add(combo);
             }
@@ -508,6 +521,47 @@ namespace CoopDeck.EditorTools
             }
 
             Light(root, main, 7f + tier * 3f);
+            return AttachSizing(root, null);
+        }
+
+        // ------------------------------------------------------------ co-op overlay
+
+        static readonly Color CoopGold = new Color(1f, 0.82f, 0.3f);
+
+        /// <summary>
+        /// Played on top of the normal combo effect when two allies made the combo: a gold flash,
+        /// a wide double ring and rising sparks. Base layers are cheap; the extra rings, sparks and
+        /// the light are quality-gated (Medium / High) so the handheld tier stays light.
+        /// </summary>
+        static GameObject BuildCoopBurst()
+        {
+            GameObject root = Root("FX_Combo_Coop", 1.3f);
+            Material gold = Dot("M_FX_Combo_CoopDot", CoopGold, 3f, 1.4f);
+            Material white = Dot("M_FX_Combo_CoopWhite", new Color(1f, 0.97f, 0.85f), 3.2f, 1.6f);
+            Material ring = Ring("M_FX_Combo_Ring_Coop", CoopGold, 2.8f, 0.16f);
+            Vector3 chest = new Vector3(0f, 1.1f, 0f);
+
+            ParticleSystem flash = Burst(root, "CoopFlash", white, (0.16f, 0.2f), (0f, 0f), (2.2f, 2.6f), Color.white, CoopGold, 1, 2);
+            flash.transform.localPosition = chest;
+            FxPrefabBuilder.SetShape(flash, ParticleSystemShapeType.Sphere, 0.001f, 0f);
+
+            GroundRing(root, "CoopRing", ring, CoopGold, 0.55f, 0.4f, 2.4f);
+            GroundRing(root, "CoopRing2", ring, Color.white, 0.5f, 0.2f, 2.0f, VfxQuality.Medium, 0.1f);
+
+            ParticleSystem rise = Burst(root, "CoopRise", gold, (0.5f, 0.9f), (2.5f, 5f), (0.05f, 0.12f), CoopGold, Color.white, 22, 64, VfxQuality.Medium);
+            rise.transform.localPosition = new Vector3(0f, 0.2f, 0f);
+            FxPrefabBuilder.SetShape(rise, ParticleSystemShapeType.Cone, 0.6f, 12f);
+            ParticleSystem.ShapeModule riseShape = rise.shape;
+            riseShape.rotation = new Vector3(-90f, 0f, 0f);
+            FxPrefabBuilder.Stretch(rise, 0.04f);
+            FullLayers.Add(rise.transform);
+
+            ParticleSystem stars = Burst(root, "CoopStars", white, (0.3f, 0.5f), (5f, 10f), (0.04f, 0.08f), Color.white, CoopGold, 18, 48, VfxQuality.High);
+            stars.transform.localPosition = chest;
+            FxPrefabBuilder.SetShape(stars, ParticleSystemShapeType.Sphere, 0.3f, 0f);
+            FxPrefabBuilder.Stretch(stars, 0.03f);
+
+            Light(root, CoopGold, 9f);
             return AttachSizing(root, null);
         }
 

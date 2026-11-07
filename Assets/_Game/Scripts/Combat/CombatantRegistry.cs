@@ -50,8 +50,11 @@ namespace CoopDeck.Combat
             Actors.Remove(actor);
         }
 
-        /// <summary>Nearest living actor hostile to <paramref name="team"/> within range, or null.</summary>
-        public static ICombatActor FindNearestHostile(TeamId team, Vector3 from, float maxDistance)
+        /// <summary>
+        /// Nearest living actor hostile to <paramref name="team"/> within range, or null. Training
+        /// targets (shooting-range dummies) are skipped unless <paramref name="includeTraining"/>.
+        /// </summary>
+        public static ICombatActor FindNearestHostile(TeamId team, Vector3 from, float maxDistance, bool includeTraining = false)
         {
             ICombatActor best = null;
             float bestDistance = maxDistance * maxDistance;
@@ -64,7 +67,7 @@ namespace CoopDeck.Combat
                     continue;
                 }
 
-                if (!actor.IsAlive || actor.Team == team || actor.Team == TeamId.Neutral)
+                if (!actor.IsAlive || actor.Team == team || actor.Team == TeamId.Neutral || !includeTraining && actor is ITrainingTarget)
                 {
                     continue;
                 }

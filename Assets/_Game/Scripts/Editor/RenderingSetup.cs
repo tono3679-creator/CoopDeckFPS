@@ -182,6 +182,7 @@ namespace CoopDeck.EditorTools
             PlayerSettings.resizableWindow = true;
             PlayerSettings.runInBackground = true;
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
+            PlayerSettings.enableFrameTimingStats = true; // CPU / GPU frame times for the unattended perf runs
         }
     }
 }

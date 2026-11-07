@@ -52,6 +52,49 @@ namespace CoopDeck.Combat
         public int Power { get; }
     }
 
+    public enum ThreatKind : byte
+    {
+        /// <summary>A melee strike is winding up (it lands after <see cref="ThreatWarning.TimeToImpact"/> if still in reach).</summary>
+        Melee = 0,
+
+        /// <summary>A projectile is winding up or already flying toward the target.</summary>
+        Projectile = 1,
+    }
+
+    /// <summary>
+    /// "An attack is coming at you": raised by enemy AI at the start of a telegraph and when a
+    /// projectile launches, so allies (NPC brains) can dodge the way a human reads the telegraph.
+    /// </summary>
+    public readonly struct ThreatWarning
+    {
+        public ThreatWarning(ICombatActor attacker, ICombatActor target, ThreatKind kind, Vector3 origin, Vector3 direction,
+            float timeToImpact, float damage, float reach)
+        {
+            Attacker = attacker;
+            Target = target;
+            Kind = kind;
+            Origin = origin;
+            Direction = direction;
+            TimeToImpact = timeToImpact;
+            Damage = damage;
+            Reach = reach;
+        }
+
+        public ICombatActor Attacker { get; }
+        public ICombatActor Target { get; }
+        public ThreatKind Kind { get; }
+        public Vector3 Origin { get; }
+
+        /// <summary>Normalized direction of travel (projectile) or from attacker to target (melee).</summary>
+        public Vector3 Direction { get; }
+
+        public float TimeToImpact { get; }
+        public float Damage { get; }
+
+        /// <summary>Melee reach in metres (0 for projectiles).</summary>
+        public float Reach { get; }
+    }
+
     /// <summary>
     /// Global combat notifications. HUD feedback, the combo system and analytics listen here so
     /// damage code never needs to know about them.
@@ -61,6 +104,14 @@ namespace CoopDeck.Combat
         public static event Action<DamageEvent> DamageApplied;
         public static event Action<Health, DamageInfo> Died;
         public static event Action<ElementHit> ElementHitApplied;
+
+        /// <summary>An enemy telegraphed an attack at a target (see <see cref="ThreatWarning"/>).</summary>
+        public static event Action<ThreatWarning> ThreatRaised;
+
+        public static void RaiseThreat(in ThreatWarning warning)
+        {
+            ThreatRaised?.Invoke(warning);
+        }
 
         public static void RaiseDamageApplied(in DamageEvent damageEvent)
         {
@@ -84,6 +135,7 @@ namespace CoopDeck.Combat
             DamageApplied = null;
             Died = null;
             ElementHitApplied = null;
+            ThreatRaised = null;
         }
     }
 }

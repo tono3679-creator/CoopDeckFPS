@@ -119,6 +119,19 @@ namespace CoopDeck.Combat
             Changed?.Invoke(this);
         }
 
+        /// <summary>Revive from 0 HP with a fraction of max health (ally revive). False if not down.</summary>
+        public bool Revive(float fraction)
+        {
+            if (!Model.Revive(Max * Mathf.Clamp01(fraction)))
+            {
+                return false;
+            }
+
+            Revived?.Invoke(this);
+            Changed?.Invoke(this);
+            return true;
+        }
+
         public void SetMaxHealth(float max, bool refill)
         {
             maxHealth = max;

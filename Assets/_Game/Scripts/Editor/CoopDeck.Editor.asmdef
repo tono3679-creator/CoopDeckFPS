@@ -16,6 +16,7 @@
         "CoopDeck.Animation",
         "CoopDeck.AI",
         "CoopDeck.Combos",
+        "CoopDeck.NPC",
         "CoopDeck.UI",
         "Unity.InputSystem",
         "Unity.AI.Navigation",

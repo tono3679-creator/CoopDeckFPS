@@ -88,7 +88,7 @@ namespace CoopDeck.UI
         {
             if (player == null)
             {
-                player = FindAnyObjectByType<FpsCharacter>();
+                player = FpsCharacter.FindLocalHuman();
             }
 
             if (frameMonitor == null)
@@ -112,15 +112,16 @@ namespace CoopDeck.UI
             perfText.gameObject.SetActive(showPerformanceOverlay);
 
             pausedText = HudKit.CreateText("Paused", root, 40, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 140f), new Vector2(1200f, 120f));
-            pausedText.text = "一時停止中\nクリック / Esc / Start で再開";
+            pausedText.text = "一時停止中\nクリック / Esc / Start で再開　（パッド Y：NPC デッキ編集）";
             HudKit.AddOutline(pausedText);
             pausedText.gameObject.SetActive(false);
 
-            hintText = HudKit.CreateText("Hint", root, 18, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0f, -52f), new Vector2(1700f, 84f));
+            hintText = HudKit.CreateText("Hint", root, 18, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0f, -52f), new Vector2(1700f, 110f));
             hintText.text =
                 "WASD 移動 / Shift 走る / Ctrl 回避 / Space ジャンプ / 左クリック 射撃 / R リロード / Q・E・F スキル / 1・2・3 カード選択 / G アイテム使用 / T アイテム切替 / F1 ヒント / F3 性能\n" +
                 "パッド: RT 射撃 / LB・RB・Y スキル / 十字← → カード選択 / 十字↑ アイテム使用 / 十字↓ アイテム切替 / A ジャンプ / B 回避 / X リロード / L3 走る\n" +
-                "コンボ（4 秒以内）: 氷＋雷 / 火＋重力 / 火＋雷　F4 エフェクト品質 / F6 コンボ段階 / F7 練習デッキ";
+                "コンボ（4 秒以内）: 氷＋雷 / 火＋重力 / 火＋雷　F4 エフェクト品質 / F6 コンボ段階 / F7 練習デッキ\n" +
+                "NPC 指示: V / R3 方針切替（自動→集中→コンボ優先）　中クリック・X / LT 照準の敵を集中攻撃　Tab（パッドはポーズ中 Y）NPC デッキ編集　ダウンした味方の近くに立つと蘇生";
             hintText.color = new Color(1f, 1f, 1f, 0.8f);
             HudKit.AddOutline(hintText, 0.5f);
             hintText.gameObject.SetActive(showControlsHint);

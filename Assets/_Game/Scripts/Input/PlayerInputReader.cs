@@ -6,10 +6,12 @@ namespace CoopDeck.Input
 {
     /// <summary>
     /// Turns the local player's devices into <see cref="CharacterCommands"/>. It never moves or
-    /// shoots anything itself, so an NPC brain or a network proxy can replace it.
-    /// Also owns pause / cursor lock for the local player.
+    /// shoots anything itself, so an NPC brain or a network proxy can replace it: this is the
+    /// "human controller", the NPC's counterpart is CoopDeck.NPC.NpcController.
+    /// Also owns pause / cursor lock for the local player, and goes quiet while a menu holds the
+    /// <see cref="InputGate"/>.
     /// </summary>
-    public class PlayerInputReader : MonoBehaviour, ICharacterCommandSource
+    public class PlayerInputReader : MonoBehaviour, ICharacterCommandSource, IControllerIdentity
     {
         [SerializeField] InputActionAsset actions;
 
@@ -44,6 +46,8 @@ namespace CoopDeck.Input
         InputAction pause;
         InputAction selectPrev;
         InputAction selectNext;
+        InputAction orderTactic;
+        InputAction orderMark;
         readonly InputAction[] skills = new InputAction[CharacterCommands.SkillSlotCount];
         readonly InputAction[] selectCard = new InputAction[CharacterCommands.SkillSlotCount];
 
@@ -51,7 +55,9 @@ namespace CoopDeck.Input
         bool sprintToggled;
         float stickRamp;
         bool suppressFireUntilRelease;
+        bool wasGateBlocked;
 
+        public ControllerKind Kind => ControllerKind.Human;
         public bool IsPaused { get; private set; }
         public InputActionAsset RuntimeActions => runtimeActions;
 
@@ -81,6 +87,9 @@ namespace CoopDeck.Input
             pause = map.FindAction(GameInputActions.Pause, true);
             selectPrev = map.FindAction(GameInputActions.SelectCardPrev, true);
             selectNext = map.FindAction(GameInputActions.SelectCardNext, true);
+            // Added in Phase 4: an older saved asset may not have them yet (the bootstrap regenerates it).
+            orderTactic = map.FindAction(GameInputActions.OrderTactic, false);
+            orderMark = map.FindAction(GameInputActions.OrderMark, false);
             for (int i = 0; i < skills.Length; i++)
             {
                 skills[i] = map.FindAction(GameInputActions.SkillActions[i], true);
@@ -111,6 +120,23 @@ namespace CoopDeck.Input
 
         void Update()
         {
+            bool gateBlocked = InputGate.IsBlocked;
+            if (gateBlocked)
+            {
+                // A menu (NPC deck editor) owns the cursor; the game keeps running without our input.
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+                wasGateBlocked = true;
+                return;
+            }
+
+            if (wasGateBlocked)
+            {
+                wasGateBlocked = false;
+                ApplyCursorState();
+                suppressFireUntilRelease = true; // the click that closed the menu must not shoot
+            }
+
             if (pause.WasPressedThisFrame())
             {
                 SetPaused(!IsPaused);
@@ -130,7 +156,7 @@ namespace CoopDeck.Input
 
         void OnApplicationFocus(bool hasFocus)
         {
-            if (hasFocus && !IsPaused && enabled)
+            if (hasFocus && !IsPaused && enabled && !InputGate.IsBlocked)
             {
                 ApplyCursorState();
             }
@@ -151,7 +177,7 @@ namespace CoopDeck.Input
         public CharacterCommands GetCommands(float deltaTime)
         {
             var commands = new CharacterCommands();
-            if (map == null || IsPaused)
+            if (map == null || IsPaused || InputGate.IsBlocked)
             {
                 stickRamp = 0f;
                 return commands;
@@ -203,6 +229,9 @@ namespace CoopDeck.Input
             {
                 commands.CardSelectStep += 1;
             }
+
+            commands.OrderTacticPressed = orderTactic != null && orderTactic.WasPressedThisFrame();
+            commands.OrderMarkPressed = orderMark != null && orderMark.WasPressedThisFrame();
 
             return commands;
         }

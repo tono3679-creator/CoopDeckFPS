@@ -5,8 +5,10 @@ using CoopDeck.Combat;
 using CoopDeck.Combos;
 using CoopDeck.Core;
 using CoopDeck.Enemies;
+using CoopDeck.NPC;
 using CoopDeck.Player;
 using CoopDeck.Skills;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace CoopDeck.UI.Diagnostics
@@ -57,6 +59,34 @@ namespace CoopDeck.UI.Diagnostics
             public string cpu;
             public string unityVersion;
             public string screenshot;
+
+            // Phase 4: NPC ally and co-op combos.
+            public bool npcPresent;
+            public int npcThinks;
+            public int npcCasts;
+            public int npcComboFinishCasts;
+            public int npcComboSetupCasts;
+            public int npcEvades;
+            public int coopCombos;
+
+            // CPU / GPU frame timing (FrameTimingManager) and managed allocations.
+            public bool frameTimingSupported;
+            public float avgCpuFrameMs;
+            public float avgCpuMainThreadMs;
+            public float avgGpuMs;
+            public bool gcAllocRecorderValid;
+            public float avgGcAllocBytesPerFrame;
+            public int gcCollectionsGen0;
+
+            /// <summary>The slowest frames: time, duration and what happened in or just before them.</summary>
+            public string[] worstFrames;
+        }
+
+        struct Spike
+        {
+            public float Time;
+            public float Ms;
+            public string What;
         }
 
         float duration;
@@ -68,7 +98,30 @@ namespace CoopDeck.UI.Diagnostics
         int maxEnemiesAlive;
         bool practice;
         int combos;
+        int coopCombos;
         FrameTimeMonitor monitor;
+        NpcController npc;
+        int npcThinkStart;
+        int npcCastStart;
+        int npcFinishStart;
+        int npcSetupStart;
+        int npcEvadeStart;
+        readonly FrameTiming[] timings = new FrameTiming[1];
+        double cpuSum;
+        double cpuMainSum;
+        double gpuSum;
+        int timingSamples;
+        ProfilerRecorder gcAllocRecorder;
+        double gcAllocSum;
+        int gcAllocSamples;
+        int gcCollectionsStart;
+        readonly System.Collections.Generic.List<Spike> spikes = new System.Collections.Generic.List<Spike>(9);
+        int lastComboFrame = -10;
+        int lastCoopFrame = -10;
+        int lastNpcCastFrame = -10;
+        int lastSpawnFrame = -10;
+        int lastGcCount;
+        float measureStart;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void MaybeStart()
@@ -97,19 +150,120 @@ namespace CoopDeck.UI.Diagnostics
             {
                 maxEnemiesAlive = Mathf.Max(maxEnemiesAlive, director.AliveEnemies.Count);
             }
+
+            FrameTimingManager.CaptureFrameTimings();
+            if (!measuring)
+            {
+                return;
+            }
+
+            if (FrameTimingManager.GetLatestTimings(1, timings) > 0)
+            {
+                cpuSum += timings[0].cpuFrameTime;
+                cpuMainSum += timings[0].cpuMainThreadFrameTime;
+                gpuSum += timings[0].gpuFrameTime;
+                timingSamples++;
+            }
+
+            if (gcAllocRecorder.Valid)
+            {
+                gcAllocSum += gcAllocRecorder.LastValue;
+                gcAllocSamples++;
+            }
+
+            TrackSpike();
+        }
+
+        /// <summary>Keeps the 8 slowest frames with what happened in the previous / current frame.</summary>
+        void TrackSpike()
+        {
+            int frame = Time.frameCount;
+            int gc = GC.CollectionCount(0);
+            bool gcRan = gc != lastGcCount;
+            lastGcCount = gc;
+            float ms = Time.unscaledDeltaTime * 1000f;
+            if (spikes.Count >= 8 && ms <= spikes[spikes.Count - 1].Ms || ms < 20f)
+            {
+                return;
+            }
+
+            string what = "";
+            if (frame - lastComboFrame <= 1) what += " combo";
+            if (frame - lastCoopFrame <= 1) what += " coop";
+            if (frame - lastNpcCastFrame <= 1) what += " npc-skill";
+            if (frame - lastSpawnFrame <= 1) what += " enemy-spawn";
+            if (gcRan) what += " gc";
+            var spike = new Spike { Time = Time.realtimeSinceStartup - measureStart, Ms = ms, What = what.Length > 0 ? what.Trim() : "-" };
+            int at = spikes.Count;
+            while (at > 0 && spikes[at - 1].Ms < ms)
+            {
+                at--;
+            }
+
+            spikes.Insert(at, spike);
+            if (spikes.Count > 8)
+            {
+                spikes.RemoveAt(8);
+            }
+        }
+
+        void OnNpcCast(NpcController source, CoopDeck.Cards.CardDefinition card, NpcActionKind action) => lastNpcCastFrame = Time.frameCount;
+
+        void OnEnemySpawned(EnemyActor actor) => lastSpawnFrame = Time.frameCount;
+
+        void BeginMeasuring()
+        {
+            monitor.ResetStats();
+            measuring = true;
+            cpuSum = cpuMainSum = gpuSum = 0;
+            timingSamples = 0;
+            gcAllocSum = 0;
+            gcAllocSamples = 0;
+            gcCollectionsStart = GC.CollectionCount(0);
+            lastGcCount = gcCollectionsStart;
+            measureStart = Time.realtimeSinceStartup;
+            spikes.Clear();
+            if (npc != null)
+            {
+                npc.SkillCast += OnNpcCast;
+            }
+
+            if (director != null)
+            {
+                director.EnemySpawned += OnEnemySpawned;
+            }
+            if (npc != null)
+            {
+                npcThinkStart = npc.ThinkCount;
+                npcCastStart = npc.CastCount;
+                npcFinishStart = npc.ComboFinishCasts;
+                npcSetupStart = npc.ComboSetupCasts;
+                npcEvadeStart = npc.EvadeCount;
+            }
         }
 
         void CountCombo(ComboReport report)
         {
+            lastComboFrame = Time.frameCount;
+            if (report.IsCoop)
+            {
+                lastCoopFrame = Time.frameCount;
+            }
+
             if (measuring)
             {
                 combos++;
+                if (report.IsCoop)
+                {
+                    coopCombos++;
+                }
             }
         }
 
         void OnDestroy()
         {
             ComboEvents.Triggered -= CountCombo;
+            gcAllocRecorder.Dispose();
         }
 
         /// <summary>Moves the player into the arena (facing the spawn side) so the waves start.</summary>
@@ -138,6 +292,11 @@ namespace CoopDeck.UI.Diagnostics
             {
                 character.Health.SetMaxHealth(100000f, true);
             }
+
+            if (npc != null)
+            {
+                npc.TeleportNearLeader(); // the ally comes along so its AI is part of the measurement
+            }
         }
 
         IEnumerator Start()
@@ -146,7 +305,9 @@ namespace CoopDeck.UI.Diagnostics
             monitor.AutoRecompute = false;
             monitor.SetCapacity(Mathf.CeilToInt(duration * 250f));
 
-            FpsCharacter player = FindAnyObjectByType<FpsCharacter>();
+            FpsCharacter player = FpsCharacter.FindLocalHuman();
+            npc = FindAnyObjectByType<NpcController>();
+            gcAllocRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC Allocated In Frame");
             if (arena)
             {
                 yield return null; // let the scene's Start() methods run first
@@ -178,7 +339,7 @@ namespace CoopDeck.UI.Diagnostics
                     pilot.AimReader = look.GetAimRay;
                     pilot.TargetProvider = () =>
                     {
-                        ICombatActor enemy = CombatantRegistry.FindNearestHostile(TeamId.Players, player.Position, 60f);
+                        ICombatActor enemy = CombatantRegistry.FindNearestHostile(TeamId.Players, player.Position, 60f); // dummies excluded
                         return enemy != null ? enemy.Position + Vector3.up * 1.1f : (Vector3?)null;
                     };
                 }
@@ -187,8 +348,7 @@ namespace CoopDeck.UI.Diagnostics
             }
 
             yield return new WaitForSecondsRealtime(WarmupSeconds);
-            monitor.ResetStats();
-            measuring = true;
+            BeginMeasuring();
 
             float half = duration * 0.5f;
             yield return new WaitForSecondsRealtime(half);
@@ -241,11 +401,27 @@ namespace CoopDeck.UI.Diagnostics
                 cpu = SystemInfo.processorType,
                 unityVersion = Application.unityVersion,
                 screenshot = screenshotPath,
+                npcPresent = npc != null,
+                npcThinks = npc != null ? npc.ThinkCount - npcThinkStart : 0,
+                npcCasts = npc != null ? npc.CastCount - npcCastStart : 0,
+                npcComboFinishCasts = npc != null ? npc.ComboFinishCasts - npcFinishStart : 0,
+                npcComboSetupCasts = npc != null ? npc.ComboSetupCasts - npcSetupStart : 0,
+                npcEvades = npc != null ? npc.EvadeCount - npcEvadeStart : 0,
+                coopCombos = coopCombos,
+                frameTimingSupported = timingSamples > 0,
+                avgCpuFrameMs = timingSamples > 0 ? (float)(cpuSum / timingSamples) : 0f,
+                avgCpuMainThreadMs = timingSamples > 0 ? (float)(cpuMainSum / timingSamples) : 0f,
+                avgGpuMs = timingSamples > 0 ? (float)(gpuSum / timingSamples) : 0f,
+                gcAllocRecorderValid = gcAllocSamples > 0,
+                avgGcAllocBytesPerFrame = gcAllocSamples > 0 ? (float)(gcAllocSum / gcAllocSamples) : 0f,
+                gcCollectionsGen0 = GC.CollectionCount(0) - gcCollectionsStart,
+                worstFrames = spikes.ConvertAll(sp => $"t={sp.Time:0.00}s {sp.Ms:0.0}ms {sp.What}").ToArray(),
             };
 
             File.WriteAllText(Path.GetFullPath(outputPath), JsonUtility.ToJson(result, true));
             Debug.Log($"[AutoPerfRunner] avg {result.averageFps:0.0} fps, 1% low {result.onePercentLowFps:0.0} fps, worst {result.worstMs:0.0} ms, " +
-                      $"arena {result.arena} (wave {result.waveReached}, max {result.maxEnemiesAlive} enemies), combos {result.combosTriggered}, vfx {result.vfx} -> {outputPath}");
+                      $"arena {result.arena} (wave {result.waveReached}, max {result.maxEnemiesAlive} enemies), combos {result.combosTriggered} (co-op {result.coopCombos}), " +
+                      $"npc casts {result.npcCasts}, cpu {result.avgCpuMainThreadMs:0.00} ms, gpu {result.avgGpuMs:0.00} ms, gc {result.avgGcAllocBytesPerFrame:0} B/frame, vfx {result.vfx} -> {outputPath}");
 
             yield return null;
             Application.Quit();

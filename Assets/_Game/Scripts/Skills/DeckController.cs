@@ -34,6 +34,12 @@ namespace CoopDeck.Skills
         public int SelectedSlot { get; private set; }
         public int Seed { get; private set; }
         public SkillCaster Caster => caster;
+        public FpsCharacter Character => character;
+        public DeckDefinition StartingDeck => startingDeck;
+        public IReadOnlyList<GaugeItemDefinition> StartingItems => startingItems;
+
+        /// <summary>Times the deck was rebuilt (start of run, practice deck, loadout edits).</summary>
+        public int RebuildCount { get; private set; }
 
         /// <summary>A new deck/inventory was built (bind UI again).</summary>
         public event Action DeckRebuilt;
@@ -92,6 +98,7 @@ namespace CoopDeck.Skills
             Deck = new DeckState(cards, Mathf.Max(1, handSize), new SeededRandom(Seed));
             Items = new GaugeItemInventory(items);
             SelectedSlot = 0;
+            RebuildCount++;
             DeckRebuilt?.Invoke();
         }
 

@@ -18,6 +18,7 @@
         "CoopDeck.Enemies",
         "CoopDeck.AI",
         "CoopDeck.Combos",
+        "CoopDeck.NPC",
         "CoopDeck.UI",
         "Unity.AI.Navigation",
         "Unity.Animation.Rigging",

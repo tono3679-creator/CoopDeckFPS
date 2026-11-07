@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974513b0d97bf004687f6ca9ef7dff4e, type: 3}
+  m_Name: CD_Thunderbolt
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.CardDefinition
+  cardId: card.thunderbolt
+  displayName: "\u96F7\u6483"
+  description: "\u7167\u6E96\u5148\u306E\u65751\u4F53\u306B\u96F7\u3092\u843D\u3068\u3059\uFF0842\u30C0\u30E1\u30FC\u30B8\uFF09\u3002\u51CD\u7D50\u30FB\u708E\u4E0A\u3057\u305F\u6575\u3078\u306E\u8FFD\u6483\u306B\u5411\u304F\u3002"
+  type: 0
+  element: 3
+  rarity: 0
+  maxGauge: 100
+  gaugeCost: 25
+  cooldown: 0.7
+  targeting: 1
+  range: 55
+  impactDelay: 0
+  effects:
+  - kind: 0
+    amount: 42
+    radius: 0
+    duration: 0
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  icon: {fileID: 21300000, guid: f017e1d9fdeaee14aa80b13e5f40d34e, type: 3}
+  beamFx: {fileID: 3789611002134218769, guid: 223632a22c0bf284fa0e344292194a28, type: 3}
+  impactFx: {fileID: 8613244698021814228, guid: 4199e2b3f4326a24fa0b0cbb29f2746e, type: 3}
+  areaFx: {fileID: 0}
+  auraFx: {fileID: 0}
+  telegraphFx: {fileID: 0}

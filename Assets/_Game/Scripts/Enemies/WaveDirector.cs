@@ -90,8 +90,10 @@ namespace CoopDeck.Enemies
         bool AnyPlayerInside()
         {
             Bounds zone = ZoneBounds;
-            foreach (ICombatActor actor in CombatantRegistry.All)
+            var actors = CombatantRegistry.All; // indexed: no boxed enumerator (GC) in per-frame / per-think loops
+            for (int ai = 0; ai < actors.Count; ai++)
             {
+                ICombatActor actor = actors[ai];
                 if (actor is UnityEngine.Object o && o == null)
                 {
                     continue;

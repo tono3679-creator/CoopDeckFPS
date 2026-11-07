@@ -52,6 +52,18 @@ namespace CoopDeck.Combat
             Current = Max;
         }
 
+        /// <summary>Brings a downed (0 HP) actor back with <paramref name="health"/> HP (at least 1, at most max).</summary>
+        public bool Revive(float health)
+        {
+            if (IsAlive)
+            {
+                return false;
+            }
+
+            Current = Mathf.Clamp(health, 1f, Max);
+            return true;
+        }
+
         public void SetMax(float max, bool refill)
         {
             Max = Mathf.Max(1f, max);

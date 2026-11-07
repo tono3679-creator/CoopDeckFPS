@@ -1,5 +1,6 @@
 using CoopDeck.Combos;
 using CoopDeck.Core;
+using CoopDeck.Player;
 using CoopDeck.Skills;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -25,6 +26,10 @@ namespace CoopDeck.UI
         RectTransform banner;
         Text nameText;
         Text detailText;
+        Text coopTagText;
+        Text participantsText;
+        Image coopGlow;
+        bool coopBanner;
         Text noticeText;
         float bannerAge = float.PositiveInfinity;
         float noticeAge = float.PositiveInfinity;
@@ -32,6 +37,24 @@ namespace CoopDeck.UI
         int repeatCount;
 
         public string LastShownName => nameText != null ? nameText.text : "";
+
+        /// <summary>The "who did it" line of the last banner (tests, debugging).</summary>
+        public string LastParticipants { get; private set; } = "";
+
+        /// <summary>The local human is shown as "あなた", everyone else by name.</summary>
+        static string Participant(CoopDeck.Combat.ICombatActor actor)
+        {
+            if (actor == null || actor is Object o && o == null)
+            {
+                return "？";
+            }
+
+            // The local player (human, or the autopilot standing in for them) reads as "you".
+            bool local = actor is FpsCharacter character && (character.IsHumanControlled || ReferenceEquals(character, FpsCharacter.FindLocalHuman()));
+            return local ? "あなた" : actor.DisplayName;
+        }
+
+        static string ElementName(Element element) => CoopDeck.Cards.ElementStyle.DisplayName(element);
 
         public void Configure(DeckController deckController)
         {
@@ -46,6 +69,16 @@ namespace CoopDeck.UI
             HudKit.AddOutline(nameText, 0.8f);
             detailText = HudKit.CreateText("ComboDetail", banner, 22, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -26f), new Vector2(900f, 30f));
             HudKit.AddOutline(detailText, 0.6f);
+            // Co-op extras: a gold tag above the name, who set it up and who finished it below.
+            coopGlow = HudKit.CreateImage("CoopGlow", banner, new Color(1f, 0.78f, 0.25f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0f, 2f), new Vector2(540f, 96f));
+            coopGlow.transform.SetAsFirstSibling();
+            coopTagText = HudKit.CreateText("CoopTag", banner, 24, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 54f), new Vector2(900f, 30f));
+            coopTagText.color = new Color(1f, 0.85f, 0.35f);
+            HudKit.AddOutline(coopTagText, 0.8f);
+            participantsText = HudKit.CreateText("Participants", banner, 20, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -54f), new Vector2(900f, 28f));
+            HudKit.AddOutline(participantsText, 0.7f);
+            coopTagText.gameObject.SetActive(false);
+            participantsText.gameObject.SetActive(false);
             noticeText = HudKit.CreateText("DebugNotice", root, 22, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 140f), new Vector2(1000f, 30f));
             HudKit.AddOutline(noticeText, 0.6f);
             banner.gameObject.SetActive(false);
@@ -66,7 +99,8 @@ namespace CoopDeck.UI
         {
             if (deck == null)
             {
-                deck = FindAnyObjectByType<DeckController>();
+                FpsCharacter human = FpsCharacter.FindLocalHuman();
+                deck = human != null ? human.GetComponent<DeckController>() : FindAnyObjectByType<DeckController>();
             }
         }
 
@@ -87,11 +121,24 @@ namespace CoopDeck.UI
 
             string tier = ComboDefinition.TierLabel(report.Tier);
             string detail = string.IsNullOrEmpty(tier) ? "コンボ" : tier + "コンボ";
+            coopBanner = report.IsCoop;
             if (report.IsCoop)
             {
-                detail += $"　協力 ×{report.Trigger.DamageMultiplier:0.0#}";
+                float bonus = (report.Trigger.DamageMultiplier - 1f) * 100f;
+                detail += $"　協力ボーナス +{bonus:0}%（×{report.Trigger.DamageMultiplier:0.0#}）";
+                coopTagText.text = "★ 協力コンボ！ ★";
+                participantsText.text = $"{Participant(report.Trigger.Applier)}［{ElementName(report.Trigger.PartnerElement)}］ → " +
+                                        $"{Participant(report.Trigger.Completer)}［{ElementName(report.Trigger.IncomingElement)}］";
+            }
+            else
+            {
+                participantsText.text = $"{Participant(report.Trigger.Completer)}［{ElementName(report.Trigger.PartnerElement)}＋{ElementName(report.Trigger.IncomingElement)}］";
             }
 
+            coopTagText.gameObject.SetActive(report.IsCoop);
+            participantsText.gameObject.SetActive(true);
+            participantsText.color = report.IsCoop ? new Color(1f, 0.92f, 0.65f) : new Color(1f, 1f, 1f, 0.85f);
+            LastParticipants = participantsText.text;
             detailText.text = detail;
             banner.gameObject.SetActive(true);
         }
@@ -136,11 +183,17 @@ namespace CoopDeck.UI
             if (banner.gameObject.activeSelf)
             {
                 bannerAge += Time.deltaTime; // game time: the banner belongs to the moment in the fight
-                float pop = bannerAge < PopTime ? Mathf.Lerp(1.3f, 1f, bannerAge / PopTime) : 1f;
+                float pop = bannerAge < PopTime ? Mathf.Lerp(coopBanner ? 1.45f : 1.3f, 1f, bannerAge / PopTime) : 1f;
                 banner.localScale = Vector3.one * pop;
-                float alpha = bannerAge < PopTime + HoldTime ? 1f : 1f - (bannerAge - PopTime - HoldTime) / FadeTime;
+                float hold = coopBanner ? HoldTime + 0.5f : HoldTime;
+                float alpha = bannerAge < PopTime + hold ? 1f : 1f - (bannerAge - PopTime - hold) / FadeTime;
                 SetAlpha(nameText, alpha);
                 SetAlpha(detailText, alpha * 0.9f);
+                SetAlpha(coopTagText, alpha);
+                SetAlpha(participantsText, alpha * 0.9f);
+                // Soft gold glow behind a co-op banner (very low alpha so it never hides enemies).
+                float glow = coopBanner ? alpha * (0.07f + 0.04f * Mathf.Sin(bannerAge * 18f)) : 0f;
+                SetAlpha(coopGlow, glow);
                 if (alpha <= 0f)
                 {
                     banner.gameObject.SetActive(false);

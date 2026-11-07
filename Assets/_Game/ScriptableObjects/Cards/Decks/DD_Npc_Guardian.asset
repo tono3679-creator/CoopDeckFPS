@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1175c6b892547742b7c5d4b74aed8e7, type: 3}
+  m_Name: DD_Npc_Guardian
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.DeckDefinition
+  deckId: deck.npc_guardian
+  cards:
+  - {fileID: 11400000, guid: de67e93d63389d1498879fa21b6e1475, type: 2}
+  - {fileID: 11400000, guid: de67e93d63389d1498879fa21b6e1475, type: 2}
+  - {fileID: 11400000, guid: 6611aa9c7afa62b42907eaa65331db5e, type: 2}
+  - {fileID: 11400000, guid: 6611aa9c7afa62b42907eaa65331db5e, type: 2}
+  - {fileID: 11400000, guid: c4e8a9f2b72c1b541b193aca3fb675f2, type: 2}
+  - {fileID: 11400000, guid: c4e8a9f2b72c1b541b193aca3fb675f2, type: 2}
+  - {fileID: 11400000, guid: 948be52a12362bf4d885ffe2753b6ff2, type: 2}
+  - {fileID: 11400000, guid: b81cd69b8641f454796753c7dc55e693, type: 2}
+  handSize: 2

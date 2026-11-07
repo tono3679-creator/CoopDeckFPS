@@ -1,6 +1,7 @@
 using CoopDeck.Cards;
 using CoopDeck.Deck;
 using CoopDeck.Items;
+using CoopDeck.Player;
 using CoopDeck.Skills;
 using UnityEngine;
 using UnityEngine.UI;
@@ -104,7 +105,8 @@ namespace CoopDeck.UI
         {
             if (deckController == null)
             {
-                deckController = FindAnyObjectByType<DeckController>();
+                FpsCharacter human = FpsCharacter.FindLocalHuman();
+                deckController = human != null ? human.GetComponent<DeckController>() : FindAnyObjectByType<DeckController>();
             }
 
             BindController();

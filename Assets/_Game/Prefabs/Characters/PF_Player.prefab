@@ -473,6 +473,7 @@ MonoBehaviour:
   decay: 3.2
   frequency: 22
   falloffDistance: 30
+  punchDuration: 0.32
 --- !u!114 &6113850377799226520
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -626,6 +627,8 @@ GameObject:
   - component: {fileID: 8297622115542364290}
   - component: {fileID: 6611361532840172764}
   - component: {fileID: 2744960229989766494}
+  - component: {fileID: 4241701449949977951}
+  - component: {fileID: 7794700252901564754}
   - component: {fileID: 3939776202828424111}
   - component: {fileID: 5631766884011611418}
   - component: {fileID: 5909787761985430556}
@@ -809,6 +812,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68ba0147f5ce8564aa8c2b4ec8b1c85e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: CoopDeck.Combat::CoopDeck.Combat.CombatStatus
+--- !u!114 &4241701449949977951
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2203744421934304508}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c74944b76a1b8f84c94e14338558cb10, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CoopDeck.Combat::CoopDeck.Combat.Revivable
+  reviveTime: 2.5
+  bleedOutTime: 20
+  reviveRadius: 2.4
+  reviveHealthFraction: 0.45
+--- !u!114 &7794700252901564754
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2203744421934304508}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b56eaf784565db4aa9ecd6cb275ac13, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CoopDeck.Player::CoopDeck.Player.AllyCollisionFilter
 --- !u!114 &3939776202828424111
 MonoBehaviour:
   m_ObjectHideFlags: 0

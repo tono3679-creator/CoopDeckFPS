@@ -44,7 +44,17 @@ namespace CoopDeck.Combos
         public static ComboTier? TierOverride { get; set; }
 
         public IReadOnlyList<ComboDefinition> Combos => combos;
+
+        /// <summary>The live rules (window, cooldown, co-op bonus). NPC planning and HUD markers read these.</summary>
+        public IReadOnlyList<ComboRule> Rules => rules;
+
         public int TriggeredCount { get; private set; }
+
+        /// <summary>Combos completed by a different ally than the one who applied the first element.</summary>
+        public int CoopCount { get; private set; }
+
+        public ComboDefinition DefinitionOf(in ComboRule rule) =>
+            rule.Id >= 0 && rule.Id < combos.Count ? combos[rule.Id] : null;
 
         /// <summary>Big effects merged into one already playing nearby (see ClaimBigEffect).</summary>
         public int SkippedEffects { get; private set; }
@@ -58,6 +68,46 @@ namespace CoopDeck.Combos
         void Awake()
         {
             RebuildRules();
+        }
+
+        /// <summary>
+        /// Instantiates each combo effect once up front (pooled), so the first combo of a run (and the
+        /// first co-op overlay) does not hitch on instantiation in the middle of a fight.
+        /// </summary>
+        void Start()
+        {
+            var warmed = new HashSet<GameObject>();
+            foreach (ComboDefinition combo in combos)
+            {
+                if (combo == null)
+                {
+                    continue;
+                }
+
+                Warm(warmed, combo.coopFx, 1);
+                Warm(warmed, combo.arcFx, 3);
+                if (combo.tiers == null)
+                {
+                    continue;
+                }
+
+                foreach (ComboTierSettings tier in combo.tiers)
+                {
+                    if (tier != null)
+                    {
+                        Warm(warmed, tier.fx, 1);
+                        Warm(warmed, tier.hitFx, 2);
+                    }
+                }
+            }
+        }
+
+        static void Warm(HashSet<GameObject> warmed, GameObject prefab, int count)
+        {
+            if (prefab != null && warmed.Add(prefab))
+            {
+                FxPool.Prewarm(prefab, count);
+            }
         }
 
         void OnEnable()
@@ -122,6 +172,11 @@ namespace CoopDeck.Combos
         void Execute(ComboDefinition definition, ComboTrigger trigger, Health target, Vector3 position)
         {
             TriggeredCount++;
+            if (trigger.IsCoop)
+            {
+                CoopCount++;
+            }
+
             ComboTierSettings tier = definition.Tier(trigger.Tier);
             var report = new ComboReport
             {
@@ -166,7 +221,15 @@ namespace CoopDeck.Combos
             if (ClaimBigEffect(tier.fx, position, scale))
             {
                 PlayFx(tier.fx, position + Vector3.up * 0.05f, scale);
-                CameraShaker.Shake(position, tier.shake);
+                bool coop = report.IsCoop;
+                CameraShaker.Shake(position, coop ? tier.shake * definition.coopShakeMultiplier : tier.shake);
+                if (coop)
+                {
+                    // Co-op: the same combo effect plus a brighter overlay and a short camera punch.
+                    // The overlay's optional layers are quality-gated like every other combo effect.
+                    PlayFx(definition.coopFx, position + Vector3.up * 0.05f, Mathf.Max(1.5f, scale));
+                    CameraShaker.Punch(position, definition.coopFovPunch);
+                }
             }
         }
 

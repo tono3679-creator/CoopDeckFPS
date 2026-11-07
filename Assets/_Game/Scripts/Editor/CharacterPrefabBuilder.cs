@@ -59,6 +59,11 @@ namespace CoopDeck.EditorTools
             EditorUtil.SetInt(weaponFx, "muzzleFlashLayer", GameLayers.ViewModelIndex);
             var character = root.AddComponent<FpsCharacter>();
             root.AddComponent<CombatStatus>();
+            // Downed → an ally (NPC) can revive; with no ally around, PlayerRespawn respawns as before.
+            var revivable = root.AddComponent<Revivable>();
+            EditorUtil.SetFloat(revivable, "reviveTime", 2.5f);
+            EditorUtil.SetFloat(revivable, "bleedOutTime", 20f);
+            root.AddComponent<AllyCollisionFilter>();
             root.AddComponent<PlayerRespawn>();
             var caster = root.AddComponent<SkillCaster>();
             var deckController = root.AddComponent<DeckController>();

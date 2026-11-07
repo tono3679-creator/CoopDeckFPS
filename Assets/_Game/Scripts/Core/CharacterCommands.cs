@@ -35,6 +35,12 @@ namespace CoopDeck.Core
         /// <summary>Move the card selection this frame: -1 previous, +1 next, 0 none.</summary>
         public int CardSelectStep;
 
+        /// <summary>Squad order: switch the allies' combat tactic (auto → focus → combo first).</summary>
+        public bool OrderTacticPressed;
+
+        /// <summary>Squad order: mark the enemy under the crosshair as the allies' focus target.</summary>
+        public bool OrderMarkPressed;
+
         public bool IsSkillPressed(int slot) => (SkillPressedMask & (1 << slot)) != 0;
 
         public void SetSkillPressed(int slot)

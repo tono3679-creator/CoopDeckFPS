@@ -56,3 +56,8 @@ MonoBehaviour:
     fx: {fileID: 4587946437328740121, guid: 3b7539a34af94ad4e853022a0766ffd0, type: 3}
     hitFx: {fileID: 0}
   arcFx: {fileID: 0}
+  coopFx: {fileID: 247262800839597122, guid: 872d36ebb7806f34694179c91d855355, type: 3}
+  sound: {fileID: 8300000, guid: 903106cacca532b45994e2f2e3fda73c, type: 3}
+  coopSound: {fileID: 8300000, guid: 0187b08c81d220940a93fa4d6cc447cc, type: 3}
+  coopShakeMultiplier: 1.4
+  coopFovPunch: 3.5

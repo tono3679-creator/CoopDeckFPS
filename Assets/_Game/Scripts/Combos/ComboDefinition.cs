@@ -100,6 +100,22 @@ namespace CoopDeck.Combos
         [Tooltip("ChainBurst: arc drawn between chained enemies.")]
         public GameObject arcFx;
 
+        [Header("Co-op presentation (on top of the tier effect)")]
+        [Tooltip("Extra burst played when two different allies made the combo (brighter glow, more particles). Quality-gated layers inside.")]
+        public GameObject coopFx;
+
+        [Tooltip("Played when the combo starts. Optional.")]
+        public AudioClip sound;
+
+        [Tooltip("Played instead of Sound for a co-op combo. Optional.")]
+        public AudioClip coopSound;
+
+        [Tooltip("Camera shake factor for a co-op combo (the tier's shake × this).")]
+        [Min(1f)] public float coopShakeMultiplier = 1.4f;
+
+        [Tooltip("Short field-of-view punch (degrees) for a co-op combo. 0 = none.")]
+        [Min(0f)] public float coopFovPunch = 3.5f;
+
         public ComboTierSettings Tier(ComboTier tier)
         {
             if (tiers == null || tiers.Length == 0)

@@ -35,6 +35,8 @@ namespace CoopDeck.Input
         public const string SelectCardPrev = "SelectCardPrev";
         public const string SelectCardNext = "SelectCardNext";
         public const string Pause = "Pause";
+        public const string OrderTactic = "OrderTactic";
+        public const string OrderMark = "OrderMark";
 
         public static readonly string[] SkillActions = { Skill1, Skill2, Skill3 };
         public static readonly string[] SelectCardActions = { SelectCard1, SelectCard2, SelectCard3 };
@@ -44,6 +46,7 @@ namespace CoopDeck.Input
             Move, Look, LookStick, Jump, Sprint, SprintToggle, Dash, Fire, Reload,
             Skill1, Skill2, Skill3, UseItem, CycleItem,
             SelectCard1, SelectCard2, SelectCard3, SelectCardPrev, SelectCardNext, Pause,
+            OrderTactic, OrderMark,
         };
 
         public static InputActionAsset CreateDefaultAsset()
@@ -91,10 +94,16 @@ namespace CoopDeck.Input
             AddButton(map, SelectCardNext, null, "<Gamepad>/dpad/right");
             AddButton(map, Pause, "<Keyboard>/escape", "<Gamepad>/start");
 
+            // Squad orders for NPC allies. Free keys / buttons only, so nothing existing moves:
+            // V or R3 cycles the tactic, middle mouse / X or LT marks the enemy under the crosshair.
+            AddButton(map, OrderTactic, "<Keyboard>/v", "<Gamepad>/rightStickPress");
+            InputAction mark = AddButton(map, OrderMark, "<Mouse>/middleButton", "<Gamepad>/leftTrigger");
+            mark.AddBinding("<Keyboard>/x", groups: KeyboardMouseScheme);
+
             return asset;
         }
 
-        static void AddButton(InputActionMap map, string name, string keyboardMousePath, string gamepadPath)
+        static InputAction AddButton(InputActionMap map, string name, string keyboardMousePath, string gamepadPath)
         {
             InputAction action = map.AddAction(name, InputActionType.Button);
             if (!string.IsNullOrEmpty(keyboardMousePath))
@@ -106,6 +115,8 @@ namespace CoopDeck.Input
             {
                 action.AddBinding(gamepadPath, groups: GamepadScheme);
             }
+
+            return action;
         }
     }
 }

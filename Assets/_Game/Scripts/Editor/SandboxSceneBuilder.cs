@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using CoopDeck.Combos;
+using CoopDeck.Combat;
 using CoopDeck.Enemies;
+using CoopDeck.NPC;
 using CoopDeck.Player;
 using CoopDeck.Skills;
 using CoopDeck.UI;
@@ -21,8 +23,11 @@ namespace CoopDeck.EditorTools
     {
         public const string NavMeshDataPath = GamePaths.Root + "/Scenes/Sandbox_Phase1_NavMesh.asset";
 
+        /// <summary>Where the NPC ally starts: just behind-right of the player spawn.</summary>
+        public static readonly Vector3 NpcSpawn = new Vector3(2.6f, 0.05f, -32.5f);
+
         public static void Build(GameObject playerPrefab, GameObject dummyPrefab, MaterialSet m, VolumeProfile volumeProfile, EnemySet enemies,
-            ComboAssetSet combos = null)
+            ComboAssetSet combos = null, GameObject npcPrefab = null)
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -53,12 +58,38 @@ namespace CoopDeck.EditorTools
             var comboHud = hud.AddComponent<ComboHud>();
             EditorUtil.SetObject(comboHud, "deck", player.GetComponent<DeckController>());
 
+            ComboSystem comboSystem = null;
             if (combos != null)
             {
                 // Element combos (host-side rules) and the element auras on enemies.
                 var comboGo = new GameObject("ComboSystem");
-                comboGo.AddComponent<ComboSystem>().Configure(new List<ComboDefinition>(combos.Combos));
+                comboSystem = comboGo.AddComponent<ComboSystem>();
+                comboSystem.Configure(new List<ComboDefinition>(combos.Combos));
                 comboGo.AddComponent<ElementAuraPresenter>().Configure(combos.FireAura, combos.IceAura, combos.LightningAura, combos.GravityAura);
+                comboGo.AddComponent<ComboAudio>();
+            }
+
+            // "Is the team fighting?": locks NPC deck edits during combat.
+            var squadGo = new GameObject("Squad");
+            var engagement = squadGo.AddComponent<TeamEngagementMonitor>();
+
+            if (npcPrefab != null)
+            {
+                // The NPC ally: same body and rules as the player, driven by its AI controller.
+                var npcGo = (GameObject)PrefabUtility.InstantiatePrefab(npcPrefab);
+                npcGo.transform.SetPositionAndRotation(NpcSpawn, Quaternion.identity);
+                var npc = npcGo.GetComponent<NpcController>();
+                EditorUtil.SetObject(npc, "leader", player.GetComponent<FpsCharacter>());
+                EditorUtil.SetObject(npc, "comboSystem", comboSystem);
+                EditorUtil.SetObject(npcGo.GetComponent<DeckLoadoutController>(), "engagement", engagement);
+
+                var npcHud = hud.AddComponent<NpcHud>();
+                EditorUtil.SetObject(npcHud, "npc", npc);
+                EditorUtil.SetObject(npcHud, "player", player.GetComponent<FpsCharacter>());
+                EditorUtil.SetObject(npcHud, "comboSystem", comboSystem);
+                var editor = hud.AddComponent<NpcDeckEditorHud>();
+                EditorUtil.SetObject(editor, "loadout", npcGo.GetComponent<DeckLoadoutController>());
+                EditorUtil.SetObject(editor, "npc", npc);
             }
 
             EditorUtil.EnsureFolder(System.IO.Path.GetDirectoryName(GamePaths.SandboxScene)?.Replace('\\', '/'));

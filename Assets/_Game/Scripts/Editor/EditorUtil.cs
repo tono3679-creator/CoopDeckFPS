@@ -65,6 +65,11 @@ namespace CoopDeck.EditorTools
             Edit(target, property, p => p.intValue = value);
         }
 
+        public static void SetString(Object target, string property, string value)
+        {
+            Edit(target, property, p => p.stringValue = value);
+        }
+
         public static void SetBool(Object target, string property, bool value)
         {
             Edit(target, property, p => p.boolValue = value);

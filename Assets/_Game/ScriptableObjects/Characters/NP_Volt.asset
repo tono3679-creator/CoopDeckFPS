@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5deeeefe6217e9e41a2cdefc59da9231, type: 3}
+  m_Name: NP_Volt
+  m_EditorClassIdentifier: CoopDeck.NPC::CoopDeck.NPC.NpcProfile
+  displayName: "\u30F4\u30A9\u30EB\u30C8"
+  favoredElement: 3
+  color: {r: 1, g: 0.86, b: 0.3, a: 1}
+  thinkInterval: 0.2
+  repathInterval: 0.5
+  reactionTime: 0.15
+  followMinDistance: 3
+  followMaxDistance: 7
+  followSlotAngle: 130
+  followSlotDistance: 4.5
+  engageLeash: 15
+  regroupDistance: 26
+  regroupDoneDistance: 9
+  teleportDistance: 48
+  perceptionRange: 38
+  hearingRange: 12
+  preferredRangeMin: 7
+  preferredRangeMax: 16
+  meleeKeepAway: 4.5
+  turnSpeed: 320
+  aimGain: 11
+  aimError: 0.8
+  fireTolerance: 3
+  burstSeconds: {x: 0.5, y: 1.1}
+  pauseSeconds: {x: 0.25, y: 0.55}
+  holdAuto: 2.5
+  holdComboFirst: 6
+  holdCooldown: 5
+  comboMargin: 0.35
+  skillAimTimeout: 1.2
+  dodgeChance: 0.75
+  lethalShare: 0.45
+  evadeDuration: 0.4
+  recoverHealthFraction: 0.5
+  recoverDelay: 1.5

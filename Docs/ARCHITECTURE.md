@@ -1,6 +1,6 @@
 # ARCHITECTURE — 実装アーキテクチャ
 
-Phase 2（敵 AI・仮モーション）と Phase 3（デッキ）時点で**実際に存在するコード**の構成と、その後のフェーズが接続する場所をまとめる。
+Phase 2（敵 AI・仮モーション）、Phase 3（デッキ）、Phase 4（コンボ・NPC 仲間）時点で**実際に存在するコード**の構成と、その後のフェーズが接続する場所をまとめる。
 仕様の背景は `PROJECT_OVERVIEW.md`、カードは `CARD_SYSTEM.md`、通信は `MULTIPLAYER_PLAN.md` を参照。
 
 ---
@@ -21,15 +21,15 @@ Phase 2（敵 AI・仮モーション）と Phase 3（デッキ）時点で**実
 ## 2. アセンブリ構成と依存関係
 
 ```
-CoopDeck.Core      （依存なし）  CharacterCommands, ICharacterCommandSource, IAimProvider, ILocomotionSource,
-                                   Element, TeamId, GameLayers, PerformanceSettings/Bootstrap
+CoopDeck.Core      （依存なし）  CharacterCommands（指示ボタン含む）, ICharacterCommandSource, IAimProvider, ILocomotionSource,
+                                   ControllerKind/IControllerIdentity, InputGate, Element, TeamId, GameLayers, PerformanceSettings/Bootstrap
    ▲
    ├── CoopDeck.Animation  AnimatorParams, LocomotionMath（純関数）, CharacterAnimatorDriver
    ├── CoopDeck.Combat   DamageInfo/Result, IDamageable, ICombatActor, Health(+HealthModel),
    │                     HitZone, DamageRules, CombatEvents, CombatantRegistry（戦闘者の一覧・最寄りの敵）,
    │                     CombatStatus(+StatusEffectsModel: シールド/攻撃強化/被ダメ増/継続ダメ), ForceReceiver(吸引)
    ├── CoopDeck.Cards    CardDefinition, SkillEffectSpec, DeckDefinition, ElementStyle（データのみ）
-   │     └── CoopDeck.Deck   CardRuntime, DeckState, IRandom/SeededRandom（純 C#）
+   │     └── CoopDeck.Deck   CardRuntime, DeckState, IRandom/SeededRandom, CardCollection, DeckLoadout（純 C#）
    │           └── CoopDeck.Items  GaugeItemDefinition, GaugeItemInventory（純 C#）
    ├── CoopDeck.Input    GameInputActions（既定バインド生成）, PlayerInputReader   ← Unity.InputSystem
    ├── CoopDeck.Effects  FxPool, PooledFx, TracerFx, LightFlash
@@ -41,28 +41,32 @@ CoopDeck.Core      （依存なし）  CharacterCommands, ICharacterCommandSourc
    │     └── CoopDeck.AI  EnemyStateMachine（純 C#）, EnemyBrain（NavMeshAgent）    ← Combat, Effects, Enemies, Animation
    ├── CoopDeck.Player   MovementProfile, MotorMath, FpsMotor, FpsLook,
    │                     FpsCharacter, ViewModelAnimator, PlayerRespawn           ← Combat, Weapons, Animation
-   ├── CoopDeck.Skills   SkillCaster（効果の実行・属性ヒットの発行）, DeckController（キャラ⇔デッキ⇔アイテム、練習デッキ）
+   ├── CoopDeck.Skills   SkillCaster（＝共通の SkillExecutor：効果の実行・属性ヒットの発行）, DeckController（キャラ⇔デッキ⇔アイテム、練習デッキ）,
+   │                     DeckLoadoutController（非戦闘中のデッキ編集）
    │                                                                              ← Combat, Effects, Cards, Deck, Items, Player
-   ├── CoopDeck.Combos   ComboDefinition（SO）, ComboRule/ComboResolver/ComboDamageBudget（純 C#）,
-   │                     ComboSystem, ComboEvents, ElementAuraPresenter（属性の見た目）  ← Core, Combat, Effects
-   └── CoopDeck.UI       HudController, DeckHud, HudKit, WorldHealthBar, FrameTimeMonitor,
+   ├── CoopDeck.Combos   ComboDefinition（SO、協力 VFX・音つき）, ComboRule/ComboResolver/ComboDamageBudget/ComboPlanner（純 C#）,
+   │                     ComboSystem, ComboEvents, ComboAudio, ElementAuraPresenter（属性の見た目）  ← Core, Combat, Effects
+   ├── CoopDeck.NPC      NpcController（AI コントローラー）, NpcDecisionMaker（Utility AI）, NpcStateMachine, NpcSituation,
+   │                     NpcSteering, NpcNavigator, NpcCardTraits, NpcProfile（SO）  ← Core, Combat, Cards, Deck, Skills, Player, Weapons, Combos
+   └── CoopDeck.UI       HudController, DeckHud, HudKit, WorldHealthBar, FrameTimeMonitor, NpcHud, NpcDeckEditorHud,
                          DamageFeedbackHud（被弾方向・ダウン表示）, ArenaHud（ウェーブ表示）, ComboHud（コンボ名・F4/F6/F7）,
-                         Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, Cards, Deck, Items, Skills, Enemies, Combos, InputSystem, uGUI
+                         Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, Cards, Deck, Items, Skills, Enemies, Combos, NPC, InputSystem, uGUI
+   （Combat に ReviveModel/Revivable・TeamEngagementMonitor・ITrainingTarget・ThreatWarning、Player に AllyCollisionFilter を追加）
    （Combat に ElementAuraModel、Effects に CameraShaker・LightningArcFx・SpiralTrailFx・RadiusScaledFx・VfxQualityGate を追加）
 
 CoopDeck.Editor           ProjectBootstrap ほか生成ツール（カード・アイコン・スキル VFX・仮リグ・アニメ・敵 Prefab・NavMesh・コンボと VFX 含む）
                           ← 全ランタイム + URP + Unity.AI.Navigation + Unity.Animation.Rigging
-CoopDeck.Tests.EditMode   157 テスト（純ロジック・デッキ規則・アイテム・状態効果・属性・コンボ判定・敵の状態遷移・ウェーブ・
+CoopDeck.Tests.EditMode   197 テスト（Phase 4 NPC：判断 18・状態機械/操舵/カード特性 8・ロードアウト 3・蘇生/交戦 2・コンボ予測 2・生成資産 7 を含む）（純ロジック・デッキ規則・アイテム・状態効果・属性・コンボ判定・敵の状態遷移・ウェーブ・
                           移動ブレンド・弱点・生成データ（カード／Animator／敵 Prefab／シーン／コンボと VFX）・入力定義・ティア・VFX 品質）
-CoopDeck.Tests.PlayMode   37 テスト（移動・射撃・デッキ×FPS 統合・仮想キーボード/ゲームパッド・各スキル効果・敵の追跡と攻撃・
+CoopDeck.Tests.PlayMode   53 テスト（NPC 16：追従・射撃・スキル/ゲージ/ドロー・デッキ独立・協力コンボ両方向・×1.3・連鎖防止・ダウン/蘇生/救助・FPS とデッキ循環・指示・回避・入力元の差し替え・編集ロックを含む）（移動・射撃・デッキ×FPS 統合・仮想キーボード/ゲームパッド・各スキル効果・敵の追跡と攻撃・
                           回避・敵弾・ウェーブ進行・NavMesh 上の吸引・入力遅延・コンボ 3 種・連鎖防止・協力・デッキ循環×コンボ）
 ```
 
 - **`CoopDeck.Player` は `CoopDeck.Input` を参照しない。** 入力は `ICharacterCommandSource` 経由でのみ届く。
 - `CoopDeck.Player` と `CoopDeck.AI` はお互いを参照しない。敵はプレイヤーを `CombatantRegistry`（`ICombatActor`）経由でだけ知る。
 - `CoopDeck.Skills` と `CoopDeck.Combos` もお互いを参照しない。スキルは `CombatEvents.ElementHitApplied` を出すだけで、コンボの存在を知らない。
-- 予定アセンブリ（フォルダのみ作成済み）：`NPC` `Networking` `Save`。
-  - `NPC` → `Player` `Deck` `Combat`（敵 AI の状態機械の考え方を流用）、`Networking` → 全体（逆参照はしない）。
+- `CoopDeck.NPC` は `CoopDeck.AI`（敵）・`CoopDeck.Input`・`CoopDeck.UI` を参照しない。敵の攻撃は `CombatEvents.ThreatRaised`、敵の位置は `CombatantRegistry` からだけ知る。
+- 予定アセンブリ（フォルダのみ作成済み）：`Networking` `Save`。`Networking` → 全体（逆参照はしない）。
 
 ---
 
@@ -97,6 +101,24 @@ FpsCharacter.Step(dt)
 射撃（4）とスキル（6）は同じフレーム内の別処理で、互いの状態（弾数・ゲージ）に触れない。攻撃力強化だけは `ICombatActor.Status` 経由で両方のダメージに乗る。
 
 `FpsCharacter.Step` は public なので、将来の固定ティック（ネットワーク）やテストからも同じ処理を呼べる。
+
+### 3.2 1フレームの流れ（NPC 仲間）
+
+```
+FpsCharacter.Step(dt)  ← プレイヤーと同じ（移動・視点・射撃・スキル枠・デッキ）
+   └ commandSource.GetCommands(dt) = NpcController（AI コントローラー）
+        1. 0.2 秒ごと（NPC ごとに位相をずらす）に Think：
+             Sense   → NpcSituation（自分・プレイヤー・敵 16 体まで・手札・攻撃予告）。視線の Linecast は近い 8 体だけ
+             Decide  → NpcDecisionMaker（Utility AI、純 C#）：回避 900 > 救援 800 > コンボ追撃 700 > 起点 600 > 支援 500
+                        > 範囲 400 > 単体 300 > 射撃 200 > 追従 100。射程・射線・CD・ゲージ・手札・方針・温存時間で点数が変わる
+        2. 毎フレーム：攻撃予告（ThreatWarning）を反応時間 0.15 秒後に評価して回避
+        3. NpcStateMachine（追従／交戦／合流／救助／回避／ダウン）でモードを決める
+        4. モードごとの移動先 → NpcNavigator（NavMesh.CalculatePath、0.5 秒ごと・全体で 1 フレーム 2 経路まで）
+           プレイヤーの射線上に 0.25 秒いたら横へ退く、近接敵からは距離を取る
+        5. 照準（LookDelta）→ スキルは照準レイが対象に当たったらスキル枠を押す、射撃はバースト（プレイヤーが射線上なら撃たない）
+        → CharacterCommands（人間と同じ形）
+DeckController / SkillCaster / ComboSystem は人間と同じ経路で動く（ElementHit の付与者 ID が NPC になるだけ）
+```
 
 ### 3.1 1フレームの流れ（敵）
 
@@ -208,6 +230,26 @@ Health.Died → EnemyActor                    コライダー無効化・撃破 
 
 ---
 
+### 4.9 NPC 仲間（`CoopDeck.NPC`）と協力
+
+| クラス | 役割 |
+|---|---|
+| `NpcController` | AI コントローラー（`ICharacterCommandSource`、`ControllerKind.AI`）。知覚・判断・実行。指示（方針・集中攻撃）を受け、失血後はプレイヤーの横で復帰 |
+| `NpcDecisionMaker` | Utility AI（純 C#）。コンボ追撃は `ComboPlanner` で「その属性を当てたら今コンボになるか」を確認。得意属性のカードは味方の相方属性のために時間制限つきで温存 |
+| `NpcStateMachine` | 純 C#。ダウン > 回避（0.4 秒）> 救助 > 合流（26 m で開始、9 m で終了）> 交戦（2.5 秒残る）> 追従 |
+| `NpcSituation` / `NpcCardTraits` | 判断の入力（再利用バッファ、GC なし）／カード効果の要約 |
+| `NpcSteering` / `NpcNavigator` | 移動・照準・射線判定の純関数／NavMesh 経路追従 |
+| `NpcProfile` (SO) | 名前・得意属性・思考間隔・追従距離・照準・温存時間・回避率など（`NP_Volt`） |
+| `ComboPlanner`（Combos） | コンボ判定と同じ規則で「追撃できるか」「何で完成するか」を状態を変えずに答える（NPC と HUD マーカー） |
+| `Revivable` / `ReviveModel`（Combat） | ダウン → 近くの味方が 2.5 秒立つと 45% で蘇生、失血まで 25 秒（プレイヤーは 20 秒）。プレイヤーは味方がいなければ従来どおり 2.5 秒で再出現 |
+| `TeamEngagementMonitor`（Combat） | 交戦中か（敵 28 m 以内／敵とのダメージから 5 秒）。デッキ編集のロックに使う |
+| `AllyCollisionFilter`（Player） | 味方同士の CharacterController の衝突を無視（ふさがない） |
+| `NpcHud` / `NpcDeckEditorHud` / `ComboHud`（UI） | NPC パネルと敵頭上マーカー／デッキ編集テスト UI（`InputGate` で操作を止める）／協力コンボ表示 |
+
+- 協力の判定は Phase 3 の `ComboResolver` のまま：付与者 ID ≠ 完成者 ID かつ同チームで ×1.3（`DamageFlags.Coop`）。NPC はこの規則を変えず、狙うだけ。
+- 協力コンボ時のみ `ComboDefinition.coopFx`（金色、層は `VfxQualityGate` で中/高のみ）、`coopSound`、画面揺れ ×1.4、FOV +3.5° の短いパンチ（`CameraShaker.Punch`、`-noshake` で無効、VFX 低で半分）。
+- 射撃場の的は `ITrainingTarget` として登録。NPC はプレイヤーが撃った的にだけ参戦し、交戦判定にも数えない。
+
 ## 5. レイヤー・カメラ・描画
 
 | レイヤー | 番号 | 用途 |
@@ -314,6 +356,7 @@ Assets/_Game/
 | 2.5 通信 | `ICharacterCommandSource` のネットワーク版、`FpsCharacter.Step` を固定ティックで呼ぶ。敵はホストだけで `EnemyBrain` を動かし、クライアントには位置・状態・攻撃イベントを送る想定 |
 | 3 デッキ（実装済み） | 報酬は `DeckState.AddCard`、強化は `UpgradeCard`（強化表は未実装）、パッシブは `DeckState.Passives` |
 | 4 コンボ（実装済み） | 新コンボは `ComboDefinition` アセットの追加（種類は ChainBurst / Singularity / Explosion）。段階は `CardRuntime.UpgradeLevel`。オンラインではホストの `ComboSystem` だけが判定し、`ComboEvents` をクライアントへ送る想定 |
-| 4 NPC × コンボ | NPC の `SkillCaster` が同じ `ElementHit` を出すので、プレイヤー⇔NPC の協力コンボ（×1.3）はそのまま成立する |
-| 4 NPC | NPC 用の `ICharacterCommandSource` がスキル枠を押すだけで `DeckController` が同じ規則でカードを使う（8 枚・2 枠は `Rebuild` の引数） |
+| 4 NPC（実装済み） | 新しい NPC は `NpcProfile` と初期デッキ（`DeckDefinition`）と見た目を変えた Prefab で作れる（`NpcFactory`）。行動の傾向は `NpcProfile` と `NpcDecisionMaker` の点数帯 |
+| 4 NPC デッキ強化 | ステージ報酬は `DeckLoadoutController.GrantCard`（所持）→ 非戦闘中の編集で採用。強化は `DeckState.UpgradeCard` |
+| 6 オンライン | `FpsCharacter.SetCommandSource` でネットワーク入力に差し替え。NPC 思考・ダメージ・カード消費・コンボ・蘇生はホストだけで動かす（`MULTIPLAYER_PLAN.md` §5） |
 | 5 演出 | `WeaponDefinition` / 将来の `CardDefinition` が参照するエフェクト Prefab を差し替え、`PooledFx` で粒子数をティア調整 |

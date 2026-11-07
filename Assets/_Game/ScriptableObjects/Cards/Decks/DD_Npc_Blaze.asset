@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1175c6b892547742b7c5d4b74aed8e7, type: 3}
+  m_Name: DD_Npc_Blaze
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.DeckDefinition
+  deckId: deck.npc_blaze
+  cards:
+  - {fileID: 11400000, guid: 7d6b061aec16443418edfca377b9bf72, type: 2}
+  - {fileID: 11400000, guid: 7d6b061aec16443418edfca377b9bf72, type: 2}
+  - {fileID: 11400000, guid: 0b3046fad9e0e824aafa5a5a3b4c2dc0, type: 2}
+  - {fileID: 11400000, guid: 0b3046fad9e0e824aafa5a5a3b4c2dc0, type: 2}
+  - {fileID: 11400000, guid: f2869be79f692874698ea6ec9e4ea4f3, type: 2}
+  - {fileID: 11400000, guid: f2869be79f692874698ea6ec9e4ea4f3, type: 2}
+  - {fileID: 11400000, guid: 9b4f8229564f2e846aa89f8bd444ad9f, type: 2}
+  - {fileID: 11400000, guid: de67e93d63389d1498879fa21b6e1475, type: 2}
+  handSize: 2

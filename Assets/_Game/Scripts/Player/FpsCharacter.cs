@@ -43,6 +43,15 @@ namespace CoopDeck.Player
         /// <summary>Card selection moved by -1 / +1 (gamepad D-pad left/right).</summary>
         public event Action<int> CardSelectStepRequested;
 
+        /// <summary>Squad order: cycle the allies' tactic. NPC allies following this character listen.</summary>
+        public event Action<FpsCharacter> OrderTacticRequested;
+
+        /// <summary>Squad order: mark what this character is aiming at as the focus target.</summary>
+        public event Action<FpsCharacter> OrderMarkRequested;
+
+        /// <summary>The command source was swapped (human ⇄ AI ⇄ network).</summary>
+        public event Action<FpsCharacter> ControllerChanged;
+
         public string DisplayName => displayName;
         public TeamId Team => health != null ? health.Team : TeamId.Players;
         public Health Health => health;
@@ -57,7 +66,53 @@ namespace CoopDeck.Player
         public ICharacterCommandSource CommandSource
         {
             get => commandSource;
-            set => commandSource = value;
+            set => SetCommandSource(value);
+        }
+
+        /// <summary>What kind of controller drives this character right now.</summary>
+        public ControllerKind ControllerKind =>
+            commandSource is IControllerIdentity identity ? identity.Kind : commandSource != null ? ControllerKind.Scripted : ControllerKind.None;
+
+        public bool IsHumanControlled => ControllerKind == ControllerKind.Human;
+
+        /// <summary>
+        /// Swaps who drives this body. The body, deck, weapon and health stay as they are, so a human
+        /// can take over an NPC slot (or hand it back) without touching any other system.
+        /// </summary>
+        public void SetCommandSource(ICharacterCommandSource source)
+        {
+            if (ReferenceEquals(commandSource, source))
+            {
+                return;
+            }
+
+            commandSource = source;
+            ControllerChanged?.Invoke(this);
+        }
+
+        /// <summary>The character driven by the local human, or null (HUD, tools, diagnostics).</summary>
+        public static FpsCharacter FindLocalHuman()
+        {
+            FpsCharacter fallback = null;
+            var actors = CombatantRegistry.All; // indexed: no boxed enumerator (GC) in per-frame / per-think loops
+            for (int ai = 0; ai < actors.Count; ai++)
+            {
+                ICombatActor actor = actors[ai];
+                if (actor is FpsCharacter character && character != null)
+                {
+                    if (character.IsHumanControlled)
+                    {
+                        return character;
+                    }
+
+                    if (fallback == null && character.ControllerKind != ControllerKind.AI)
+                    {
+                        fallback = character;
+                    }
+                }
+            }
+
+            return fallback;
         }
 
         void Awake()
@@ -165,6 +220,16 @@ namespace CoopDeck.Player
             if (commands.UseItemPressed)
             {
                 ItemUseRequested?.Invoke();
+            }
+
+            if (commands.OrderTacticPressed)
+            {
+                OrderTacticRequested?.Invoke(this);
+            }
+
+            if (commands.OrderMarkPressed)
+            {
+                OrderMarkRequested?.Invoke(this);
             }
 
             if (commands.CycleItemPressed)

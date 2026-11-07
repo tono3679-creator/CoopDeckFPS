@@ -1,0 +1,23 @@
+{
+    "name": "CoopDeck.NPC",
+    "rootNamespace": "CoopDeck.NPC",
+    "references": [
+        "CoopDeck.Core",
+        "CoopDeck.Combat",
+        "CoopDeck.Cards",
+        "CoopDeck.Deck",
+        "CoopDeck.Skills",
+        "CoopDeck.Player",
+        "CoopDeck.Weapons",
+        "CoopDeck.Combos"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

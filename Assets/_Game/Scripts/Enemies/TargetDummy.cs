@@ -1,5 +1,6 @@
 using System.Collections;
 using CoopDeck.Combat;
+using CoopDeck.Core;
 using CoopDeck.Effects;
 using UnityEngine;
 
@@ -7,10 +8,12 @@ namespace CoopDeck.Enemies
 {
     /// <summary>
     /// Shooting-range target: takes damage, dies (hides, disables colliders, plays a death
-    /// effect) and respawns after a delay. Real enemy AI arrives in Phase 4.
+    /// effect) and respawns after a delay. It registers as a passive combatant
+    /// (<see cref="ITrainingTarget"/>), so NPC allies join in when the player shoots it but it never
+    /// starts a fight on its own.
     /// </summary>
     [RequireComponent(typeof(Health))]
-    public class TargetDummy : MonoBehaviour
+    public class TargetDummy : MonoBehaviour, ICombatActor, ITrainingTarget
     {
         [SerializeField] GameObject visualRoot;
         [SerializeField] GameObject deathFxPrefab;
@@ -18,9 +21,17 @@ namespace CoopDeck.Enemies
         [SerializeField] Vector3 deathFxOffset = new Vector3(0f, 1f, 0f);
 
         Health health;
+        CombatStatus status;
         Collider[] colliders;
 
         public bool IsDead => health != null && !health.IsAlive;
+
+        public string DisplayName => "的";
+        public TeamId Team => Health.Team;
+        public Health Health => health != null ? health : health = GetComponent<Health>();
+        public CombatStatus Status => status != null ? status : status = GetComponent<CombatStatus>();
+        public Vector3 Position => transform.position;
+        public bool IsAlive => Health.IsAlive;
 
         void Awake()
         {
@@ -38,11 +49,13 @@ namespace CoopDeck.Enemies
         void OnEnable()
         {
             health.Died += OnDied;
+            CombatantRegistry.Register(this);
         }
 
         void OnDisable()
         {
             health.Died -= OnDied;
+            CombatantRegistry.Unregister(this);
         }
 
         void OnDied(Health dead, DamageInfo info)

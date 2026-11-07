@@ -70,6 +70,11 @@ namespace CoopDeck.EditorTools
             List<GaugeItemDefinition> items = CardDataFactory.EnsureGaugeItems();
             ComboAssetSet combos = ComboAssetFactory.EnsureCombos();
 
+            // Phase 4: the NPC ally (its own 8-card deck from the same card pool, plus its finisher card).
+            var allCards = new List<CardDefinition>(cards);
+            allCards.AddRange(CardDataFactory.EnsureNpcCards(skillFx, overwriteIcons: false));
+            List<DeckDefinition> npcDecks = CardDataFactory.EnsureNpcDecks(allCards);
+
             bool overwriteAnimations = Array.IndexOf(Environment.GetCommandLineArgs(), "-coopdeckOverwriteAnimations") >= 0;
             AnimationSet animations = AnimationAssetFactory.EnsureAnimations(overwriteAnimations);
             GameObject windupFx = FxPrefabBuilder.EnsureEnemyWindupFx(overwrite: true);
@@ -77,7 +82,8 @@ namespace CoopDeck.EditorTools
 
             GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials, starterDeck, items, animations.Humanoid, practiceDeck);
             GameObject dummy = CharacterPrefabBuilder.BuildTargetDummy(materials, fx);
-            SandboxSceneBuilder.Build(player, dummy, materials, volume, enemies, combos);
+            NpcAssetSet npc = NpcFactory.EnsureNpc(movement, rifle, allCards, npcDecks, animations.Humanoid);
+            SandboxSceneBuilder.Build(player, dummy, materials, volume, enemies, combos, npc.Prefab);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();

@@ -26,6 +26,8 @@ namespace CoopDeck.UI
         float vignetteStrength;
         Color vignetteColor = HurtColor;
         Text downText;
+        Revivable revivable;
+        PlayerRespawn respawn;
         readonly Indicator[] indicators = new Indicator[IndicatorCount];
         int nextIndicator;
 
@@ -67,7 +69,7 @@ namespace CoopDeck.UI
         {
             if (player == null)
             {
-                player = FindAnyObjectByType<FpsCharacter>();
+                player = FpsCharacter.FindLocalHuman();
             }
         }
 
@@ -134,7 +136,42 @@ namespace CoopDeck.UI
                 indicator.Arc.color = arc;
             }
 
-            downText.gameObject.SetActive(player != null && !player.IsAlive);
+            bool down = player != null && !player.IsAlive;
+            downText.gameObject.SetActive(down);
+            if (down)
+            {
+                UpdateDownText();
+            }
+        }
+
+        string lastDownText;
+
+        /// <summary>Downed: say whether an ally is coming (and the revive progress) or a respawn is near.</summary>
+        void UpdateDownText()
+        {
+            if (revivable == null)
+            {
+                revivable = player.GetComponent<Revivable>();
+                respawn = player.GetComponent<PlayerRespawn>();
+            }
+
+            string text;
+            if (revivable != null && respawn != null && respawn.IsWaitingForRevive)
+            {
+                text = revivable.CurrentReviver != null
+                    ? $"ダウン！ {revivable.CurrentReviver.DisplayName} が蘇生中… {revivable.Progress01 * 100f:0}%"
+                    : $"ダウン！ 味方の救助を待っています（{revivable.BleedOutRemaining:0} 秒）";
+            }
+            else
+            {
+                text = "ダウン！ まもなく復活します";
+            }
+
+            if (text != lastDownText)
+            {
+                downText.text = text;
+                lastDownText = text;
+            }
         }
 
         static Sprite CreateVignetteSprite()

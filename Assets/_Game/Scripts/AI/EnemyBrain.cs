@@ -172,6 +172,7 @@ namespace CoopDeck.AI
 
                 if (animatorDriver != null) animatorDriver.Trigger(AnimatorParams.AttackId);
                 WindupStarted?.Invoke(this);
+                WarnTarget(def, launched: false);
             }
 
             if (intent.ReleaseAttack)
@@ -222,6 +223,29 @@ namespace CoopDeck.AI
             }
         }
 
+        /// <summary>
+        /// Tells the target an attack is coming (telegraph start, projectile launch), so AI allies can
+        /// read it like a human reads the wind-up effect. Purely informational: it changes no damage.
+        /// </summary>
+        void WarnTarget(EnemyDefinition def, bool launched)
+        {
+            if (target == null || !target.IsAlive)
+            {
+                return;
+            }
+
+            Vector3 origin = transform.position;
+            Vector3 to = target.Position - origin;
+            to.y = 0f;
+            float distance = to.magnitude;
+            Vector3 direction = distance > 0.001f ? to / distance : transform.forward;
+            bool melee = def.attackKind == EnemyAttackKind.Melee;
+            float travel = melee || def.projectileSpeed <= 0f ? 0f : distance / def.projectileSpeed;
+            float time = launched ? travel : def.windup + travel;
+            CombatEvents.RaiseThreat(new ThreatWarning(actor, target, melee ? ThreatKind.Melee : ThreatKind.Projectile,
+                origin, direction, time, def.damage, melee ? def.attackRange + 0.6f : 0f));
+        }
+
         void ReleaseAttack(EnemyDefinition def)
         {
             if (target == null || !target.IsAlive)
@@ -260,6 +284,7 @@ namespace CoopDeck.AI
                 {
                     projectile.Launch(origin, direction, def.projectileSpeed, def.damage, def.projectileRadius,
                         actor, actor.Team, GameLayers.EnemyShotMask);
+                    WarnTarget(def, launched: true);
                 }
             }
 

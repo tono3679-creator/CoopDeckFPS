@@ -124,11 +124,50 @@ namespace CoopDeck.EditorTools
             },
         };
 
+        /// <summary>
+        /// Extra cards that are not in the 12-card starter deck: the NPC ally's cheap lightning finisher.
+        /// Same CardDefinition / rules as every other card, so a player could equip it too.
+        /// </summary>
+        static readonly CardSpec[] NpcSpecs =
+        {
+            new CardSpec
+            {
+                AssetName = "CD_Thunderbolt", Id = "card.thunderbolt", Name = "雷撃", Element = Element.Lightning, Glyph = CardGlyph.Bolt,
+                Cost = 25f, Cooldown = 0.7f, Targeting = CardTargeting.Aim, Range = 55f,
+                Description = "照準先の敵1体に雷を落とす（42ダメージ）。凍結・炎上した敵への追撃に向く。",
+                Effects = new[] { SkillEffectSpec.Damage(42f) },
+            },
+        };
+
         public static List<CardDefinition> EnsureCards(SkillFxSet fx, bool overwriteIcons)
         {
             EditorUtil.EnsureFolder(CardFolder);
             var cards = new List<CardDefinition>();
             foreach (CardSpec spec in Specs)
+            {
+                cards.Add(EnsureCard(spec, fx, overwriteIcons));
+            }
+
+            AssetDatabase.SaveAssets();
+            return cards;
+        }
+
+        /// <summary>Cards outside the starter set (NPC finisher). Kept as-is once they exist.</summary>
+        public static List<CardDefinition> EnsureNpcCards(SkillFxSet fx, bool overwriteIcons)
+        {
+            EditorUtil.EnsureFolder(CardFolder);
+            var cards = new List<CardDefinition>();
+            foreach (CardSpec spec in NpcSpecs)
+            {
+                cards.Add(EnsureCard(spec, fx, overwriteIcons));
+            }
+
+            AssetDatabase.SaveAssets();
+            return cards;
+        }
+
+        static CardDefinition EnsureCard(CardSpec spec, SkillFxSet fx, bool overwriteIcons)
+        {
             {
                 string path = $"{CardFolder}/{spec.AssetName}.asset";
                 var card = AssetDatabase.LoadAssetAtPath<CardDefinition>(path);
@@ -165,11 +204,8 @@ namespace CoopDeck.EditorTools
                 if (card.telegraphFx == null && card.impactDelay > 0f) card.telegraphFx = fx.Telegraph;
 
                 EditorUtility.SetDirty(card);
-                cards.Add(card);
+                return card;
             }
-
-            AssetDatabase.SaveAssets();
-            return cards;
         }
 
         /// <summary>The 12-card starter deck: one of each starting card. Kept as-is once it exists.</summary>
@@ -231,6 +267,61 @@ namespace CoopDeck.EditorTools
             deck.handSize = 3;
             deck.cards = list;
             AssetDatabase.CreateAsset(deck, PracticeDeckPath);
+            AssetDatabase.SaveAssets();
+            return deck;
+        }
+
+        public const string NpcVoltDeckPath = CardFolder + "/Decks/DD_Npc_Volt.asset";
+        public const string NpcBlazeDeckPath = CardFolder + "/Decks/DD_Npc_Blaze.asset";
+        public const string NpcGuardianDeckPath = CardFolder + "/Decks/DD_Npc_Guardian.asset";
+
+        /// <summary>
+        /// NPC ally decks: 8 cards and 2 hand slots, same rules as the player. Volt (lightning) is the
+        /// starting deck; Blaze (fire + gravity) and Guardian (support) are presets for the deck editor.
+        /// Kept as-is once they exist.
+        /// </summary>
+        public static List<DeckDefinition> EnsureNpcDecks(List<CardDefinition> allCards)
+        {
+            return new List<DeckDefinition>
+            {
+                EnsureDeck(NpcVoltDeckPath, "deck.npc_volt", 2, allCards,
+                    ("card.thunderbolt", 2), ("card.chain_lightning", 2), ("card.thunder_charge", 1), ("card.incendiary", 1),
+                    ("card.area_heal", 1), ("card.shield", 1)),
+                EnsureDeck(NpcBlazeDeckPath, "deck.npc_blaze", 2, allCards,
+                    ("card.flame_vortex", 2), ("card.incendiary", 2), ("card.gravity_spike", 2), ("card.gravity_collapse", 1), ("card.area_heal", 1)),
+                EnsureDeck(NpcGuardianDeckPath, "deck.npc_guardian", 2, allCards,
+                    ("card.area_heal", 2), ("card.shield", 2), ("card.mark_target", 2), ("card.frost_nova", 1), ("card.thunderbolt", 1)),
+            };
+        }
+
+        static DeckDefinition EnsureDeck(string path, string id, int handSize, List<CardDefinition> cards, params (string id, int copies)[] recipe)
+        {
+            var deck = AssetDatabase.LoadAssetAtPath<DeckDefinition>(path);
+            if (deck != null)
+            {
+                return deck;
+            }
+
+            var list = new List<CardDefinition>();
+            foreach ((string cardId, int copies) in recipe)
+            {
+                CardDefinition card = cards.Find(c => c != null && c.cardId == cardId);
+                if (card == null)
+                {
+                    throw new System.InvalidOperationException($"Deck {id}: card '{cardId}' is missing");
+                }
+
+                for (int i = 0; i < copies; i++)
+                {
+                    list.Add(card);
+                }
+            }
+
+            deck = ScriptableObject.CreateInstance<DeckDefinition>();
+            deck.deckId = id;
+            deck.handSize = handSize;
+            deck.cards = list;
+            AssetDatabase.CreateAsset(deck, path);
             AssetDatabase.SaveAssets();
             return deck;
         }

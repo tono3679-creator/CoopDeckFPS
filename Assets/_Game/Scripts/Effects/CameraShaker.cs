@@ -24,12 +24,49 @@ namespace CoopDeck.Effects
         [Tooltip("Beyond this distance an impact does not shake the camera.")]
         [SerializeField, Min(1f)] float falloffDistance = 30f;
 
+        [Tooltip("Seconds of a field-of-view punch (co-op combos): quick widen, ease back.")]
+        [SerializeField, Min(0.05f)] float punchDuration = 0.32f;
+
         Vector3 basePosition;
         Quaternion baseRotation;
         float trauma;
         float seed;
+        Camera viewCamera;
+        float punchStrength;
+        float punchAge = float.PositiveInfinity;
+        float lastWrittenFov = -1f;
+        float lastPunchOffset;
 
         public float Trauma => trauma;
+
+        /// <summary>Current field-of-view offset from a punch, degrees (0 when idle).</summary>
+        public float PunchOffset { get; private set; }
+
+        /// <summary>
+        /// A short field-of-view kick for a big moment (co-op combo), falling off with distance and
+        /// scaled like the shake (none with -noshake, half at low effect quality). The aim ray is
+        /// unaffected; the base FOV set by the look code each frame is preserved.
+        /// </summary>
+        public static void Punch(Vector3 source, float degrees)
+        {
+            float scale = PerformanceSettings.ScreenShakeScale * PerformanceSettings.ShakeFor(PerformanceSettings.Vfx);
+            if (degrees <= 0f || scale <= 0f)
+            {
+                return;
+            }
+
+            foreach (CameraShaker shaker in Active)
+            {
+                float distance = Vector3.Distance(source, shaker.transform.position);
+                float attenuation = 1f - Mathf.Clamp01(distance / shaker.falloffDistance);
+                float strength = degrees * scale * Mathf.Max(0.35f, attenuation);
+                if (strength > shaker.punchStrength * (1f - Mathf.Clamp01(shaker.punchAge / shaker.punchDuration)))
+                {
+                    shaker.punchStrength = strength;
+                    shaker.punchAge = 0f;
+                }
+            }
+        }
 
         /// <summary>Asks every active camera to shake for an impact at <paramref name="source"/> (strength 0..1).</summary>
         public static void Shake(Vector3 source, float strength)
@@ -51,6 +88,7 @@ namespace CoopDeck.Effects
             basePosition = transform.localPosition;
             baseRotation = transform.localRotation;
             seed = Random.value * 100f;
+            viewCamera = GetComponent<Camera>();
         }
 
         void OnEnable()
@@ -75,6 +113,7 @@ namespace CoopDeck.Effects
 
         void LateUpdate()
         {
+            ApplyPunch();
             if (trauma <= 0f)
             {
                 return;
@@ -95,6 +134,38 @@ namespace CoopDeck.Effects
                 transform.localPosition = basePosition;
                 transform.localRotation = baseRotation;
             }
+        }
+
+        void ApplyPunch()
+        {
+            if (viewCamera == null)
+            {
+                return;
+            }
+
+            float offset = 0f;
+            if (punchAge < punchDuration)
+            {
+                punchAge += Time.deltaTime;
+                float t = Mathf.Clamp01(punchAge / punchDuration);
+                // Fast attack (first 20 %), smooth release.
+                float shape = t < 0.2f ? t / 0.2f : 1f - Mathf.SmoothStep(0f, 1f, (t - 0.2f) / 0.8f);
+                offset = punchStrength * shape;
+            }
+
+            if (Mathf.Approximately(offset, 0f) && Mathf.Approximately(lastPunchOffset, 0f))
+            {
+                PunchOffset = 0f;
+                return;
+            }
+
+            // The look code writes the base FOV each frame; if it did not this frame, undo our last offset first.
+            float current = viewCamera.fieldOfView;
+            float baseFov = Mathf.Approximately(current, lastWrittenFov) ? current - lastPunchOffset : current;
+            lastWrittenFov = baseFov + offset;
+            lastPunchOffset = offset;
+            PunchOffset = offset;
+            viewCamera.fieldOfView = lastWrittenFov;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

@@ -80,6 +80,13 @@
 - NPC のデッキ（8枚・2枠）は置き換え時にそのまま引き継ぐか、参加者のキャラクターの初期デッキに入れ替えるかを Phase 6 で決める（初期案：参加者のキャラクターで初期化）。
 - 合計人数は常に4以下。人間が抜けた場合、その枠を NPC に戻す。
 
+### 実装済みの受け口（Phase 4、2026-11-07）
+
+- NPC の体はプレイヤーと同じ `FpsCharacter`（移動・武器・`SkillCaster`・`DeckController`・`Health`・`Revivable`）。入力元だけが違う：人間 = `PlayerInputReader`（`ControllerKind.Human`）、NPC = `NpcController`（`ControllerKind.AI`）。`FpsCharacter.SetCommandSource` で差し替えると、デッキ・HP・装備はそのまま新しい入力元に従う（PlayMode テスト済み）。ネットワーク入力は `ControllerKind.Remote` の `ICharacterCommandSource` を足すだけ。
+- ホストで一元管理するもの：NPC の思考（`NpcController`／`NpcDecisionMaker`／`NpcStateMachine`）、ダメージ（`Health`）、カード消費（`DeckState`）、コンボ判定（`ComboSystem`）、蘇生（`ReviveModel`）。クライアントは `CharacterCommands`（人間）を送り、結果（位置・HP・手札・`ComboEvents`）を受け取る。
+- 指示（方針切替・集中攻撃）は `CharacterCommands.OrderTacticPressed / OrderMarkPressed` で送られ、指示を出した人の `FpsCharacter` のイベントを NPC が購読する。どのクライアントの指示かもそのまま区別できる。
+- 敵の攻撃予告は `CombatEvents.ThreatRaised`（`ThreatWarning`）。NPC の回避はこれを使う（クライアントは予兆エフェクトを見る）。
+
 ---
 
 ## 6. 帯域の目安（4人）
