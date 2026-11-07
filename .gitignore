@@ -9,8 +9,9 @@
 /[Mm]emoryCaptures/
 /[Rr]ecordings/
 
-# Local performance captures (screenshots + JSON); summarize results in Docs instead
+# Local performance captures and Editor screenshots; summarize results in Docs instead
 /PerfCaptures/
+/Screenshots/
 
 # Asset Store tools / crash reports
 /[Aa]ssets/AssetStoreTools*

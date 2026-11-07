@@ -38,7 +38,7 @@
 - [x] フォルダ構成（`Assets/_Game/...`）と asmdef の作成
 - [x] Git 管理（`.gitignore`、`.gitattributes`、Git LFS の対象拡張子）
 - [x] 秘密情報を含むファイル（`.mcp.json` 等）を Git 対象外にする
-- [~] Unity との連携（Unity CLI ＋ Pipeline パッケージは導入済み。ライブ Editor 接続の確認は CHANGELOG 参照。mcp-unity は未導入）
+- [x] Unity との連携（Unity CLI ＋ Pipeline パッケージで起動中の Editor を操作：シーンを開く・Play・フレーム進行確認・C# 実行・画面キャプチャ・コンソール取得を確認。mcp-unity は未導入）
 - [x] サンドボックスシーン作成（床・壁・段差・坂・的）
 - [x] FPS プレイヤーの最小実装（移動・視点・ジャンプ・スプリント・ダッシュ・射撃・リロード）※自動テストとビルドで確認。手動の操作感確認はユーザー待ち
 - [x] 的（ダミー敵）の HP・ダメージ・死亡・復活
