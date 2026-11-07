@@ -816,6 +816,12 @@ MonoBehaviour:
   walkSpeed: 4.2
   clipStrideSpeed: 3.5
   dampTime: 0.1
+  rings: []
+  maxBlendSpeed: 9.5
+  additiveLayer: Additive
+  fireState: Fire
+  idleFlourishDelay: 14
+  reloadClipSeconds: 1.7
 --- !u!114 &6016348724152348108
 MonoBehaviour:
   m_ObjectHideFlags: 0

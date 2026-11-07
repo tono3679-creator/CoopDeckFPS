@@ -60,3 +60,7 @@ sysinfo.txt
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Python bytecode from the Blender art tools
+__pycache__/
+*.pyc

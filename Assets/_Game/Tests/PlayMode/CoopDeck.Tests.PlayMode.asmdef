@@ -7,6 +7,7 @@
         "CoopDeck.Combat",
         "CoopDeck.Weapons",
         "CoopDeck.Player",
+        "CoopDeck.Animation",
         "CoopDeck.Input",
         "CoopDeck.Cards",
         "CoopDeck.Deck",
@@ -18,7 +19,8 @@
         "CoopDeck.Combos",
         "CoopDeck.NPC",
         "Unity.AI.Navigation",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

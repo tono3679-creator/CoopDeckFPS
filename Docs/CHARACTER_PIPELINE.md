@@ -14,6 +14,7 @@
 | 3. 自動リギング | Meshy **Rig**（身長を指定。歩き・走りのモーション付き） | `ArtSource/<Name>/Meshy/02_rig/` |
 | 4. 検査 | Blender `ArtSource/Tools/inspect_character.py` | `ArtSource/<Name>/Inspection/`（`report.json`、四面と動きの画像） |
 | 5. Unity 用に整える | Blender `ArtSource/Tools/prepare_for_unity.py` | FBX・PNG を `Assets/`、GLB を `ArtSource/<Name>/Export/` |
+| 5b. テクスチャの高品質化 | Blender `ArtSource/Tools/refine_character.py` ＋ Real-ESRGAN（§8） | `ArtSource/<Name>/Export/<Name>_HQ.glb`、4K の `T_<Name>_BaseColor.png` |
 | 6. 取り込み設定と生成 | Unity `FoxGunnerAssetFactory`（キャラごとに用意） | マテリアル・待機クリップ・Animator・Prefab・プレビュー画像 |
 
 `ArtSource/` は Unity に読み込まれない元素材置き場（FBX/PNG/GLB は Git LFS）。
@@ -139,7 +140,7 @@ Unity（エディターを閉じた状態でバッチ実行。開いている場
 | 手順 | 内容 |
 |---|---|
 | バックアップ | 変更前の `M_FoxGunner_Toon`（CH_Toon の 2 階調）は残し、`Materials/Backup/M_FoxGunner_Toon_Original.mat` にも複製 |
-| 部位マスク | `FoxGunnerLookFactory` がテクスチャの色（橙・白系・赤・暗色・冷たい灰色・琥珀など）×スキンのボーン（頭・首・胴・鎖骨・腕・手・腰・脚・足・尻尾）×位置（顔の範囲・尻尾・ベルト・ブーツ）で、UV 上のテクセルごとに 毛 / 顔 / 目 / 布 / 革 / 金属 / ガラス を判定。結果を質感パラメータとして `T_FoxGunner_SurfaceMask.png`（R 柔らかさ・G 滑らかさ・B 金属度・A 暖かみ、1024、リニア）と URP Lit 用 `T_FoxGunner_MetallicSmoothness.png` に書く。ボーン名で判定するので尻尾・耳・指のボーンが増えても動く |
+| 部位マスク | `FoxGunnerLookFactory` がテクスチャの色（橙・白系・赤・暗色・冷たい灰色・琥珀など）×スキンのボーン（頭・首・胴・鎖骨・腕・手・腰・脚・足・尻尾）×位置（顔の範囲・尻尾・ベルト・ブーツ）で、UV 上のテクセルごとに 毛 / 顔 / 目 / 布 / 革 / 金属 / ガラス を判定。結果を質感パラメータとして `T_FoxGunner_SurfaceMask.png`（R 柔らかさ・G 滑らかさ・B 金属度・A 暖かみ、2048、リニア）と URP Lit 用 `T_FoxGunner_MetallicSmoothness.png` に書く。ボーン名で判定するので尻尾・耳・指のボーンが増えても動く |
 | 1. URP Lit | 部位マスク由来の金属度・滑らかさマップで `M_FoxGunner_Lit` を作って比較。陰影は自然になるが、影側が灰色に沈み（つや消しのソフビ人形風）、輪郭線・リム・毛や顔の暖かみは出せない |
 | 2. Shader Graph | 足りない部分だけ拡張：`SG_Character_SoftToon`（Unlit、Keep Lighting Variants で影・追加ライト・Forward+ 対応）が `FoxSoftToonLighting.hlsl` を Custom Function で呼ぶ。部位ごとに巻き込みのある柔らかい陰影（段差は弱め）、顔と毛の境目の暖色、毛・布はつや消し、革は柔らかいつや、金属は色付きの反射、控えめなリム |
 | 輪郭線 | `CH_Outline`（2 枚目のマテリアル、1.8 mm、線色は表面色を暗くしたもの）。変更前の 4 mm の黒線は薄い毛先から透けて黒い塊になっていた |
@@ -152,11 +153,85 @@ Unity（エディターを閉じた状態でバッチ実行。開いている場
 
 ---
 
-## 8. 未対応（次の作業）
+## 8. テクスチャの高品質化（均一な 4K、2026-11-08）
 
-- 三人称のライフルは素手の歩き・走りモーションに付いているだけなので、走ると腕の振りで銃が上を向く。ライフルを構えた待機・移動・射撃のモーションと、左手を `LeftHandGrip` に合わせる IK（ANIMATION_GUIDELINES §4）が要る。
-- 一人称の手は仮のカプセルのまま。
-- 移動クリップは前進の歩き・走りだけ。横移動・後退でも前向きに走る（自分には影しか見えないが、オンラインでは他のプレイヤーに見える）。8 方向・ジャンプ・射撃・リロード・被弾・ダウン・蘇生のクリップが要る（`meshy_animate` で 1 本 3 クレジット、または既製モーション）。ダウン中も立ったまま。
+Meshy のテクスチャ（2048）は UV の島ごとに解像度がばらつき（面積加重で 5%点 333・中央 622・95%点 1,017 テクセル/m、約 3 倍の差）、ぼやけた部分と細かい部分が混在し、線画がギザギザ・ノイズが多かった。モデル・リグ・スキン・色は変えずに作り直した。
+
+| 手順 | 内容 |
+|---|---|
+| 1. dilate | 島の外の空白に島の色を広げる（画像ピラミッドで埋める）。拡大 AI が島の縁を硬い境目として扱わないようにする |
+| 2. upscale | Real-ESRGAN（`realesrgan-ncnn-vulkan`、BSD-3、モデル `realesrgan-x4plus-anime`）で 4 倍の 8192 に。内蔵 GPU のメモリに収めるため 512 px＋重なり 32 px のタイルに分けて実行し、中央部分だけをつなぐ（約 2 分）。ツール本体はリポジトリに入れない（公式リリース v0.2.5.0 の Windows 版を各自ダウンロード） |
+| 3. bake | 同じ島のまま面積に比例して大きさをそろえ、4096 に詰め直す（新しい継ぎ目なし、島の間 8 テクセル）。旧 UV → 新 UV へ Cycles の EMIT ベイク（16 サンプル、余白 8 px）で色を移す。体を通した平均色は旧 0.594/0.413/0.355 → 新 0.599/0.413/0.355 |
+
+結果：テクセル密度 859/1,074/1,264（5%/50%/95%、差 1.5 倍）。拡大 AI がぼやけた部分に線と面を補うので、全身が同じ細かさになり、線画は滑らか・面はノイズのない均一な塗りになった。
+取り込みは 4096・BC7（`CompressedHQ`）・トライリニア・異方性 8（`FoxGunnerAssetFactory.ConfigureTexture`）、部位マスクは 2048 に上げた。
+
+試して採用しなかったもの：
+- メッシュの細分化（1 回で 92,100 三角形）＋高解像度メッシュへの吸着：Meshy のメッシュは 12,330 本の開いた辺（毛束・耳・服の重なった板）を持ち、細分化で隙間と割れが出た。今のメッシュは高解像度の形から平均 0.9 mm しか離れていないので、形の改善は小さい。
+- 法線のなめらか化：隣の頂点との法線の差が平均 50°（薄い板の表裏が縁でつながる）で、平均化すると陰影が折れて面が目立った（向きのそろった隣だけでも同じ）。`--normal-smooth` は 0（変更なし）。
+
+```
+blender -b --factory-startup -P ArtSource/Tools/refine_character.py -- dilate --model ArtSource/FoxGunner/Export/FoxGunner.glb --out atlas_dilated.png
+blender -b --factory-startup -P ArtSource/Tools/refine_character.py -- upscale --model x --esrgan <realesrgan フォルダ> --in atlas_dilated.png --out atlas_x4.png
+blender -b --factory-startup -P ArtSource/Tools/refine_character.py -- bake --model ArtSource/FoxGunner/Export/FoxGunner.glb --upscaled atlas_x4.png ^
+    --size 4096 --texture-out Assets/_Game/Art/Characters/FoxGunner/Textures/T_FoxGunner_BaseColor.png --glb-out ArtSource/FoxGunner/Export/FoxGunner_HQ.glb
+```
+`--check <dir>` を付けると旧・新の比較画像（顔・胴・背中・尻尾、テクスチャと灰色）だけを出し、書き出しはしない。
+その後は `fox_anim` の順（`fox_common.EXPORT_GLB` が `FoxGunner_HQ.glb` を読む）：`debug_segment.py` → `fox_rig.py` → `build_clips.py` → `fox_fp_arms.py`（一人称の腕の UV と手袋の色も新しいテクスチャから取り直す）→ ブートストラップ → `FoxGunnerLookFactory.RunBatch -coopdeckRebuildMask`。
+
+負荷（Handheld、キツネ 9 体）：キツネなし 2.45 ms、Shader Graph 版＋輪郭線 3.16 ms。テクスチャのメモリは約 2.7 MB（2K・DXT1）→ 約 21 MB（4K・BC7、ミップ込み）。
+
+### 8.1 法線マップ（高精細モデルの陰影を移す、2026-11-08）
+
+ゲーム用メッシュ（15,350 三角形）は Meshy の自動削減で硬い角が溶け、表面がでこぼこ（隣り合う頂点の法線の差が平均 50°）。230 万三角形の高精細モデルは形がくっきりしている（ゴーグルの面取り、ベルト・ポケット、ブーツのベルト、マフラーのしわ）。高精細モデルを単純に 4 万三角形へ削減しても同じくでこぼこだったので、頂点は増やさず、高精細の陰影を法線マップで移した。
+
+- `refine_character.py normalmap`：高精細 GLB を外接箱で体に合わせ、Cycles で selected-to-active の接空間法線をベイク（4096、ケージ 4 mm・探索 8 mm）。別の層（毛束の下・板の裏）に当たった光線は 75° 以上傾くので、その画素（5.8%）は低ポリの法線に戻す（黒い点の除去）。出力 `T_FoxGunner_Normal.png`。
+- Unity：法線マップとして取り込み（BC5、4096、トライリニア・異方性 8）。体の FBX は接線を MikkTSpace で計算（Blender のベイクと同じ）。`SG_Character_SoftToon` に `_NormalMap`（既定は bump）と `_NormalStrength`（既定 1）を追加し、Tangent→World の Transform ノードで世界空間にして `FoxSoftToonLighting.hlsl` に渡す。URP Lit の比較用マテリアルにも `_BumpMap`。
+- 一人称の腕は体の UV を色にだけ借りている別のメッシュなので、法線マップのない `M_FoxGunner_SoftToon_FirstPerson`（`_NormalStrength` 0）を使う（`FoxGunnerAnimationFactory.AddFirstPersonArms`）。シェーダーは強さ 0・接線なし・NaN のとき元の法線を使う。
+- トゥーンの陰影は明るい側がほぼ一定なので、効果は主に影の境目に出る。確認画像：`Screenshots/FoxLook_NormalMap_SideLight.png`（横からの低い太陽、上が法線マップなし・下があり）。輪郭（シルエット）は変わらない。
+- 負荷（Handheld、キツネ 9 体）：キツネなし 2.95 ms、Shader Graph 版＋輪郭線 3.50 ms（法線マップなしのときと誤差の範囲）。メモリ約 +21 MB。
+
+```
+blender -b --factory-startup -P ArtSource/Tools/refine_character.py -- normalmap --model ArtSource/FoxGunner/Export/FoxGunner_HQ.glb ^
+    --highres ArtSource/FoxGunner/Meshy/01_generate/FoxGunner_highres.glb --size 4096 ^
+    --out Assets/_Game/Art/Characters/FoxGunner/Textures/T_FoxGunner_Normal.png [--check <dir>]
+```
+`--check` は低ポリ・低ポリ＋法線マップ・高精細を同じ照明で描いた比較画像を出す。Shader Graph は手で編集せず、生成スクリプト（作業用、テンプレートは Unity のサンプルから）で作り直した。
+
+### 8.2 体を 4 万三角形で作り直す（2026-11-08）
+
+Meshy の 15k リメッシュは形が溶けていたので、体そのものを高精細モデルから作り直した（`refine_character.py rebuild`）。§8 の均一テクスチャと §8.1 の法線マップは、この新しい体に対して焼き直している（`bake` / `normalmap` モードは 15k の体用として残す）。
+
+| 手順 | 内容 |
+|---|---|
+| 削減 | 高精細（2,344,168 三角形）を外接箱で体に合わせ、Quadric collapse で 40,000 三角形（Blender で 18,814 頂点） |
+| UV | Smart UV Project（66°）→ 島の大きさを面積比でそろえて 4096 に詰める（島の間 6 テクセル）。テクセル密度 915/1,007/1,076（5%/50%/95%） |
+| スキン | 24 本の Meshy ボーンのウェイトを 15k の体から最寄り面の補間で移す（未割り当て 0）。尻尾・耳・指は `fox_rig.py` が新しいメッシュで作り直す |
+| 色 | 15k の体（元 UV）＋ 8K の拡大アトラスから selected-to-active の EMIT ベイク。外れた光線（0.24%）は探索範囲を広げて再ベイク、残り（0.055%）は同じ島の隣から埋める |
+| 法線マップ | 高精細から新しい体へ（`bake_normal_image`、75° 超の 4.6% は元の法線） |
+
+```
+blender -b --factory-startup -P ArtSource/Tools/refine_character.py -- rebuild --model ArtSource/FoxGunner/Export/FoxGunner.glb ^
+    --highres ArtSource/FoxGunner/Meshy/01_generate/FoxGunner_highres.glb --upscaled atlas_x4.png --faces 40000 --size 4096 --margin 6 ^
+    --texture-out Assets/_Game/Art/Characters/FoxGunner/Textures/T_FoxGunner_BaseColor.png ^
+    --normal-out Assets/_Game/Art/Characters/FoxGunner/Textures/T_FoxGunner_Normal.png --glb-out ArtSource/FoxGunner/Export/FoxGunner_HQ.glb
+```
+その後 `fox_anim` の順（`debug_segment` → `fox_rig` → `build_clips` → `fox_fp_arms`）→ ブートストラップ → `FoxGunnerLookFactory.RunBatch -coopdeckRebuildMask`。
+
+Unity では 40,000 三角形・52,554 頂点（毛束や重なった布が多く UV の島が細かいため、継ぎ目で頂点が分かれる）。継ぎ目を減らす展開（滑らかにした複製で島を決めて開く）も試したが、頂点は約 39k に減る一方で一部の島が大きく歪み（5%点で 20〜90 テクセル/m）、採用しなかった。
+
+負荷（ROG Ally X、Handheld）：
+- キツネ 9 体（`BenchmarkBatch`）：キツネなし 2.48 ms、Shader Graph 版＋輪郭線 4.32 ms（15k のときの約 3 倍、1 体あたり約 0.2 ms）。
+- ゲーム（ビルド、`-perfrun 30`、プレイヤーの体は影だけ）：平均 59.98 FPS（上限 60）、1% low 58.4 FPS、GPU 2.60 ms、メインスレッド 3.58 ms。15k のとき（GPU 2.4 ms）との差は約 0.2 ms。
+- 協力プレイで他のキツネが何体も見えるようになったら、遠景用の LOD（同じ UV・テクスチャのまま 15k へ削減）を検討する。
+
+---
+
+## 9. 未対応（次の作業）
+
+- ~~三人称のライフルは素手のモーションに付いているだけ~~ → 2026-11-07 に構えのクリップ一式と両手 IK（`FOX_ANIMATION.md`）。
+- ~~一人称の手は仮のカプセルのまま~~ → キツネの腕（高解像度メッシュから）に置き換え（`FOX_ANIMATION.md` §6）。
+- ~~移動クリップは前進の歩き・走りだけ~~ → 2026-11-07 に Blender Python で 8 方向・ジャンプ・射撃・リロード・スキル・被弾・ダウン・蘇生など一式を制作（`FOX_ANIMATION.md`）。
 - カメラの高さ（1.62 m）と CharacterController（1.8 m）は仮リグのまま。キツネは身長 1.6 m なので、頭の高さに合わせるかはゲームプレイの判断（変えていない）。
-- スプリント（9.5 m/s）では走りが約 2.4 倍速になる。見た目を良くするなら専用のスプリントクリップ。
-- 尻尾・耳・マフラーにボーンがない（腰・頭と一緒に動くだけ）。揺れが欲しければ Blender でボーンを足すか、揺れ物の仕組みを入れる。
+- ~~スプリントで走りが約 2.4 倍速~~ → 専用のスプリントクリップ（9.6 m/s）。
+- ~~尻尾・耳にボーンがない~~ → 尻尾 4・耳 2・指 6 を追加し、尻尾・耳は手続き制御（`FOX_ANIMATION.md` §2・§6）。マフラーは未対応。

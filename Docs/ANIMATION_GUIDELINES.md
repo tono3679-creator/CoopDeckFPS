@@ -85,6 +85,8 @@ Down（IsDown = true） → Revive（Revive トリガー） → Locomotion
 - パラメータは「アニメーション駆動コンポーネント」（実装：`CharacterAnimatorDriver`）がモーター・武器・ヘルスのイベントから設定する。ゲームロジックは Animator に依存しない。
 - オンラインでは、リモートキャラクターは同期された速度・状態からローカルでパラメータを計算する（アニメーション自体は同期しない）。
 
+> 2026-11-07：Fox Gunner の本番 Controller（4 レイヤー、47 クリップ、手の IK、尻尾・耳）は `FOX_ANIMATION.md` を参照。
+
 ### 3.1 Phase 2 で実装した仮の Animator（2026-11-07）
 
 生成ツール（`AnimationAssetFactory`）が `Assets/_Game/Animations/Placeholder/` に作る。外部素材は使っていない。
@@ -107,8 +109,8 @@ Down（IsDown = true） → Revive（Revive トリガー） → Locomotion
 使われ方：
 - 敵：`PF_Enemy_Slasher` は `AC_PlaceholderHumanoid`、`PF_Enemy_Shooter` は `AOC_Shooter`。速度は NavMeshAgent から。
 - プレイヤー：2026-11-07 に本番モデル「Fox Gunner」（Humanoid、`PF_FoxGunner_Body`）へ差し替え。`BodyVisual` は入れ子の Prefab で、Controller は `AC_FoxGunner_TP`（パラメータ名は同じ）。影だけ描画（自分のカメラにメッシュは映らない）。速度は `FpsMotor` から。詳細は `CHARACTER_PIPELINE.md`。
-- NPC（ヴォルト）は引き続き仮リグと `AC_PlaceholderHumanoid`。
-- 一人称の腕・武器はクリップではなく `ViewModelAnimator` のプロシージャル動作（Phase 2 で待機時の呼吸を追加）。武器は 2026-11-07 から本番モデル「Fire Rifle」（`PF_Weapon_FireRifle`、手はまだ仮のカプセル）。同じライフルを全身モデルの右手にも持たせている（素手のモーションのまま。構えのクリップと左手 IK は未対応）。
+- NPC（ヴォルト）は引き続き仮リグと `AC_PlaceholderHumanoid`（同じドライバー・イベント経路で動く）。
+- 一人称：武器は `ViewModelAnimator` のプロシージャル動作、腕は 2026-11-07 からキツネの腕（`FirstPersonArms`、三人称の手の目標を写す 2 ボーン IK）。全身モデルは銃ボーンと手の IK で構える（`FOX_ANIMATION.md`）。
 
 ---
 
@@ -120,7 +122,7 @@ Down（IsDown = true） → Revive（Revive トリガー） → Locomotion
 | Multi-Aim（脊椎・首・頭） | 上半身と頭をエイムポイントに向ける。ピッチ方向の制限を設定 |
 | 足 IK／接地 | 段差・坂で足を地面に合わせる（Raycast で接地点を求めて IK ターゲットを移動） |
 
-- 実装状況（Phase 2）：敵の頭の **Multi-Aim** のみ（`Rig` + `MultiAimConstraint`、`LookTarget` を対象の胸の高さへ毎フレーム移動、左右・上下 ±70°）。左手 Two Bone IK と足 IK は本番モデル導入時に追加する（仮リグには手・足のボーンがない）。
+- 実装状況：敵の頭の **Multi-Aim**（`Rig` + `MultiAimConstraint`、±70°）。Fox Gunner は両手の Two Bone IK（目標はクリップがキーを打つ `IK_Hand_*`）と Humanoid Look At による上半身のエイム（`FOX_ANIMATION.md` §6）。足 IK は未実装。
 - IK のウェイトはステートに応じて切り替える（例：リロード中は左手 IK を弱める、ダウン中は Aim を切る）。
 - Ally X では足 IK を遠距離キャラクターで無効化するなど、性能ティアで負荷を調整できるようにする。
 

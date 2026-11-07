@@ -147,19 +147,29 @@ namespace CoopDeck.Tests
                 Assert.That(r.sharedMaterial, Is.EqualTo(Load<Material>(ViewModelMaterialPath)));
             }
 
-            // Third person: the same rifle in the body's right hand, seen (like the body) only as a shadow.
+            // Third person: the same rifle on the body's Weapon bone (the clips animate it, hand IK holds it), seen
+            // (like the body) only as a shadow.
             Animator body = player.transform.Find("BodyVisual").GetComponent<Animator>();
-            Transform rightHand = body.GetBoneTransform(HumanBodyBones.RightHand);
-            Transform held = rightHand.Cast<Transform>().FirstOrDefault(t => IsFireRifle(t.gameObject));
-            Assert.That(held, Is.Not.Null, "rifle under the RightHand bone");
+            Transform weaponBone = body.GetComponentsInChildren<Transform>(true).First(t => t.name == "Weapon");
+            Transform held = weaponBone.Cast<Transform>().FirstOrDefault(t => IsFireRifle(t.gameObject));
+            Assert.That(held, Is.Not.Null, "rifle under the Weapon bone");
+            Assert.That(held.localPosition.magnitude, Is.LessThan(0.001f), "the Weapon bone is the grip");
             foreach (Renderer r in held.GetComponentsInChildren<Renderer>(true))
             {
                 Assert.That(r.shadowCastingMode, Is.EqualTo(ShadowCastingMode.ShadowsOnly));
                 Assert.That(r.gameObject.layer, Is.EqualTo(player.layer));
             }
 
-            // In the bind pose the grip is at the hand and the muzzle points away from the body (forward-ish).
-            Assert.That(Vector3.Distance(held.position, rightHand.position), Is.LessThan(0.15f), "grip in the palm");
+            // In the shared rifle pose (Combat_Idle) the grip sits in the right palm and the muzzle points forward.
+            body.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            body.Rebind();
+            body.Update(0f);
+            body.Update(0.1f);
+            Transform rightHand = body.GetBoneTransform(HumanBodyBones.RightHand);
+            Transform forearm = body.GetBoneTransform(HumanBodyBones.RightLowerArm);
+            Vector3 palm = rightHand.position + (rightHand.position - forearm.position).normalized * 0.05f;
+            Assert.That(Vector3.Distance(held.position, palm), Is.LessThan(0.1f), "grip in the palm");
+            Assert.That(Vector3.Dot(held.forward, player.transform.forward), Is.GreaterThan(0.8f), "muzzle forward");
         }
     }
 }

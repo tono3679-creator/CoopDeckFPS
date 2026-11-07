@@ -30,9 +30,11 @@ namespace CoopDeck.EditorTools
         public const string LitMaterialPath = MaterialFolder + "/M_FoxGunner_Lit.mat";
         public const string SoftToonMaterialPath = MaterialFolder + "/M_FoxGunner_SoftToon.mat";
         public const string OutlineMaterialPath = MaterialFolder + "/M_FoxGunner_Outline.mat";
+        public const string FirstPersonMaterialPath = MaterialFolder + "/M_FoxGunner_SoftToon_FirstPerson.mat";
+        public const string NormalMapPath = TextureFolder + "/T_FoxGunner_Normal.png"; // refine_character.py normalmap
         public const string SoftToonShaderPath = GamePaths.Root + "/Art/Characters/Shaders/SG_Character_SoftToon.shadergraph";
         public const string OutlineShaderPath = GamePaths.Root + "/Art/Characters/Shaders/CH_Outline.shader";
-        const int MaskSize = 1024;
+        const int MaskSize = 2048; // half the 4096 base colour: crisp region edges
 
         public enum Region { Fur, Face, Eye, Cloth, Leather, Metal, Glass }
 
@@ -89,6 +91,7 @@ namespace CoopDeck.EditorTools
             public Material Lit;
             public Material SoftToon;
             public Material Outline;
+            public Material FirstPerson;
             public Texture2D RegionDebug;
         }
 
@@ -103,6 +106,7 @@ namespace CoopDeck.EditorTools
 
             ConfigureDataTexture(SurfaceMaskPath);
             ConfigureDataTexture(MetallicSmoothnessPath);
+            ConfigureNormalMap();
             var look = new Look
             {
                 Original = original,
@@ -111,6 +115,7 @@ namespace CoopDeck.EditorTools
                 Outline = EnsureOutlineMaterial(),
                 RegionDebug = debug,
             };
+            look.FirstPerson = EnsureFirstPersonMaterial(look.SoftToon);
             AssetDatabase.SaveAssets();
             return look;
         }
@@ -144,7 +149,8 @@ namespace CoopDeck.EditorTools
         {
             string b = bone.ToLowerInvariant();
             if (b.Contains("tail")) return Part.Tail;
-            if (b.Contains("ear") || b.Contains("head")) return Part.Head;
+            if (b.Contains("forearm")) return Part.Forearm; // before "ear": fore-ARM contains it
+            if (b.StartsWith("ear") || b.Contains("_ear") || b.Contains("head")) return Part.Head;
             if (b.Contains("neck")) return Part.Neck;
             if (b.Contains("spine")) return Part.Torso;
             if (b.Contains("hips")) return Part.Hips;
@@ -301,6 +307,8 @@ namespace CoopDeck.EditorTools
                               return $"{kv.Key} n={ys.Length} y {ys[ys.Length / 10]:0.00}/{ys[ys.Length / 2]:0.00}/{ys[ys.Length * 9 / 10]:0.00} z {zs[zs.Length / 2]:0.00}";
                           })));
 
+                int cleaned = RemoveSpeckles(regions, 2);
+                Debug.Log($"[CoopDeck] Fox surface mask: {cleaned} isolated texels joined their neighbours' region");
                 Dilate(regions, 4);
                 WriteMasks(regions, out Texture2D debug);
                 LogCoverage(regions);
@@ -363,6 +371,55 @@ namespace CoopDeck.EditorTools
 
         static readonly int[] NeighbourX = { -1, 0, 1, -1, 1, -1, 0, 1 };
         static readonly int[] NeighbourY = { -1, -1, -1, 0, 0, 1, 1, 1 };
+
+        /// <summary>
+        /// Majority filter over used texels: a texel whose region at most one of its 8 neighbours shares, while 5 or
+        /// more agree on another region, takes that region. Each texel is classified from one base-colour texel, so a
+        /// stray darker or lighter texel in the painted skin or fur would flip class and show as a dot in the shading.
+        /// Thicker features (eye lines, straps) keep their texels; unused texels and UV island gaps are not counted.
+        /// </summary>
+        static int RemoveSpeckles(int[] regions, int passes)
+        {
+            int changed = 0;
+            var counts = new int[Enum.GetValues(typeof(Region)).Length];
+            for (int pass = 0; pass < passes; pass++)
+            {
+                var next = (int[])regions.Clone();
+                for (int y = 0; y < MaskSize; y++)
+                {
+                    for (int x = 0; x < MaskSize; x++)
+                    {
+                        int own = regions[y * MaskSize + x];
+                        if (own < 0) continue;
+                        Array.Clear(counts, 0, counts.Length);
+                        for (int k = 0; k < 8; k++)
+                        {
+                            int nx = x + NeighbourX[k], ny = y + NeighbourY[k];
+                            if (nx < 0 || ny < 0 || nx >= MaskSize || ny >= MaskSize) continue;
+                            int r = regions[ny * MaskSize + nx];
+                            if (r >= 0) counts[r]++;
+                        }
+
+                        if (counts[own] > 1) continue;
+                        int best = own;
+                        for (int r = 0; r < counts.Length; r++)
+                        {
+                            if (r != own && counts[r] >= 5 && counts[r] > counts[best]) best = r;
+                        }
+
+                        if (best != own)
+                        {
+                            next[y * MaskSize + x] = best;
+                            changed++;
+                        }
+                    }
+                }
+
+                Array.Copy(next, regions, regions.Length);
+            }
+
+            return changed;
+        }
 
         /// <summary>Grows regions into unused texels so bilinear filtering and mips do not bleed at UV seams.</summary>
         static void Dilate(int[] regions, int passes)
@@ -480,6 +537,9 @@ namespace CoopDeck.EditorTools
             m.SetFloat("_SmoothnessTextureChannel", 0f); // metallic alpha
             m.SetFloat("_Smoothness", 1f);               // multiplier when the map is set
             m.SetFloat("_Metallic", 1f);
+            m.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(NormalMapPath));
+            m.SetFloat("_BumpScale", 1f);
+            m.EnableKeyword("_NORMALMAP");
             return m;
         }
 
@@ -487,7 +547,34 @@ namespace CoopDeck.EditorTools
         {
             Material m = EnsureMaterial(SoftToonMaterialPath, AssetDatabase.LoadAssetAtPath<Shader>(SoftToonShaderPath));
             m.SetTexture("_SurfaceMask", AssetDatabase.LoadAssetAtPath<Texture2D>(SurfaceMaskPath));
+            m.SetTexture("_NormalMap", AssetDatabase.LoadAssetAtPath<Texture2D>(NormalMapPath));
+            m.SetFloat("_NormalStrength", 1f);
             return m;
+        }
+
+        /// <summary>
+        /// The soft toon look without the body's normal map, for the first-person arms: their mesh (high-res forearms,
+        /// modelled hands) only borrows the body's UVs for colour, so the body's baked normals would not fit it.
+        /// </summary>
+        static Material EnsureFirstPersonMaterial(Material softToon)
+        {
+            Material m = EnsureMaterial(FirstPersonMaterialPath, softToon.shader);
+            m.CopyPropertiesFromMaterial(softToon);
+            m.SetTexture("_NormalMap", null);
+            m.SetFloat("_NormalStrength", 0f);
+            return m;
+        }
+
+        static void ConfigureNormalMap()
+        {
+            var importer = (TextureImporter)AssetImporter.GetAtPath(NormalMapPath);
+            importer.textureType = TextureImporterType.NormalMap;
+            importer.mipmapEnabled = true;
+            importer.maxTextureSize = 4096;
+            importer.textureCompression = TextureImporterCompression.CompressedHQ; // BC5: two clean channels
+            importer.filterMode = FilterMode.Trilinear;
+            importer.anisoLevel = 8;
+            importer.SaveAndReimport();
         }
 
         static Material EnsureOutlineMaterial()
@@ -579,6 +666,19 @@ namespace CoopDeck.EditorTools
             // Before / URP Lit / soft toon, top to bottom.
             WriteSheet("Screenshots/FoxLook_Compare.png", rows[0], rows[1], rows[2]);
             WriteSheet("Screenshots/FoxLook_BeforeAfter.png", rows[0], rows[2]);
+
+            // The baked normal map shows mostly where light turns away: the soft toon look under a low side sun,
+            // without (top) and with (bottom) the map.
+            sun.transform.rotation = Quaternion.Euler(18f, 100f, 0f);
+            var flat = new Material(look.SoftToon) { hideFlags = HideFlags.DontSave };
+            flat.SetFloat("_NormalStrength", 0f);
+            skinned.sharedMaterials = new[] { flat, look.Outline };
+            Texture2D sideFlat = CaptureRow(camera, body.transform);
+            skinned.sharedMaterials = new[] { look.SoftToon, look.Outline };
+            Texture2D sideMapped = CaptureRow(camera, body.transform);
+            WriteSheet("Screenshots/FoxLook_NormalMap_SideLight.png", sideFlat, sideMapped);
+            Object.DestroyImmediate(flat);
+            sun.transform.rotation = Quaternion.Euler(38f, 145f, 0f);
             Object.DestroyImmediate(groundMaterial);
             Object.DestroyImmediate(debugMaterial);
             Debug.Log("[CoopDeck] Fox look captures written to Screenshots/FoxLook_*.png");
@@ -607,7 +707,7 @@ namespace CoopDeck.EditorTools
         static void CaptureInSandbox(Look look)
         {
             EditorSceneManager.OpenScene(GamePaths.SandboxScene, OpenSceneMode.Single); // never saved
-            Transform player = Object.FindObjectsByType<CoopDeck.Input.PlayerInputReader>(FindObjectsSortMode.None).First().transform;
+            Transform player = Object.FindAnyObjectByType<CoopDeck.Input.PlayerInputReader>().transform;
             Vector3 spot = player.position + player.forward * 4f + player.right * 0.6f;
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(FoxGunnerAssetFactory.PrefabPath);
             var body = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
@@ -658,6 +758,7 @@ namespace CoopDeck.EditorTools
         /// </summary>
         public static void BenchmarkBatch()
         {
+            int previousLevel = QualitySettings.GetQualityLevel(); // restored below so the project settings stay untouched
             try
             {
                 string level = Environment.GetCommandLineArgs().SkipWhile(a => a != "-coopdeckQuality").Skip(1).FirstOrDefault() ?? "Handheld";
@@ -673,7 +774,7 @@ namespace CoopDeck.EditorTools
                 camera.transform.SetPositionAndRotation(new Vector3(0f, 1.0f, 4.2f), Quaternion.Euler(4f, 180f, 0f));
                 camera.fieldOfView = 68f;
                 camera.GetUniversalAdditionalCameraData().renderPostProcessing = true;
-                Light sun = Object.FindObjectsByType<Light>(FindObjectsSortMode.None).First();
+                Light sun = Object.FindAnyObjectByType<Light>();
                 sun.shadows = LightShadows.Soft;
 
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(FoxGunnerAssetFactory.PrefabPath);
@@ -737,6 +838,10 @@ namespace CoopDeck.EditorTools
             {
                 Debug.LogException(e);
                 EditorApplication.Exit(1);
+            }
+            finally
+            {
+                QualitySettings.SetQualityLevel(previousLevel, false);
             }
         }
 

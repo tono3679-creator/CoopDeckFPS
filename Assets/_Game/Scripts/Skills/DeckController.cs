@@ -193,6 +193,12 @@ namespace CoopDeck.Skills
             SkillCastReport report = caster != null && caster.IsInitialized
                 ? caster.CastCard(result.Card.Definition, result.Card.UpgradeLevel)
                 : new SkillCastReport { Card = result.Card.Definition };
+            CoopDeck.Animation.CharacterAnimatorDriver body = character != null ? character.BodyAnimator : null;
+            if (body != null)
+            {
+                body.Skill(SkillMotionRules.For(result.Card.Definition)); // the cast motion never delays the effect
+            }
+
             CardActivated?.Invoke(result, report);
             return true;
         }
@@ -232,6 +238,12 @@ namespace CoopDeck.Skills
             else
             {
                 Notice?.Invoke($"{result.Item.displayName}：手札 {result.CardsAffected} 枚 +{result.Item.amount:0}");
+            }
+
+            CoopDeck.Animation.CharacterAnimatorDriver itemBody = character != null ? character.BodyAnimator : null;
+            if (itemBody != null)
+            {
+                itemBody.Interact(CoopDeck.Animation.InteractionMotion.UseItem);
             }
 
             ItemUsed?.Invoke(result);

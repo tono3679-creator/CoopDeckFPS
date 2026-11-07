@@ -8,7 +8,8 @@
         "CoopDeck.Cards",
         "CoopDeck.Deck",
         "CoopDeck.Items",
-        "CoopDeck.Player"
+        "CoopDeck.Player",
+        "CoopDeck.Animation"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

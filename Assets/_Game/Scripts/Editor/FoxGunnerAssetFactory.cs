@@ -20,6 +20,7 @@ namespace CoopDeck.EditorTools
         public AnimatorController Controller;
         public Material Material;
         public Avatar Avatar;
+        public FoxGunnerAnimationSet Animations;
     }
 
     /// <summary>
@@ -103,8 +104,10 @@ namespace CoopDeck.EditorTools
             Avatar avatar = ConfigureModel();
             AnimationClip walk = ConfigureClip(WalkPath, WalkClipName);
             AnimationClip run = ConfigureClip(RunPath, RunClipName);
-            AnimationClip idle = EnsureIdleClip(walk, overwriteAnimations);
-            AnimatorController controller = EnsureController(idle, walk, run, overwriteAnimations);
+            EnsureIdleClip(walk, overwriteAnimations); // the first Meshy-based clips stay imported (not used by the controller)
+            // Blender-authored rifle clips, masks and the layered controller (FoxGunnerAnimationFactory, Docs/FOX_ANIMATION.md).
+            FoxGunnerAnimationSet animations = FoxGunnerAnimationFactory.EnsureAll(avatar);
+            AnimatorController controller = animations.Controller;
             Material material = EnsureMaterial(); // the original cel material, kept for comparison (and backed up)
             // The body wears the soft-toon look (Shader Graph + surface mask) and a thin outline as a second material.
             FoxGunnerLookFactory.Look look = FoxGunnerLookFactory.EnsureAll(rebuildMask: false);
@@ -112,7 +115,10 @@ namespace CoopDeck.EditorTools
             AssetDatabase.SaveAssets();
 
             LogSummary(prefab, avatar);
-            return new FoxGunnerAssets { BodyPrefab = prefab, Controller = controller, Material = material, Avatar = avatar };
+            return new FoxGunnerAssets
+            {
+                BodyPrefab = prefab, Controller = controller, Material = material, Avatar = avatar, Animations = animations,
+            };
         }
 
         /// <summary>Size and facing of the bind pose, measured on the skinned result (sharedMesh.bounds is in bind space).</summary>
@@ -158,9 +164,12 @@ namespace CoopDeck.EditorTools
             importer.sRGBTexture = true;
             importer.alphaSource = TextureImporterAlphaSource.None;
             importer.mipmapEnabled = true;
-            importer.maxTextureSize = 2048;
-            importer.textureCompression = TextureImporterCompression.Compressed;
-            importer.anisoLevel = 2;
+            // 4096 with even texel density (refine_character.py); BC7 keeps the smooth gradients free of blocks,
+            // trilinear + anisotropic filtering keep it clean at a distance and at grazing angles.
+            importer.maxTextureSize = 4096;
+            importer.textureCompression = TextureImporterCompression.CompressedHQ;
+            importer.filterMode = FilterMode.Trilinear;
+            importer.anisoLevel = 8;
             importer.SaveAndReimport();
         }
 
@@ -175,7 +184,7 @@ namespace CoopDeck.EditorTools
             importer.optimizeMeshVertices = true;
             importer.weldVertices = true;
             importer.importNormals = ModelImporterNormals.Import;   // smooth normals baked in Blender
-            importer.importTangents = ModelImporterTangents.None;   // no normal map
+            importer.importTangents = ModelImporterTangents.CalculateMikk; // MikkTSpace, as Blender baked T_FoxGunner_Normal
             importer.skinWeights = ModelImporterSkinWeights.Standard; // 4 bones per vertex
             importer.optimizeGameObjects = false;                  // keep bone transforms for IK and sockets
             ApplyHumanoid(importer, null);
@@ -409,67 +418,6 @@ namespace CoopDeck.EditorTools
             }
         }
 
-        static AnimatorController EnsureController(AnimationClip idle, AnimationClip walk, AnimationClip run, bool overwrite)
-        {
-            var existing = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
-            if (existing != null && !overwrite)
-            {
-                return existing;
-            }
-
-            EditorUtil.EnsureFolder(AnimFolder);
-            AssetDatabase.DeleteAsset(ControllerPath);
-            AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
-
-            // Same parameter set as the placeholder controller, so CharacterAnimatorDriver can drive it unchanged.
-            controller.AddParameter(AnimatorParams.MoveX, AnimatorControllerParameterType.Float);
-            controller.AddParameter(AnimatorParams.MoveY, AnimatorControllerParameterType.Float);
-            controller.AddParameter(AnimatorParams.Speed, AnimatorControllerParameterType.Float);
-            controller.AddParameter(new AnimatorControllerParameter
-            {
-                name = AnimatorParams.LocomotionSpeed, type = AnimatorControllerParameterType.Float, defaultFloat = 1f,
-            });
-            controller.AddParameter(new AnimatorControllerParameter
-            {
-                name = AnimatorParams.IsGrounded, type = AnimatorControllerParameterType.Bool, defaultBool = true,
-            });
-            controller.AddParameter(AnimatorParams.VerticalSpeed, AnimatorControllerParameterType.Float);
-            controller.AddParameter(AnimatorParams.Fire, AnimatorControllerParameterType.Trigger);
-            controller.AddParameter(AnimatorParams.Reload, AnimatorControllerParameterType.Trigger);
-            controller.AddParameter(AnimatorParams.Attack, AnimatorControllerParameterType.Trigger);
-            controller.AddParameter(AnimatorParams.Hit, AnimatorControllerParameterType.Trigger);
-            controller.AddParameter(AnimatorParams.Dead, AnimatorControllerParameterType.Bool);
-
-            AnimatorState locomotion = controller.CreateBlendTreeInController("Locomotion", out BlendTree tree, 0);
-            tree.name = "Locomotion";
-            tree.blendType = BlendTreeType.Simple1D;
-            tree.blendParameter = AnimatorParams.Speed;
-            tree.useAutomaticThresholds = false;
-            tree.AddChild(idle, 0f);
-            tree.AddChild(walk, WalkClipSpeed);
-            tree.AddChild(run, RunClipSpeed);
-            for (float speed = RunClipSpeed + RunStep; speed <= FastRunThreshold + 0.001f; speed += RunStep)
-            {
-                tree.AddChild(run, speed);
-            }
-
-            ChildMotion[] children = tree.children;
-            for (int i = 0; i < children.Length; i++)
-            {
-                if (children[i].motion == run)
-                {
-                    children[i].timeScale = children[i].threshold / RunClipSpeed;
-                }
-            }
-
-            tree.children = children;
-            controller.layers[0].stateMachine.defaultState = locomotion;
-
-            EditorUtility.SetDirty(controller);
-            AssetDatabase.SaveAssets();
-            return controller;
-        }
-
         static Material EnsureMaterial()
         {
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(ToonShaderPath);
@@ -521,6 +469,9 @@ namespace CoopDeck.EditorTools
                 skinned.shadowCastingMode = ShadowCastingMode.On;
                 skinned.receiveShadows = true;
             }
+
+            // hand IK on the clip-keyed goals, look-at toward the aim, procedural tail and ears
+            FoxGunnerAnimationFactory.SetupBody(instance);
 
             EditorUtil.EnsureFolder(GamePaths.CharacterPrefabs);
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(instance, PrefabPath);

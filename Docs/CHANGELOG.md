@@ -2,6 +2,61 @@
 
 形式：日付ごとに「追加 / 変更 / 修正 / 検証」。検証していないものは「検証」に書かない。
 
+## 2026-11-08 — Fox Gunner の高品質化（均一な 4K テクスチャ・法線マップ・4 万三角形の体）
+
+詳細は `CHARACTER_PIPELINE.md` §8・§8.1・§8.2。ボーン構成・アニメーション・配色は変えていない。外部ツール：Real-ESRGAN（BSD-3、ローカル実行、リポジトリには入れない）。
+
+### 追加
+- `ArtSource/Tools/refine_character.py`：UV 島の外を埋める（dilate）→ Real-ESRGAN でタイル分割の 4 倍拡大（upscale）→ 同じ島を面積比でそろえて 4096 に詰め直し、旧 UV から色を焼き直す（bake）。`--check` で旧・新の比較画像。
+- `ArtSource/FoxGunner/Export/FoxGunner_HQ.glb`（同じ 24 ボーン・メッシュ・スキン、新しい UV、4K テクスチャ入り）。
+- テスト `BaseColor_Is4K_HighQuality_WithEvenTexelDensity`（4096・BC7・異方性、テクセル密度の 95%/5% 比 1.8 未満）。
+- 法線マップ `T_FoxGunner_Normal.png`（4096、Meshy の 230 万三角形の高精細モデルから接空間でベイク、`refine_character.py normalmap`）。頂点は増やさず、溶けていたゴーグルの面取り・ベルト・ブーツ・マフラーのしわの陰影を高精細と同じにする。
+- `SG_Character_SoftToon` に `_NormalMap` / `_NormalStrength`。一人称の腕用に法線マップなしの `M_FoxGunner_SoftToon_FirstPerson`。
+- テスト `Body_ShadesWithTheHighResNormalMap_AndTheFirstPersonArmsDoNot`、比較画像 `FoxLook_NormalMap_SideLight.png`（横からの光で法線マップなし／あり）。
+
+### 変更
+- `T_FoxGunner_BaseColor.png` を 2048 → 4096（テクセル密度の差 約 3 倍 → 1.5 倍、線画のギザギザとノイズを除去）。取り込みは BC7・トライリニア・異方性 8。
+- `fox_common.EXPORT_GLB` を `FoxGunner_HQ.glb` に。`fox_rig.py`・`build_clips.py`・`fox_fp_arms.py` を再実行して `FoxGunner.fbx`（42 ボーン）・`A_FoxGunner_Set.fbx`・`FoxGunner_FPArms.fbx` を新しい UV で再出力。
+- 部位マスクを 1024 → 2048 で作り直し（毛 38.3%・顔 4.2%・布 35.0%・革 19.0%・金属 3.4%。テクセル数の割合なので、旧アトラスで顔に多く割かれていた分が減った）。
+- `FoxGunnerLookFactory.BenchmarkBatch` が変更した画質レベルを元に戻すように。古い API 呼び出し（CS0618）2 件を置き換え。
+- 体の FBX の接線を MikkTSpace で計算（法線マップ用）。一人称の腕は `M_FoxGunner_SoftToon_FirstPerson` を使う（`FoxGunnerAnimationFactory` の 1 行）。
+- 体を Meshy の高精細モデルから 40,000 三角形で作り直し（`refine_character.py rebuild`：削減・均一 UV・色と法線マップの焼き直し・24 ボーンのウェイト転写）。`FoxGunner_HQ.glb`・`T_FoxGunner_BaseColor.png`・`T_FoxGunner_Normal.png` を置き換え、`fox_anim` 一式（尻尾 785・耳 1,095/1,111・指 618/435 頂点）と一人称の腕を再出力。テストの予算を 30k〜45k 三角形・6 万頂点に（Unity で 52,554 頂点）。
+
+### 修正
+- 一人称の左前腕（肘の内側）に黒い三角形が出ていた。原因は前腕の UV 転写：頂点ごとに最寄りの面から UV を取る方式（Data Transfer）だと、UV の継ぎ目をまたぐ面の角が別々の島に乗り、面がアトラスを横切って伸びる（新しい UV では継ぎ目が増え目立った）。さらに体から切り出した腕は肘付近の大きな三角形が欠けていた。`fox_fp_arms.body_uvs` に置き換え：UV は体全体から取り、各面は中心に最寄りの体の三角形から UV が連続する半径 3 cm の範囲にだけ写す。継ぎ目の端をまたぐ面・アトラスの隙間を横切る面（14,000 面中 680 面）は 1 枚の三角形に収める。`FoxGunner_FPArms.fbx` を再出力（頂点・面数は同じ）。
+
+- 4 万三角形への切り替え後、一人称の左前腕の肌に 1 ピクセルの暗い点が出ていた。原因は部位マスク：各テクセルを基本色の 1 テクセルの色で判定するため、4K（Real-ESRGAN）の塗りの細かなムラで孤立したテクセルが別の部位になり、トゥーンの陰影が点状に変わっていた。`FoxGunnerLookFactory.RemoveSpeckles`（3×3 の多数決 2 回：同じ部位の隣が 1 つ以下で、5 つ以上が別の部位なら合わせる）を判定とにじみ出しの間に追加し、マスクを作り直し（9,409 テクセルを修正、部位の割合はほぼ同じ：毛 38.2%・顔 4.2%・布 35.1%・革 18.3%・金属 4.1%）。
+
+### 検証
+- 部位マスクの修正：EditMode 234/234、PlayMode 59/59、`FoxAnimationCaptureTests` 3/3。`FoxAnim_FirstPerson.png` の左前腕に点なし（細い赤線はテクスチャの傷の模様）。
+- 一人称の腕の UV 修正：Blender で体と一人称の前腕を同じカメラ 4 方向から平坦テクスチャで描画して一致を確認（黒い部分なし）、伸びた面 0。Unity の一人称の撮影（`FoxAnim_FirstPerson.png`）で左前腕がきれいなことを確認。
+- 4 万三角形の体で EditMode 234/234、PlayMode 59/59、`FoxAnimationCaptureTests` 3/3（`Diagnose_TailShape`：尻尾の届き 0.69 m・スケール 1.0）、コンパイル警告 0。`FoxHQ_ThreeStages.png`（元・15k＋4K テクスチャ・40k＋法線マップ）。
+- 4 万三角形の負荷：キツネ 9 体でキツネなし 2.48 ms → 4.32 ms。Windows ビルド（164 MB、エラー 0）の `-perfrun 30`：平均 59.98 FPS、1% low 58.4 FPS、GPU 2.60 ms、メインスレッド 3.58 ms（プレイヤーの体は影だけ）。
+- 15k＋法線マップの段階：EditMode 234/234、PlayMode 59/59、`FoxAnimationCaptureTests` 3/3（コンパイル警告 0）。一人称の手の見た目に変化なし（`FoxAnim_FirstPerson_Hands.png`）。
+- 15k＋法線マップの負荷（Handheld、キツネ 9 体）：キツネなし 2.95 ms、Shader Graph 版＋輪郭線 3.50 ms。
+- テクスチャのみの段階：EditMode 233/233、PlayMode 59/59、`FoxAnimationCaptureTests` 3/3。
+- Unity での撮影：`Screenshots/FoxHQ_BeforeAfter.png`（上が変更前）、`FoxLook_*.png`、`FoxAnim_*.png`（全モーション・一人称の腕の色）。
+- ROG Ally X（Handheld、キツネ 9 体、1280×720）：キツネなし 2.45 ms、Shader Graph 版＋輪郭線 3.16 ms。
+
+## 2026-11-07 — Fox Gunner のアニメーション一式（Blender Python → Unity）
+
+外部素材・有料サービスなし。詳細は `FOX_ANIMATION.md`。モーションはスクリプトで生成した暫定版（モーキャプ・手付けではない）。
+
+### 追加
+- `ArtSource/Tools/fox_anim/`：尻尾 4・耳 2・指 6 のボーンと自動ウェイト、銃ボーンと手の IK 目標（`fox_rig.py`）、姿勢ソルバー（FK＋解析 2 ボーン IK＋足の接地）、接地足が滑らない歩行生成、47 クリップ（依頼の 01〜42＋補助）、確認用レンダー、一人称の腕（前腕＝Meshy 高解像度メッシュ、手＝Blender で新規造形した指 3 関節の手袋の手と詠唱用シェイプキー：`fox_fp_arms.py` / `fox_fp_hands.py`）。
+- Unity：`FoxGunnerAnimationFactory`（Humanoid 取り込み・クリップ表・マスク・4 レイヤーの `AC_FoxGunner_TP`・体の IK/視線/尻尾耳・一人称の腕）、`FoxBodyAnimator`（エイム方向への視線と銃口補正）、`FoxSecondaryMotion`（尻尾・耳のばね、耳のリアクション、Ultimate の尻尾、待機の表情）、`FirstPersonArms`（体の手の目標をビューモデルの銃へ写す 2 ボーン IK）、`CharacterAnimationEvents`（ゲームのイベント→アニメーション）、`SkillMotionRules`（カード→詠唱モーション）。
+- `AnimatorParams` に移動・武器・スキル・反応・インタラクションのパラメータ、`SkillMotion` / `InteractionMotion`。`Revivable.Active` / `IsReviving`、`FpsMotor.DashDirection`。
+
+### 変更
+- `FoxGunner.fbx` を 42 ボーンで再出力（元の 24 ボーン・メッシュ・UV は同じ）。`AC_FoxGunner_TP` を速度 1D ブレンドから 4 レイヤーの構成へ（パラメータ名は従来どおり）。Meshy の歩き・走り・待機クリップは残す（新 Controller では未使用）。
+- `HeldRifle` を右手から `Weapon` ボーンへ。一人称の仮の手（カプセル）をキツネの腕に置き換え。
+- `CharacterAnimatorDriver`：m/s の速度リングと再生速度補正、Controller にないパラメータは触らない型付き API。`FpsCharacter` のアニメーション配線を `CharacterAnimationEvents` へ。
+
+### 検証
+- EditMode 232/232、PlayMode 59/59（撮影・診断の手動テスト 3 件は除く）。一人称の手のずれ 0.0 cm、手首のねじれは前腕へ 6 割分散（残り最大 69°）。手と銃のずれ 0.0 cm、エイム時の銃口誤差 0.0°（上 35° で 0.2°）、6.5 m/s 走行時の接地足の滑り 0.18 m/s。
+- Windows ビルド成功（116 MB、エラー・警告 0）。ROG Ally X（Handheld）で平均 59.9 FPS、メインスレッド 3.7 ms、GPU 2.4 ms。
+- Unity での撮影（`Screenshots/FoxAnim_*.png`）で全モーションと一人称の腕を目視確認。
+
 ## 2026-11-07 — Fox Gunner の質感改善（フィギュアっぽさを減らす）
 
 外部素材・有料サービスなし（Shader Graph の作りは Unity 公式サンプル「Custom Lighting」を参考、Unity Companion License）。手順と数値は `CHARACTER_PIPELINE.md` §7。

@@ -54,16 +54,46 @@ namespace CoopDeck.Combat
             self = GetComponent<ICombatActor>();
         }
 
+        static readonly System.Collections.Generic.List<Revivable> active = new System.Collections.Generic.List<Revivable>();
+
+        /// <summary>Enabled revivables (index loop, no allocation): e.g. to see who is reviving whom for animation.</summary>
+        public static System.Collections.Generic.IReadOnlyList<Revivable> Active => active;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => active.Clear();
+
+        /// <summary>True while <paramref name="actor"/> is filling some downed ally's revive bar.</summary>
+        public static bool IsReviving(ICombatActor actor)
+        {
+            if (actor == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < active.Count; i++)
+            {
+                Revivable r = active[i];
+                if (r != null && r.IsDowned && !r.HasBledOut && ReferenceEquals(r.CurrentReviver, actor))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         void OnEnable()
         {
             Health.Died += OnDied;
             Health.Revived += OnRevived;
+            active.Add(this);
         }
 
         void OnDisable()
         {
             Health.Died -= OnDied;
             Health.Revived -= OnRevived;
+            active.Remove(this);
         }
 
         void OnDied(Health dead, DamageInfo info)

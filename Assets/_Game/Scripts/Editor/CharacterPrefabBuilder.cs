@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using CoopDeck.Animation;
 using CoopDeck.Cards;
 using CoopDeck.Combat;
@@ -83,11 +84,13 @@ namespace CoopDeck.EditorTools
             bodyAnimator.applyRootMotion = false;
             bodyAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate; // bones may drive sockets/IK even when off screen
 
-            // The same Fire Rifle the first-person view shows, carried in the body's right hand (its shadow for now).
-            FireRifleAssetFactory.RightHandHold(bodyPrefab, out Vector3 holdPosition, out Quaternion holdRotation);
-            var heldRifle = (GameObject)PrefabUtility.InstantiatePrefab(rifleVisual.Prefab, bodyAnimator.GetBoneTransform(HumanBodyBones.RightHand));
+            // The same Fire Rifle the first-person view shows, on the body's Weapon bone: the clips animate that bone
+            // (grip frame) and hand IK keeps both hands on it (Docs/FOX_ANIMATION.md). The body is still in its bind
+            // pose here, where the Weapon bone is the rifle frame facing forward.
+            Transform weaponBone = FoxGunnerAnimationFactory.WeaponBone(body.transform);
+            var heldRifle = (GameObject)PrefabUtility.InstantiatePrefab(rifleVisual.Prefab, weaponBone);
             heldRifle.name = "HeldRifle";
-            heldRifle.transform.SetLocalPositionAndRotation(holdPosition, holdRotation);
+            heldRifle.transform.SetLocalPositionAndRotation(Vector3.zero, FoxGunnerAnimationFactory.RifleLocalRotation(body.transform, weaponBone));
 
             foreach (Renderer bodyRenderer in body.GetComponentsInChildren<Renderer>(true))
             {
@@ -96,6 +99,11 @@ namespace CoopDeck.EditorTools
 
             var bodyDriver = root.AddComponent<CharacterAnimatorDriver>();
             bodyDriver.Configure(bodyAnimator, motor, movement != null ? movement.walkSpeed : 6.5f, FoxGunnerAssetFactory.RunClipSpeed);
+            // Blend tree in m/s on the walk / run / sprint rings; LocomotionSpeed keeps the planted foot in step.
+            FoxGunnerAnimationFactory.ClipTable clipTable = FoxGunnerAnimationFactory.LoadTable();
+            LocomotionRing[] rings = FoxGunnerAnimationFactory.Rings(clipTable);
+            float reloadClip = clipTable.clips.First(c => c.name == FoxGunnerAnimationFactory.Prefix + "Rifle_Reload").seconds;
+            bodyDriver.ConfigureRings(rings, rings[rings.Length - 1].speed, reloadClip);
             EditorUtil.SetObject(character, "bodyAnimator", bodyDriver);
 
             var pivot = new GameObject("CameraPivot");
@@ -131,6 +139,8 @@ namespace CoopDeck.EditorTools
             cameraData.cameraStack.Add(viewModelCamera);
 
             Transform muzzle = BuildRifleViewModel(cameraGo.transform, m, rifleVisual, out GameObject viewModelRoot);
+            // First-person arms: the fox mesh's forearms and gloves, posed every frame from the body's authored hand goals.
+            FoxGunnerAnimationFactory.AddFirstPersonArms(viewModelRoot.transform, body.transform, GameLayers.ViewModelIndex, bodyDriver);
 
             EditorUtil.SetObject(hitscan, "muzzle", muzzle);
             EditorUtil.SetObject(caster, "castOrigin", muzzle);
@@ -187,11 +197,7 @@ namespace CoopDeck.EditorTools
                 renderer.receiveShadows = false;
             }
 
-            // Placeholder hands, to be replaced by the first-person arm rig (see ANIMATION_GUIDELINES.md).
-            EditorUtil.VisualPrimitive(PrimitiveType.Capsule, "RightHand", r, new Vector3(0.01f, -0.1f, -0.1f), new Vector3(0.065f, 0.08f, 0.065f), m.Glove, new Vector3(-20f, 0f, 0f), false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Capsule, "RightForearm", r, new Vector3(0.05f, -0.16f, -0.24f), new Vector3(0.07f, 0.12f, 0.07f), m.Glove, new Vector3(-60f, 0f, 0f), false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Capsule, "LeftHand", r, new Vector3(-0.03f, -0.05f, 0.27f), new Vector3(0.065f, 0.07f, 0.065f), m.Glove, new Vector3(0f, 0f, 80f), false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Capsule, "LeftForearm", r, new Vector3(-0.12f, -0.13f, 0.18f), new Vector3(0.07f, 0.13f, 0.07f), m.Glove, new Vector3(-50f, 40f, 0f), false);
+            // The fox's own arms are added by FoxGunnerAnimationFactory.AddFirstPersonArms (they follow the body's hand goals).
 
             return model.transform.Find(FireRifleAssetFactory.MuzzleSocket);
         }

@@ -27,6 +27,7 @@ namespace CoopDeck.Player
 
         [Tooltip("Full-body animation (seen by others, and as the local player's shadow). Optional.")]
         [SerializeField] CharacterAnimatorDriver bodyAnimator;
+        CharacterAnimationEvents bodyEvents;
 
         ICharacterCommandSource commandSource;
         CombatStatus status;
@@ -130,20 +131,23 @@ namespace CoopDeck.Player
             if (weapon != null)
             {
                 weapon.Initialize(this, look, Team, GameLayers.PlayerShotMask);
-                if (bodyAnimator != null)
-                {
-                    weapon.Fired += _ => bodyAnimator.Trigger(AnimatorParams.FireId);
-                    weapon.ReloadStarted += () => bodyAnimator.Trigger(AnimatorParams.ReloadId);
-                }
             }
 
-            if (bodyAnimator != null && health != null)
+            // Full-body animation follows gameplay events (shots, hits, jumps, down/revive...); it never drives them.
+            if (bodyAnimator != null)
             {
-                health.Damaged += (info, result) => bodyAnimator.Trigger(AnimatorParams.HitId);
-                health.Died += (h, info) => bodyAnimator.SetDead(true);
-                health.Revived += h => bodyAnimator.SetDead(false);
+                bodyEvents = new CharacterAnimationEvents(this, bodyAnimator, motor, look, weapon, health, GetComponent<Revivable>());
             }
         }
+
+        void OnDestroy()
+        {
+            bodyEvents?.Dispose();
+            bodyEvents = null;
+        }
+
+        /// <summary>The full-body animation driver (null when the character has no body visual).</summary>
+        public CharacterAnimatorDriver BodyAnimator => bodyAnimator;
 
         // Registered while enabled so enemies (and later NPC allies) can find this character.
         void OnEnable() => CombatantRegistry.Register(this);
@@ -153,6 +157,7 @@ namespace CoopDeck.Player
         void Update()
         {
             Step(Time.deltaTime);
+            bodyEvents?.Tick();
         }
 
         /// <summary>One simulation step. Public so tests (and later a fixed network tick) can drive it.</summary>

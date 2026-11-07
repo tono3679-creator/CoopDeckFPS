@@ -29,6 +29,9 @@ namespace CoopDeck.Tests
         const string SoftToonMaterialPath = "Assets/_Game/Art/Characters/FoxGunner/Materials/M_FoxGunner_SoftToon.mat";
         const string OutlineMaterialPath = "Assets/_Game/Art/Characters/FoxGunner/Materials/M_FoxGunner_Outline.mat";
         const string BackupMaterialPath = "Assets/_Game/Art/Characters/FoxGunner/Materials/Backup/M_FoxGunner_Toon_Original.mat";
+        const string FirstPersonMaterialPath = "Assets/_Game/Art/Characters/FoxGunner/Materials/M_FoxGunner_SoftToon_FirstPerson.mat";
+        const string NormalMapPath = "Assets/_Game/Art/Characters/FoxGunner/Textures/T_FoxGunner_Normal.png";
+        const string PlayerPrefabPath = "Assets/_Game/Prefabs/Characters/PF_Player.prefab";
 
         GameObject instance;
 
@@ -122,10 +125,58 @@ namespace CoopDeck.Tests
         {
             SkinnedMeshRenderer skinned = SpawnBody().GetComponentInChildren<SkinnedMeshRenderer>();
             Mesh mesh = skinned.sharedMesh;
-            Assert.That(mesh.triangles.Length / 3, Is.LessThanOrEqualTo(20000), "triangles");
-            Assert.That(mesh.vertexCount, Is.LessThanOrEqualTo(20000), "vertices after UV-seam splits");
-            Assert.That(skinned.bones.Length, Is.LessThanOrEqualTo(32), "bones");
+            // Rebuilt from Meshy's high-res sculpt at 40k (refine_character.py rebuild); Meshy's own 15k remesh was lumpy.
+            Assert.That(mesh.triangles.Length / 3, Is.InRange(30000, 45000), "triangles");
+            // The sculpt's fur cards and layered cloth split into many UV islands: ~1.3 vertices per triangle.
+            Assert.That(mesh.vertexCount, Is.LessThanOrEqualTo(60000), "vertices after UV-seam splits");
+            // 24 Meshy bones + tail 4, ears 2, fingers 6 (skinned) + Weapon, 4 IK goals and FP_Grip_L (no weights) = 42
+            Assert.That(skinned.bones.Length, Is.LessThanOrEqualTo(42), "bones");
             Assert.That(mesh.subMeshCount, Is.EqualTo(1), "one draw call per pass");
+        }
+
+        [Test]
+        public void BaseColor_Is4K_HighQuality_WithEvenTexelDensity()
+        {
+            var importer = (TextureImporter)AssetImporter.GetAtPath(BaseMapPath);
+            Assert.That(importer.maxTextureSize, Is.EqualTo(4096));
+            Assert.That(importer.textureCompression, Is.EqualTo(TextureImporterCompression.CompressedHQ), "BC7: no blocky gradients");
+            Assert.That(importer.anisoLevel, Is.GreaterThanOrEqualTo(4));
+            Assert.That(Load<Texture2D>(BaseMapPath).width, Is.EqualTo(4096));
+
+            // Texels per unit of surface, area-weighted: Meshy's atlas spread 3x between the 5% and 95% points;
+            // refine_character.py gives every part the same detail.
+            Mesh mesh = SpawnBody().GetComponentInChildren<SkinnedMeshRenderer>().sharedMesh;
+            Vector3[] v = mesh.vertices;
+            Vector2[] uv = mesh.uv;
+            int[] t = mesh.triangles;
+            var samples = new List<(float density, float area)>();
+            for (int i = 0; i < t.Length; i += 3)
+            {
+                float area3 = Vector3.Cross(v[t[i + 1]] - v[t[i]], v[t[i + 2]] - v[t[i]]).magnitude;
+                Vector2 a = uv[t[i + 1]] - uv[t[i]], b = uv[t[i + 2]] - uv[t[i]];
+                float area2 = Mathf.Abs(a.x * b.y - a.y * b.x);
+                if (area3 > 1e-10f)
+                {
+                    samples.Add((Mathf.Sqrt(area2 / area3), area3));
+                }
+            }
+
+            samples.Sort((p, q) => p.density.CompareTo(q.density));
+            float total = samples.Sum(s => s.area);
+            float Percentile(float q)
+            {
+                float acc = 0f;
+                foreach (var s in samples)
+                {
+                    acc += s.area;
+                    if (acc >= q * total) return s.density;
+                }
+
+                return samples[samples.Count - 1].density;
+            }
+
+            float spread = Percentile(0.95f) / Percentile(0.05f);
+            Assert.That(spread, Is.LessThan(1.8f), $"texel density 95%/5% = {spread:F2}");
         }
 
         [Test]
@@ -147,6 +198,39 @@ namespace CoopDeck.Tests
             // The cel material from before the look work is kept, untouched and backed up, for comparison.
             Assert.That(Load<Material>(MaterialPath).shader.name, Is.EqualTo(ShaderName));
             Assert.That(Load<Material>(BackupMaterialPath).shader.name, Is.EqualTo(ShaderName));
+        }
+
+        [Test]
+        public void Body_ShadesWithTheHighResNormalMap_AndTheFirstPersonArmsDoNot()
+        {
+            var normalMap = Load<Texture2D>(NormalMapPath);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(NormalMapPath);
+            Assert.That(importer.textureType, Is.EqualTo(TextureImporterType.NormalMap));
+            Assert.That(importer.textureCompression, Is.EqualTo(TextureImporterCompression.CompressedHQ), "BC5");
+            Assert.That(normalMap.width, Is.EqualTo(4096));
+
+            var softToon = Load<Material>(SoftToonMaterialPath);
+            Assert.That(softToon.GetTexture("_NormalMap"), Is.EqualTo(normalMap));
+            Assert.That(softToon.GetFloat("_NormalStrength"), Is.GreaterThan(0.5f));
+
+            // Tangents (MikkTSpace, as baked) are needed for the tangent-space map.
+            Mesh mesh = SpawnBody().GetComponentInChildren<SkinnedMeshRenderer>().sharedMesh;
+            Vector4[] tangents = mesh.tangents;
+            Assert.That(tangents.Length, Is.EqualTo(mesh.vertexCount));
+            Assert.That(tangents.All(t => Mathf.Abs(new Vector3(t.x, t.y, t.z).magnitude - 1f) < 0.01f && Mathf.Abs(t.w) > 0.99f), Is.True);
+
+            // The first-person arms borrow only the body's UVs for colour: same look, no body normal map.
+            var firstPerson = Load<Material>(FirstPersonMaterialPath);
+            Assert.That(firstPerson.shader, Is.EqualTo(softToon.shader));
+            Assert.That(firstPerson.GetTexture("_BaseMap"), Is.EqualTo(Load<Texture2D>(BaseMapPath)));
+            Assert.That(firstPerson.GetTexture("_NormalMap"), Is.Null);
+            Assert.That(firstPerson.GetFloat("_NormalStrength"), Is.EqualTo(0f));
+            Object.DestroyImmediate(instance);
+            instance = (GameObject)PrefabUtility.InstantiatePrefab(Load<GameObject>(PlayerPrefabPath));
+            Transform viewModel = instance.GetComponentsInChildren<Transform>(true).First(t => t.name == "ViewModel");
+            SkinnedMeshRenderer[] arms = viewModel.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            Assert.That(arms, Is.Not.Empty, "first-person arms");
+            Assert.That(arms.All(r => r.sharedMaterial == firstPerson), Is.True);
         }
 
         [Test]
@@ -236,8 +320,10 @@ namespace CoopDeck.Tests
         }
 
         [Test]
-        public void Controller_HasTheSharedParameters_AndASpeedBlend()
+        public void Controller_HasTheSharedParameters_AndADirectionalSpeedBlend()
         {
+            // The layered rifle controller (FoxGunnerAnimationFactory) keeps the shared parameter names; the full
+            // structure is covered by FoxAnimationAssetTests.
             var controller = Load<AnimatorController>(ControllerPath);
             string[] required =
             {
@@ -247,22 +333,19 @@ namespace CoopDeck.Tests
             };
             Assert.That(controller.parameters.Select(p => p.name), Is.SupersetOf(required));
 
-            AnimatorState locomotion = controller.layers[0].stateMachine.defaultState;
-            Assert.That(locomotion.name, Is.EqualTo("Locomotion"));
+            AnimatorStateMachine sm = controller.layers[0].stateMachine;
+            Assert.That(sm.defaultState.name, Is.EqualTo("Idle"));
+            AnimatorState locomotion = sm.states.Select(s => s.state).First(s => s.name == "Locomotion");
             var tree = (BlendTree)locomotion.motion;
-            Assert.That(tree.blendParameter, Is.EqualTo(AnimatorParams.Speed));
-            ChildMotion[] children = tree.children;
-            Assert.That(children.Take(3).Select(c => c.motion.name), Is.EqualTo(new[] { "A_FoxGunner_Idle", "A_FoxGunner_Walk", "A_FoxGunner_Run" }));
-            Assert.That(children.Take(3).Select(c => c.threshold), Is.EqualTo(new[] { 0f, 1.2f, 4f }).Within(0.001f));
-
-            // Run repeated every 1 m/s up to 12 m/s, each at speed / 4: the cycle keeps pace at walk (6.5) and sprint (9.5).
-            ChildMotion[] runs = children.Skip(2).ToArray();
-            Assert.That(runs.All(c => c.motion.name == "A_FoxGunner_Run"), Is.True);
-            Assert.That(runs.Select(c => c.threshold), Is.EqualTo(new[] { 4f, 5f, 6f, 7f, 8f, 9f, 10f, 11f, 12f }).Within(0.001f));
-            foreach (ChildMotion run in runs)
-            {
-                Assert.That(run.timeScale, Is.EqualTo(run.threshold / 4f).Within(0.001f), $"run at {run.threshold} m/s");
-            }
+            Assert.That(tree.blendType, Is.EqualTo(BlendTreeType.FreeformDirectional2D));
+            Assert.That(tree.blendParameter, Is.EqualTo(AnimatorParams.MoveX));
+            Assert.That(tree.blendParameterY, Is.EqualTo(AnimatorParams.MoveY));
+            // walk ring (~1.5 m/s), run ring (~6.5 m/s, the player's speed) and sprint forward (~9.5 m/s)
+            float[] radii = tree.children.Select(c => c.position.magnitude).Where(r => r > 0.01f).Distinct().OrderBy(r => r).ToArray();
+            Assert.That(radii.Length, Is.GreaterThanOrEqualTo(3));
+            Assert.That(radii[0], Is.InRange(1.2f, 2f));
+            Assert.That(radii.Any(r => Mathf.Abs(r - 6.5f) < 0.3f), Is.True, "run ring at the player's speed");
+            Assert.That(radii.Last(), Is.InRange(9f, 10f), "sprint");
         }
 
         [Test]
@@ -305,8 +388,10 @@ namespace CoopDeck.Tests
             Animator animator = SpawnBody().GetComponent<Animator>();
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             animator.Rebind();
-            animator.SetFloat(AnimatorParams.Speed, 4f);
+            animator.SetFloat(AnimatorParams.Speed, 6.5f);
+            animator.SetFloat(AnimatorParams.MoveY, 6.5f); // run forward
             animator.Update(0f);
+            animator.Update(0.3f); // Idle -> Locomotion
 
             Transform foot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
             Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips);

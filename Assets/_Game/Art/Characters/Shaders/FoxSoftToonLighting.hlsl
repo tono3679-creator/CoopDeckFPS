@@ -30,14 +30,22 @@ float3 ClampLight(float3 color)
 }
 #endif
 
+// MappedNormalWS: the normal map (baked from Meshy's high-res sculpt by refine_character.py) in world space.
+// _NormalStrength blends it over the mesh normal; 0, or a mesh without tangents (the first-person arms), keeps
+// the mesh normal.
 void FoxSoftToon_float(float3 Albedo, float4 Surface, float3 PositionWS, float3 NormalWS, float3 ViewDirWS, float2 ScreenUV,
-    out float3 Color)
+    float3 MappedNormalWS, out float3 Color)
 {
 #ifdef SHADERGRAPH_PREVIEW
     float ndl = dot(normalize(NormalWS), normalize(float3(0.4, 0.8, -0.45)));
     Color = Albedo * (0.45 + 0.55 * smoothstep(-0.2, 0.7, ndl));
 #else
     float3 n = normalize(NormalWS);
+    float mappedLength = dot(MappedNormalWS, MappedNormalWS);
+    if (_NormalStrength > 0.001 && mappedLength > 0.25 && mappedLength < 4.0) // false for NaN as well
+    {
+        n = normalize(lerp(n, MappedNormalWS * rsqrt(mappedLength), _NormalStrength));
+    }
     float3 v = normalize(ViewDirWS);
     float softness = Surface.r;
     float smoothness = Surface.g;

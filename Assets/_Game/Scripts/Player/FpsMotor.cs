@@ -39,6 +39,9 @@ namespace CoopDeck.Player
         public bool IsGrounded => grounded;
         public bool IsSprinting { get; private set; }
         public bool IsDashing => dashRemaining > 0f;
+
+        /// <summary>Direction of the current (or last) dash, flat, world space.</summary>
+        public Vector3 DashDirection => dashDirection;
         public Vector3 Velocity => horizontalVelocity + Vector3.up * verticalVelocity;
         public Vector3 HorizontalVelocity => horizontalVelocity;
 
