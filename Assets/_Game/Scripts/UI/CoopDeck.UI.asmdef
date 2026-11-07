@@ -6,6 +6,10 @@
         "CoopDeck.Combat",
         "CoopDeck.Weapons",
         "CoopDeck.Player",
+        "CoopDeck.Cards",
+        "CoopDeck.Deck",
+        "CoopDeck.Items",
+        "CoopDeck.Skills",
         "Unity.InputSystem",
         "UnityEngine.UI"
     ],

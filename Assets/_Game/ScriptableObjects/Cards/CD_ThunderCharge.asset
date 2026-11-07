@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974513b0d97bf004687f6ca9ef7dff4e, type: 3}
+  m_Name: CD_ThunderCharge
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.CardDefinition
+  cardId: card.thunder_charge
+  displayName: "\u30B5\u30F3\u30C0\u30FC\u30C1\u30E3\u30FC\u30B8"
+  description: "8\u79D2\u9593\u3001\u5C04\u6483\u3068\u30B9\u30AD\u30EB\u306E\u30C0\u30E1\u30FC\u30B8+30%\u3002"
+  type: 0
+  element: 3
+  rarity: 0
+  maxGauge: 100
+  gaugeCost: 50
+  cooldown: 6
+  targeting: 0
+  range: 50
+  impactDelay: 0
+  effects:
+  - kind: 5
+    amount: 0.3
+    radius: 0
+    duration: 8
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  icon: {fileID: 21300000, guid: 499cbbf1f77fa1d41b84b142a0bfdaf5, type: 3}
+  beamFx: {fileID: 0}
+  impactFx: {fileID: 8613244698021814228, guid: 4199e2b3f4326a24fa0b0cbb29f2746e, type: 3}
+  areaFx: {fileID: 0}
+  auraFx: {fileID: 1676657845778844969, guid: d47015e197e9848479581a61bf09eb88, type: 3}
+  telegraphFx: {fileID: 0}

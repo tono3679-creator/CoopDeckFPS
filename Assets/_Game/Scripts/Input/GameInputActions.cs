@@ -29,14 +29,21 @@ namespace CoopDeck.Input
         public const string Skill3 = "Skill3";
         public const string UseItem = "UseItem";
         public const string CycleItem = "CycleItem";
+        public const string SelectCard1 = "SelectCard1";
+        public const string SelectCard2 = "SelectCard2";
+        public const string SelectCard3 = "SelectCard3";
+        public const string SelectCardPrev = "SelectCardPrev";
+        public const string SelectCardNext = "SelectCardNext";
         public const string Pause = "Pause";
 
         public static readonly string[] SkillActions = { Skill1, Skill2, Skill3 };
+        public static readonly string[] SelectCardActions = { SelectCard1, SelectCard2, SelectCard3 };
 
         public static readonly string[] AllPlayerActions =
         {
             Move, Look, LookStick, Jump, Sprint, SprintToggle, Dash, Fire, Reload,
-            Skill1, Skill2, Skill3, UseItem, CycleItem, Pause,
+            Skill1, Skill2, Skill3, UseItem, CycleItem,
+            SelectCard1, SelectCard2, SelectCard3, SelectCardPrev, SelectCardNext, Pause,
         };
 
         public static InputActionAsset CreateDefaultAsset()
@@ -76,7 +83,12 @@ namespace CoopDeck.Input
             AddButton(map, Skill2, "<Keyboard>/e", "<Gamepad>/rightShoulder");
             AddButton(map, Skill3, "<Keyboard>/f", "<Gamepad>/buttonNorth");
             AddButton(map, UseItem, "<Keyboard>/g", "<Gamepad>/dpad/up");
-            AddButton(map, CycleItem, "<Keyboard>/t", "<Gamepad>/dpad/right");
+            AddButton(map, CycleItem, "<Keyboard>/t", "<Gamepad>/dpad/down");
+            AddButton(map, SelectCard1, "<Keyboard>/1", null);
+            AddButton(map, SelectCard2, "<Keyboard>/2", null);
+            AddButton(map, SelectCard3, "<Keyboard>/3", null);
+            AddButton(map, SelectCardPrev, null, "<Gamepad>/dpad/left");
+            AddButton(map, SelectCardNext, null, "<Gamepad>/dpad/right");
             AddButton(map, Pause, "<Keyboard>/escape", "<Gamepad>/start");
 
             return asset;

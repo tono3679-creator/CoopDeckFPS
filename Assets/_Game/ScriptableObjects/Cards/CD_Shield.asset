@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974513b0d97bf004687f6ca9ef7dff4e, type: 3}
+  m_Name: CD_Shield
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.CardDefinition
+  cardId: card.shield
+  displayName: "\u30B7\u30FC\u30EB\u30C9"
+  description: "\u81EA\u5206\u306B60\u306E\u30B7\u30FC\u30EB\u30C9\u30928\u79D2\u9593\u5F35\u308B\uFF08\u30C0\u30E1\u30FC\u30B8\u3092\u5148\u306B\u5438\u53CE\uFF09\u3002"
+  type: 0
+  element: 0
+  rarity: 0
+  maxGauge: 100
+  gaugeCost: 50
+  cooldown: 4
+  targeting: 0
+  range: 50
+  impactDelay: 0
+  effects:
+  - kind: 4
+    amount: 60
+    radius: 0
+    duration: 8
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  icon: {fileID: 21300000, guid: d1de8269183ca2649ae3a904eaf2923c, type: 3}
+  beamFx: {fileID: 0}
+  impactFx: {fileID: 2778870476830987134, guid: 14799983fd526994d9a9be3f4a438abe, type: 3}
+  areaFx: {fileID: 0}
+  auraFx: {fileID: 2272157927554116003, guid: 93f498600833dd74e9ab04f48aa3b5c0, type: 3}
+  telegraphFx: {fileID: 0}

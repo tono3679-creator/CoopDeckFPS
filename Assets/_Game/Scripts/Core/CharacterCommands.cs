@@ -29,11 +29,28 @@ namespace CoopDeck.Core
         public bool UseItemPressed;
         public bool CycleItemPressed;
 
+        /// <summary>Card slot picked directly this frame, stored as slot + 1 (0 = none) so the default value means "nothing".</summary>
+        public int CardSelectRequest;
+
+        /// <summary>Move the card selection this frame: -1 previous, +1 next, 0 none.</summary>
+        public int CardSelectStep;
+
         public bool IsSkillPressed(int slot) => (SkillPressedMask & (1 << slot)) != 0;
 
         public void SetSkillPressed(int slot)
         {
             SkillPressedMask |= 1 << slot;
+        }
+
+        public void RequestCardSelect(int slot)
+        {
+            CardSelectRequest = slot + 1;
+        }
+
+        public bool TryGetCardSelect(out int slot)
+        {
+            slot = CardSelectRequest - 1;
+            return CardSelectRequest > 0;
         }
     }
 

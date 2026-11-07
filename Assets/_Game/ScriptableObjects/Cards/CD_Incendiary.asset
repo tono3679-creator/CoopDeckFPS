@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974513b0d97bf004687f6ca9ef7dff4e, type: 3}
+  m_Name: CD_Incendiary
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.CardDefinition
+  cardId: card.incendiary
+  displayName: "\u713C\u5937\u30B0\u30EC\u30CD\u30FC\u30C9"
+  description: "\u7740\u5F3E\u70B9\u306E\u534A\u5F844m\u306E\u6575\u3092\u708E\u4E0A\u3055\u305B\u308B\uFF08\u6BCE\u79D212\u30014\u79D2\uFF09\u3002"
+  type: 0
+  element: 1
+  rarity: 0
+  maxGauge: 100
+  gaugeCost: 34
+  cooldown: 1.5
+  targeting: 2
+  range: 30
+  impactDelay: 0
+  effects:
+  - kind: 2
+    amount: 12
+    radius: 4
+    duration: 4
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  icon: {fileID: 21300000, guid: decde26ec66f75a4fba1b31e784c89a5, type: 3}
+  beamFx: {fileID: 6494837293413717633, guid: 5594e46ce438f224896914b196378475, type: 3}
+  impactFx: {fileID: 3511993050265184516, guid: 0badb575488d88e4a9e1286464147a0c, type: 3}
+  areaFx: {fileID: 4380857717911206546, guid: b9c6c4c28171b6043bfb73ce28ff5b7c, type: 3}
+  auraFx: {fileID: 0}
+  telegraphFx: {fileID: 0}

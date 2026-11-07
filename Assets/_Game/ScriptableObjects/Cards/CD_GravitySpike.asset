@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974513b0d97bf004687f6ca9ef7dff4e, type: 3}
+  m_Name: CD_GravitySpike
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.CardDefinition
+  cardId: card.gravity_spike
+  displayName: "\u30B0\u30E9\u30D3\u30C6\u30A3\u30B9\u30D1\u30A4\u30AF"
+  description: "\u65751\u4F53\u306B35\u30C0\u30E1\u30FC\u30B8\u3002\u5468\u56F26m\u306E\u6575\u3092\u305D\u306E\u5730\u70B9\u3078\u5F15\u304D\u5BC4\u305B\u308B\u3002"
+  type: 0
+  element: 4
+  rarity: 0
+  maxGauge: 100
+  gaugeCost: 25
+  cooldown: 0.8
+  targeting: 1
+  range: 50
+  impactDelay: 0
+  effects:
+  - kind: 0
+    amount: 35
+    radius: 0
+    duration: 0
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  - kind: 7
+    amount: 0
+    radius: 6
+    duration: 0.6
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 6
+  icon: {fileID: 21300000, guid: 2342184286b620d47b12451243b04bde, type: 3}
+  beamFx: {fileID: 7256490784472616949, guid: b6cc2cba4d1862c4684e58680e2e7662, type: 3}
+  impactFx: {fileID: 5417044121905540163, guid: b2516fc8ad264f4429d6f9daf4766b6d, type: 3}
+  areaFx: {fileID: 5453279856915944243, guid: b1d4e4e5ace88fe438f1c00381de2aa6, type: 3}
+  auraFx: {fileID: 0}
+  telegraphFx: {fileID: 0}

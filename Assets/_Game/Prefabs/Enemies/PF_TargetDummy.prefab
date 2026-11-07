@@ -10,6 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 3911834663730006390}
   - component: {fileID: 4662434960303736004}
+  - component: {fileID: 2322763125884620384}
+  - component: {fileID: 5865467317025152464}
   - component: {fileID: 3959089698750863563}
   - component: {fileID: 3854380593000256181}
   m_Layer: 7
@@ -50,6 +52,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: CoopDeck.Combat::CoopDeck.Combat.Health
   maxHealth: 120
   team: 2
+--- !u!114 &2322763125884620384
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542840979594873564}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68ba0147f5ce8564aa8c2b4ec8b1c85e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CoopDeck.Combat::CoopDeck.Combat.CombatStatus
+--- !u!114 &5865467317025152464
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542840979594873564}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e05bb9c017c1b9545b75cabc56d68f2b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CoopDeck.Combat::CoopDeck.Combat.ForceReceiver
+  maxDisplacement: 12
 --- !u!114 &3959089698750863563
 MonoBehaviour:
   m_ObjectHideFlags: 0

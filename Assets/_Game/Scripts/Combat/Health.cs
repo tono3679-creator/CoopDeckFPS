@@ -56,15 +56,27 @@ namespace CoopDeck.Combat
             }
 
             float multiplier = DamageRules.ZoneMultiplier(zone, zoneMultiplier, info.HeadshotMultiplier);
-            float dealt = Model.TakeDamage(DamageRules.Compute(info.Amount, multiplier));
+            float amount = DamageRules.Compute(info.Amount, multiplier);
+
+            // Vulnerability (marking) raises incoming damage first, then a shield soaks it up.
+            float absorbed = 0f;
+            if (TryGetComponent(out CombatStatus status))
+            {
+                amount *= status.Model.IncomingDamageMultiplier;
+                amount = status.Model.AbsorbDamage(amount, out absorbed);
+                status.Model.MarkElement(info.Element);
+            }
+
+            float dealt = Model.TakeDamage(amount);
 
             if (zone == HitZoneType.Head)
             {
                 result.Flags |= DamageFlags.Headshot;
             }
 
-            result.Applied = dealt > 0f;
+            result.Applied = dealt > 0f || absorbed > 0f;
             result.Damage = dealt;
+            result.Absorbed = absorbed;
             result.Killed = !Model.IsAlive;
             result.RemainingHealth = Current;
 

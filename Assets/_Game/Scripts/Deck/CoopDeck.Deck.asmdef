@@ -1,0 +1,17 @@
+{
+    "name": "CoopDeck.Deck",
+    "rootNamespace": "CoopDeck.Deck",
+    "references": [
+        "CoopDeck.Core",
+        "CoopDeck.Cards"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

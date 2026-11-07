@@ -53,6 +53,43 @@ namespace CoopDeck.Tests
             }
         }
 
+        [TestCase(GameInputActions.Skill1, "<Keyboard>/q", "<Gamepad>/leftShoulder")]
+        [TestCase(GameInputActions.Skill2, "<Keyboard>/e", "<Gamepad>/rightShoulder")]
+        [TestCase(GameInputActions.Skill3, "<Keyboard>/f", "<Gamepad>/buttonNorth")]
+        [TestCase(GameInputActions.UseItem, "<Keyboard>/g", "<Gamepad>/dpad/up")]
+        [TestCase(GameInputActions.CycleItem, "<Keyboard>/t", "<Gamepad>/dpad/down")]
+        [TestCase(GameInputActions.SelectCard1, "<Keyboard>/1", null)]
+        [TestCase(GameInputActions.SelectCard2, "<Keyboard>/2", null)]
+        [TestCase(GameInputActions.SelectCard3, "<Keyboard>/3", null)]
+        [TestCase(GameInputActions.SelectCardPrev, null, "<Gamepad>/dpad/left")]
+        [TestCase(GameInputActions.SelectCardNext, null, "<Gamepad>/dpad/right")]
+        [TestCase(GameInputActions.Fire, "<Mouse>/leftButton", "<Gamepad>/rightTrigger")]
+        public void DeckControls_AreBoundAsDocumented(string actionName, string keyboardPath, string gamepadPath)
+        {
+            InputActionAsset asset = GameInputActions.CreateDefaultAsset();
+            try
+            {
+                InputAction action = asset.FindAction($"{GameInputActions.PlayerMap}/{actionName}", true);
+                string[] paths = action.bindings.Select(b => b.path).ToArray();
+                if (keyboardPath != null) Assert.That(paths, Does.Contain(keyboardPath));
+                if (gamepadPath != null) Assert.That(paths, Does.Contain(gamepadPath));
+            }
+            finally
+            {
+                Object.DestroyImmediate(asset);
+            }
+        }
+
+        [Test]
+        public void CharacterCommands_CardSelect_DefaultsToNone()
+        {
+            var commands = new CharacterCommands();
+            Assert.That(commands.TryGetCardSelect(out _), Is.False);
+            commands.RequestCardSelect(0);
+            Assert.That(commands.TryGetCardSelect(out int slot), Is.True);
+            Assert.That(slot, Is.EqualTo(0));
+        }
+
         [Test]
         public void DefaultControls_RoundTripThroughJson()
         {

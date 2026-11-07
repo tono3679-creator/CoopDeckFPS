@@ -59,6 +59,11 @@ namespace CoopDeck.Enemies
         IEnumerator RespawnAfterDelay()
         {
             yield return new WaitForSeconds(respawnDelay);
+            if (TryGetComponent(out ForceReceiver receiver))
+            {
+                receiver.ResetOffset(); // come back where it stood before any gravity pull
+            }
+
             health.ResetHealth();
             SetAlive(true);
         }

@@ -176,6 +176,10 @@ namespace CoopDeck.Weapons
             Vector3 muzzlePosition = muzzle != null ? muzzle.position : aimRay.origin;
             float spread = CurrentSpread;
 
+            // Attack buffs (skill cards) raise weapon damage too.
+            CombatStatus ownerStatus = owner != null ? owner.Status : null;
+            float damageMultiplier = ownerStatus != null ? ownerStatus.Model.OutgoingDamageMultiplier : 1f;
+
             for (int pellet = 0; pellet < definition.pelletsPerShot; pellet++)
             {
                 Vector3 direction = ApplySpread(aimRay.direction, spread);
@@ -195,7 +199,8 @@ namespace CoopDeck.Weapons
                         hitDamageable = true;
                         var info = new DamageInfo
                         {
-                            Amount = definition.damage * DamageRules.DistanceFalloff(hit.distance, definition.falloffStart, definition.range, definition.minDamageFactor),
+                            Amount = definition.damage * damageMultiplier *
+                                     DamageRules.DistanceFalloff(hit.distance, definition.falloffStart, definition.range, definition.minDamageFactor),
                             Element = definition.element,
                             Kind = DamageKind.Weapon,
                             Source = owner,

@@ -1,8 +1,12 @@
+using System.Collections.Generic;
+using CoopDeck.Cards;
 using CoopDeck.Combat;
 using CoopDeck.Core;
 using CoopDeck.Enemies;
 using CoopDeck.Input;
+using CoopDeck.Items;
 using CoopDeck.Player;
+using CoopDeck.Skills;
 using CoopDeck.UI;
 using CoopDeck.Weapons;
 using UnityEditor;
@@ -21,7 +25,8 @@ namespace CoopDeck.EditorTools
     {
         public const float EyeHeight = 1.62f;
 
-        public static GameObject BuildPlayer(InputActionAsset input, WeaponDefinition weapon, MovementProfile movement, MaterialSet m)
+        public static GameObject BuildPlayer(InputActionAsset input, WeaponDefinition weapon, MovementProfile movement, MaterialSet m,
+            DeckDefinition starterDeck, List<GaugeItemDefinition> startingItems)
         {
             EditorUtil.EnsureFolder(GamePaths.CharacterPrefabs);
 
@@ -50,6 +55,14 @@ namespace CoopDeck.EditorTools
             EditorUtil.SetObject(weaponFx, "weapon", hitscan);
             EditorUtil.SetInt(weaponFx, "muzzleFlashLayer", GameLayers.ViewModelIndex);
             var character = root.AddComponent<FpsCharacter>();
+            root.AddComponent<CombatStatus>();
+            root.AddComponent<PlayerRespawn>();
+            var caster = root.AddComponent<SkillCaster>();
+            var deckController = root.AddComponent<DeckController>();
+            EditorUtil.SetObject(deckController, "startingDeck", starterDeck);
+            EditorUtil.SetObjectArray(deckController, "startingItems", startingItems.ToArray());
+            EditorUtil.SetObject(deckController, "character", character);
+            EditorUtil.SetObject(deckController, "caster", caster);
 
             // Third-person body placeholder. The local player only sees its shadow.
             GameObject body = EditorUtil.VisualPrimitive(PrimitiveType.Capsule, "BodyVisual", root.transform,
@@ -90,6 +103,7 @@ namespace CoopDeck.EditorTools
             Transform muzzle = BuildRifleViewModel(cameraGo.transform, m, out GameObject viewModelRoot);
 
             EditorUtil.SetObject(hitscan, "muzzle", muzzle);
+            EditorUtil.SetObject(caster, "castOrigin", muzzle);
             EditorUtil.SetObject(look, "yawRoot", root.transform);
             EditorUtil.SetObject(look, "pitchPivot", pivot.transform);
             EditorUtil.SetObject(look, "viewCamera", camera);
@@ -155,6 +169,8 @@ namespace CoopDeck.EditorTools
             var health = root.AddComponent<Health>();
             EditorUtil.SetFloat(health, "maxHealth", 120f);
             EditorUtil.SetInt(health, "team", (int)TeamId.Enemies);
+            root.AddComponent<CombatStatus>();   // burn, marking
+            root.AddComponent<ForceReceiver>();  // gravity pulls
 
             var visual = new GameObject("Visual");
             visual.transform.SetParent(root.transform, false);

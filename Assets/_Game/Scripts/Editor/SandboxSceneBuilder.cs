@@ -1,5 +1,6 @@
 using CoopDeck.Enemies;
 using CoopDeck.Player;
+using CoopDeck.Skills;
 using CoopDeck.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -35,6 +36,8 @@ namespace CoopDeck.EditorTools
             var hudController = hud.AddComponent<HudController>();
             EditorUtil.SetObject(hudController, "player", player.GetComponent<FpsCharacter>());
             EditorUtil.SetObject(hudController, "frameMonitor", monitor);
+            var deckHud = hud.AddComponent<DeckHud>();
+            EditorUtil.SetObject(deckHud, "deckController", player.GetComponent<DeckController>());
 
             EditorUtil.EnsureFolder(System.IO.Path.GetDirectoryName(GamePaths.SandboxScene)?.Replace('\\', '/'));
             EditorSceneManager.SaveScene(scene, GamePaths.SandboxScene);
@@ -122,6 +125,25 @@ namespace CoopDeck.EditorTools
             // Elevated target to practice vertical aim.
             Block(range, "Tower", new Vector3(9f, 1.5f, 30f), new Vector3(3f, 3f, 3f), m.Violet);
             Dummy(range, dummyPrefab, new Vector3(9f, 3f, 30f));
+
+            // Tight group for area, chain and pull cards (right of the lanes, open ground).
+            Block(range, "GroupPad", new Vector3(24f, 0.02f, 14f), new Vector3(9f, 0.04f, 9f), m.GlowPink);
+            Vector3[] group =
+            {
+                new Vector3(22.5f, 0f, 12.5f), new Vector3(25.5f, 0f, 12.5f), new Vector3(24f, 0f, 14f),
+                new Vector3(22.5f, 0f, 15.5f), new Vector3(25.5f, 0f, 15.5f),
+            };
+            foreach (Vector3 position in group)
+            {
+                Dummy(range, dummyPrefab, position);
+            }
+
+            // Hazard pad right of the spawn: stand on it to lose HP and try heal / shield cards.
+            Block(range, "HazardPad", new Vector3(8f, 0.02f, -30f), new Vector3(4f, 0.04f, 4f), m.Coral);
+            var hazard = new GameObject("HazardZone");
+            hazard.transform.SetParent(range, false);
+            hazard.transform.position = new Vector3(8f, 0f, -30f);
+            hazard.AddComponent<DamageZone>().Configure(new Vector3(4f, 2f, 4f), 6f, 0.5f, CoopDeck.Core.Element.Fire);
         }
 
         static void BuildMovementCourse(Transform parent, MaterialSet m)

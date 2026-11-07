@@ -1,0 +1,22 @@
+{
+    "name": "CoopDeck.Skills",
+    "rootNamespace": "CoopDeck.Skills",
+    "references": [
+        "CoopDeck.Core",
+        "CoopDeck.Combat",
+        "CoopDeck.Effects",
+        "CoopDeck.Cards",
+        "CoopDeck.Deck",
+        "CoopDeck.Items",
+        "CoopDeck.Player"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -25,7 +25,11 @@ CoopDeck.Core      （依存なし）  CharacterCommands, ICharacterCommandSourc
                                    Element, TeamId, GameLayers, PerformanceSettings/Bootstrap
    ▲
    ├── CoopDeck.Combat   DamageInfo/Result, IDamageable, ICombatActor, Health(+HealthModel),
-   │                     HitZone, DamageRules, CombatEvents
+   │                     HitZone, DamageRules, CombatEvents,
+   │                     CombatStatus(+StatusEffectsModel: シールド/攻撃強化/被ダメ増/継続ダメ), ForceReceiver(吸引)
+   ├── CoopDeck.Cards    CardDefinition, SkillEffectSpec, DeckDefinition, ElementStyle（データのみ）
+   │     └── CoopDeck.Deck   CardRuntime, DeckState, IRandom/SeededRandom（純 C#）
+   │           └── CoopDeck.Items  GaugeItemDefinition, GaugeItemInventory（純 C#）
    ├── CoopDeck.Input    GameInputActions（既定バインド生成）, PlayerInputReader   ← Unity.InputSystem
    ├── CoopDeck.Effects  FxPool, PooledFx, TracerFx, LightFlash
    │
@@ -33,12 +37,15 @@ CoopDeck.Core      （依存なし）  CharacterCommands, ICharacterCommandSourc
    ├── CoopDeck.Enemies  TargetDummy, PatrolMover, HitFlash                       ← Combat, Effects
    ├── CoopDeck.Player   MovementProfile, MotorMath, FpsMotor, FpsLook,
    │                     FpsCharacter, ViewModelAnimator                          ← Combat, Weapons
-   └── CoopDeck.UI       HudController, WorldHealthBar, FrameTimeMonitor,
-                         Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, InputSystem, uGUI
+   ├── CoopDeck.Skills   SkillCaster（効果の実行）, DeckController（キャラ⇔デッキ⇔アイテム）
+   │                                                                              ← Combat, Effects, Cards, Deck, Items, Player
+   └── CoopDeck.UI       HudController, DeckHud, HudKit, WorldHealthBar, FrameTimeMonitor,
+                         Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, Cards, Deck, Items, Skills, InputSystem, uGUI
+   （CoopDeck.Enemies に DamageZone、CoopDeck.Player に PlayerRespawn を追加）
 
-CoopDeck.Editor           ProjectBootstrap ほか生成ツール（Editor のみ）           ← 全ランタイム + URP
-CoopDeck.Tests.EditMode   38 テスト（純ロジック・入力定義・ティア判定・HitZone）
-CoopDeck.Tests.PlayMode   9 テスト（物理を使う移動・射撃・キャラクター統合）
+CoopDeck.Editor           ProjectBootstrap ほか生成ツール（カード・アイコン・スキル VFX 含む） ← 全ランタイム + URP
+CoopDeck.Tests.EditMode   83 テスト（純ロジック・デッキ規則・アイテム・状態効果・生成データ・入力定義・ティア判定）
+CoopDeck.Tests.PlayMode   21 テスト（移動・射撃・デッキ×FPS 統合・仮想キーボード/ゲームパッド・各スキル効果）
 ```
 
 - **`CoopDeck.Player` は `CoopDeck.Input` を参照しない。** 入力は `ICharacterCommandSource` 経由でのみ届く。
@@ -63,8 +70,14 @@ FpsCharacter.Step(dt)
         │                     └→ ViewModelAnimator（銃のキック）
         └─ Health.ApplyDamage → CombatEvents.DamageApplied ─→ HudController（ヒットマーカー・ダメージ数値）
                                                            └→ （Phase 4）コンボ判定
-  5. SkillSlotRequested / ItemUseRequested イベント  →（Phase 3）デッキシステム
+  5. CardSelectRequested / CardSelectStepRequested → DeckController.SelectedSlot
+  6. SkillSlotRequested(slot) → DeckController.UseSlot
+        ├─ DeckState.TryUseCard（ゲージ消費・CD開始・0 なら捨て札→ドロー／再シャッフル）
+        └─ SkillCaster.CastCard（照準レイ／自分中心 → 効果を順に適用 → VFX を FxPool で再生）
+  7. ItemUseRequested / ItemCycleRequested → GaugeItemInventory → DeckState.RestoreCharge
 ```
+
+射撃（4）とスキル（6）は同じフレーム内の別処理で、互いの状態（弾数・ゲージ）に触れない。攻撃力強化だけは `ICombatActor.Status` 経由で両方のダメージに乗る。
 
 `FpsCharacter.Step` は public なので、将来の固定ティック（ネットワーク）やテストからも同じ処理を呼べる。
 
@@ -106,9 +119,19 @@ FpsCharacter.Step(dt)
 - `LightFlash`：短いライト点滅。Handheld ティアでは無効。
 - シェーダー `CoopDeck/FX/Additive Soft`：テクスチャ不要の加算発光（UV から円形／帯状を計算、フォグ対応、SRP Batcher 対応）。
 
-### 4.5 UI・診断（`CoopDeck.UI`）
+### 4.5 デッキ・スキル（`CoopDeck.Cards / Deck / Items / Skills`）
 
-- `HudController`：コードで uGUI を生成。拡散に連動する照準、ヒットマーカー（ヘッドショット黄・キル赤）、ダメージ数値、弾数・リロード、HP、ダッシュ残数、スキル枠3つ（Phase 3 用の受け口）、一時停止表示、操作ヒント、F3 性能表示。日本語は OS フォント（Yu Gothic UI → Meiryo → MS Gothic）を使用。
+- `CardDefinition`：ID・名前・説明・属性・レア度・ゲージ最大値・消費量・CD・照準方式（Self / Aim / AimPoint / AreaAroundSelf）・射程・着弾遅延・`SkillEffectSpec` の配列・アイコン・VFX 参照。
+- `DeckState`：カード循環の全規則（`CARD_SYSTEM.md` §1）。イベント順は Used → GaugeChanged → Depleted → Reshuffled → Drawn。
+- `GaugeItemInventory`：種類ごとの所持数・上限・選択。満タンや空き枠への使用は拒否して消費しない。
+- `SkillCaster`：効果 8 種を実行。範囲は `Physics.OverlapSphere` で集め `Health` 単位で重複排除、チームで敵味方を判定。範囲 VFX は半径 1m で作り、効果半径に合わせて拡大。
+- `DeckController`：`FpsCharacter` のイベントだけを購読するので、NPC やネットワーク経由でも同じ経路で使える。選択枠は最後に使ったカードに追従。
+- `CombatStatus`：シールド（ダメージを先に吸収）・攻撃力強化・被ダメージ増加・継続ダメージ（0.5 秒刻み、最大 6 重）・最後に受けた属性（Phase 4 のコンボ用）。`Health.ApplyDamage` が参照する。
+
+### 4.6 UI・診断（`CoopDeck.UI`）
+
+- `HudController`：コードで uGUI を生成。拡散に連動する照準、ヒットマーカー（ヘッドショット黄・キル赤）、ダメージ数値、弾数・リロード、HP（シールド量・攻撃強化の残り時間つき）、ダッシュ残数、一時停止表示、操作ヒント（F1 で非表示）、F3 性能表示。
+- `DeckHud`：手札 3 枚・山札／捨て札枚数・アイテム欄・破棄／ドロー演出（`CARD_SYSTEM.md` §11）。日本語は OS フォント（Yu Gothic UI → Meiryo → MS Gothic）を使用。
 - `FrameTimeMonitor`：平均 FPS・1% Low・最悪フレーム。
 - `AutoPerfRunner`：ビルドの無人計測（下記 6 章）。
 
@@ -186,7 +209,11 @@ Assets/_Game/
   ScriptableObjects/Characters/MP_Default.asset
   Settings/Input/GameControls.inputactions
   Settings/Rendering/URP_{High,Handheld}(_Renderer).asset, VP_Sandbox.asset
-  Scenes/Sandbox_Phase1.unity                             射撃場＋移動コース
+  Scenes/Sandbox_Phase1.unity                             射撃場＋移動コース＋的の密集エリア＋ダメージ床
+  ScriptableObjects/Cards/CD_*.asset, Cards/Decks/DD_Starter.asset   カード 12 種と初期デッキ
+  ScriptableObjects/Items/GI_*.asset                      チャージポーション、共鳴結晶
+  Art/UI/CardIcons/ICON_*.png                             生成アイコン（差し替え可）
+  Prefabs/Skills/FX_Skill_*.prefab                        属性別スキル VFX（21 個）
 ```
 
 テンプレート由来の `Assets/Settings`（PC/Mobile アセット）、`Assets/Scenes/SampleScene`、`TutorialInfo` は削除せず残している（現在は未使用）。
@@ -200,6 +227,7 @@ Assets/_Game/
 | 2 敵 AI | `ICombatActor` を実装した敵、`Health`/`HitZone` はそのまま。NavMesh は AI Navigation |
 | 2 モーション | `ViewModelAnimator` を Animator 駆動に置き換え。全身は `BodyVisual` を差し替え、`FpsMotor.Velocity`/`IsGrounded` を Animator パラメータへ |
 | 2.5 通信 | `ICharacterCommandSource` のネットワーク版、`FpsCharacter.Step` を固定ティックで呼ぶ |
-| 3 デッキ | `FpsCharacter.SkillSlotRequested(slot)` / `ItemUseRequested` を購読。HUD のスキル枠を手札表示に置き換え |
-| 4 コンボ | `CombatEvents.DamageApplied` を購読、`DamageInfo.Element` と `DamageFlags.ComboDamage` で連鎖制御 |
+| 3 デッキ（実装済み） | 報酬は `DeckState.AddCard`、強化は `UpgradeCard`（強化表は未実装）、パッシブは `DeckState.Passives` |
+| 4 コンボ | `CombatEvents.DamageApplied` を購読、`DamageInfo.Element`・`CombatStatus.Model.LastElement` と `DamageFlags.ComboDamage` で連鎖制御 |
+| 4 NPC | NPC 用の `ICharacterCommandSource` がスキル枠を押すだけで `DeckController` が同じ規則でカードを使う（8 枚・2 枠は `Rebuild` の引数） |
 | 5 演出 | `WeaponDefinition` / 将来の `CardDefinition` が参照するエフェクト Prefab を差し替え、`PooledFx` で粒子数をティア調整 |

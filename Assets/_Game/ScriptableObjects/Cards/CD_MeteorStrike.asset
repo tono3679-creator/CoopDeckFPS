@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974513b0d97bf004687f6ca9ef7dff4e, type: 3}
+  m_Name: CD_MeteorStrike
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.CardDefinition
+  cardId: card.meteor_strike
+  displayName: "\u30E1\u30C6\u30AA\u30B9\u30C8\u30E9\u30A4\u30AF"
+  description: "0.9\u79D2\u5F8C\u3001\u7740\u5F3E\u70B9\u306E\u534A\u5F845m\u306B130\u30C0\u30E1\u30FC\u30B8\u30021\u56DE\u3067\u4F7F\u3044\u5207\u308B\u5927\u6280\u3002"
+  type: 0
+  element: 1
+  rarity: 1
+  maxGauge: 100
+  gaugeCost: 100
+  cooldown: 0
+  targeting: 2
+  range: 45
+  impactDelay: 0.9
+  effects:
+  - kind: 1
+    amount: 130
+    radius: 5
+    duration: 0
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  icon: {fileID: 21300000, guid: 47daf02431f91ee4fbf675bee7dcde44, type: 3}
+  beamFx: {fileID: 6494837293413717633, guid: 5594e46ce438f224896914b196378475, type: 3}
+  impactFx: {fileID: 3511993050265184516, guid: 0badb575488d88e4a9e1286464147a0c, type: 3}
+  areaFx: {fileID: 4380857717911206546, guid: b9c6c4c28171b6043bfb73ce28ff5b7c, type: 3}
+  auraFx: {fileID: 0}
+  telegraphFx: {fileID: 8487438025477542291, guid: db00b7b4dbfb6794c8c1380b44caaf78, type: 3}

@@ -17,6 +17,11 @@ namespace CoopDeck.UI.Diagnostics
         readonly float burstOn;
         readonly float burstOff;
         float time;
+        float nextSkillTime = 1.5f;
+        int nextSkillSlot;
+
+        /// <summary>Seconds between skill-card uses (cycles through the three slots). 0 disables skills.</summary>
+        public float SkillInterval { get; set; } = 2.2f;
 
         /// <param name="pitchReader">Returns the character's current pitch (degrees, up positive) for recoil control. May be null.</param>
         public AutopilotCommandSource(Func<float> pitchReader = null, float sweepAmplitudeDegrees = 35f,
@@ -42,13 +47,23 @@ namespace CoopDeck.UI.Diagnostics
             float pitch = currentPitch != null ? currentPitch() : 0f;
             float pitchDelta = Mathf.Clamp((-2f - pitch) * 4f, -60f, 60f) * deltaTime;
 
-            return new CharacterCommands
+            var commands = new CharacterCommands
             {
                 Move = new Vector2(Mathf.Sin(time * 0.8f) * 0.6f, 0f),
                 LookDelta = new Vector2(yawDelta, pitchDelta),
                 FireHeld = firing,
                 FirePressed = firing && time % cycle < deltaTime,
             };
+
+            // Skills fire alongside the gun, like a player would.
+            if (SkillInterval > 0f && time >= nextSkillTime)
+            {
+                commands.SetSkillPressed(nextSkillSlot);
+                nextSkillSlot = (nextSkillSlot + 1) % CharacterCommands.SkillSlotCount;
+                nextSkillTime = time + SkillInterval;
+            }
+
+            return commands;
         }
     }
 }

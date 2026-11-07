@@ -6,7 +6,13 @@
         "CoopDeck.Core",
         "CoopDeck.Combat",
         "CoopDeck.Weapons",
-        "CoopDeck.Player"
+        "CoopDeck.Player",
+        "CoopDeck.Input",
+        "CoopDeck.Cards",
+        "CoopDeck.Deck",
+        "CoopDeck.Items",
+        "CoopDeck.Skills",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

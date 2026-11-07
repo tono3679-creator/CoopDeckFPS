@@ -63,7 +63,13 @@ namespace CoopDeck.Combat
     public struct DamageResult
     {
         public bool Applied;
+
+        /// <summary>HP actually removed.</summary>
         public float Damage;
+
+        /// <summary>Damage soaked up by a shield before reaching HP.</summary>
+        public float Absorbed;
+
         public bool Killed;
         public HitZoneType Zone;
         public DamageFlags Flags;
@@ -88,6 +94,10 @@ namespace CoopDeck.Combat
         string DisplayName { get; }
         TeamId Team { get; }
         Health Health { get; }
+
+        /// <summary>Buffs, shields and debuffs on this actor. May be null.</summary>
+        CombatStatus Status { get; }
+
         Vector3 Position { get; }
         bool IsAlive { get; }
     }

@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974513b0d97bf004687f6ca9ef7dff4e, type: 3}
+  m_Name: CD_IceLance
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.CardDefinition
+  cardId: card.ice_lance
+  displayName: "\u6C37\u306E\u69CD"
+  description: "\u7167\u6E96\u5148\u306E\u65751\u4F53\u306B\u6C37\u306E\u69CD\u3092\u653E\u3064\uFF0855\u30C0\u30E1\u30FC\u30B8\uFF09\u3002"
+  type: 0
+  element: 2
+  rarity: 0
+  maxGauge: 100
+  gaugeCost: 25
+  cooldown: 0.6
+  targeting: 1
+  range: 60
+  impactDelay: 0
+  effects:
+  - kind: 0
+    amount: 55
+    radius: 0
+    duration: 0
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  icon: {fileID: 21300000, guid: 0d7afa39334e71144af9ad00638818bd, type: 3}
+  beamFx: {fileID: 5222806176206695415, guid: 3db4ab72bc6f8784d9fd19371293082b, type: 3}
+  impactFx: {fileID: 7108143850006289910, guid: 75d691d76fe53a54a9326325cfee5322, type: 3}
+  areaFx: {fileID: 0}
+  auraFx: {fileID: 0}
+  telegraphFx: {fileID: 0}

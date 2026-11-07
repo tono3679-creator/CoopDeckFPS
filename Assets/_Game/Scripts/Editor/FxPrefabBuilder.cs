@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using CoopDeck.Cards;
+using CoopDeck.Core;
 using CoopDeck.Effects;
 using UnityEditor;
 using UnityEngine;
@@ -12,6 +15,21 @@ namespace CoopDeck.EditorTools
         public GameObject ImpactEnvironment;
         public GameObject ImpactDamageable;
         public GameObject EnemyDeath;
+    }
+
+    /// <summary>Per-element skill effect prefabs referenced by card definitions.</summary>
+    public sealed class SkillFxSet
+    {
+        public readonly Dictionary<Element, GameObject> Beams = new Dictionary<Element, GameObject>();
+        public readonly Dictionary<Element, GameObject> Bursts = new Dictionary<Element, GameObject>();
+        public readonly Dictionary<Element, GameObject> Areas = new Dictionary<Element, GameObject>();
+        public readonly Dictionary<Element, GameObject> Auras = new Dictionary<Element, GameObject>();
+        public GameObject Telegraph;
+
+        public GameObject Beam(Element element) => Beams.TryGetValue(element, out GameObject fx) ? fx : null;
+        public GameObject Burst(Element element) => Bursts.TryGetValue(element, out GameObject fx) ? fx : null;
+        public GameObject Area(Element element) => Areas.TryGetValue(element, out GameObject fx) ? fx : null;
+        public GameObject Aura(Element element) => Auras.TryGetValue(element, out GameObject fx) ? fx : null;
     }
 
     /// <summary>
@@ -31,6 +49,200 @@ namespace CoopDeck.EditorTools
                 ImpactDamageable = Ensure("FX_Impact_Damageable", overwrite, () => BuildImpact("FX_Impact_Damageable", materials.FxEnemySpark, new Color(1f, 0.45f, 0.85f), 14)),
                 EnemyDeath = Ensure("FX_EnemyDeath", overwrite, () => BuildDeath(materials)),
             };
+        }
+
+        static readonly Element[] AllElements = { Element.None, Element.Fire, Element.Ice, Element.Lightning, Element.Gravity };
+
+        /// <summary>
+        /// Skill effects per element: beam, impact burst, area burst (authored for a 1 m radius and
+        /// scaled by the caster), ally aura, plus the delayed-impact telegraph.
+        /// </summary>
+        public static SkillFxSet EnsureSkillFx(bool overwrite)
+        {
+            const string folder = GamePaths.Root + "/Prefabs/Skills";
+            EditorUtil.EnsureFolder(folder);
+            var set = new SkillFxSet();
+            foreach (Element element in AllElements)
+            {
+                Color color = ElementStyle.ColorOf(element);
+                string n = element.ToString();
+                Material dot = GameAssetFactory.Fx($"M_FX_Skill_{n}", color, 2.6f, 1f, 1.3f);
+                Material band = GameAssetFactory.Fx($"M_FX_SkillBeam_{n}", color, 2.6f, 0f, 1.4f);
+                set.Beams[element] = EnsureIn(folder, $"FX_Skill_Beam_{n}", overwrite, () => BuildSkillBeam($"FX_Skill_Beam_{n}", band, color));
+                set.Bursts[element] = EnsureIn(folder, $"FX_Skill_Burst_{n}", overwrite, () => BuildSkillBurst($"FX_Skill_Burst_{n}", dot, color));
+                set.Areas[element] = EnsureIn(folder, $"FX_Skill_Area_{n}", overwrite, () => BuildSkillArea($"FX_Skill_Area_{n}", dot, color));
+                set.Auras[element] = EnsureIn(folder, $"FX_Skill_Aura_{n}", overwrite, () => BuildSkillAura($"FX_Skill_Aura_{n}", dot, color));
+            }
+
+            Material warning = GameAssetFactory.Fx("M_FX_Telegraph", new Color(1f, 0.3f, 0.18f), 1.8f, 1f, 0.7f);
+            set.Telegraph = EnsureIn(folder, "FX_Skill_Telegraph", overwrite, () => BuildTelegraph(warning));
+            AssetDatabase.SaveAssets();
+            return set;
+        }
+
+        static GameObject BuildSkillBeam(string name, Material material, Color color)
+        {
+            var root = new GameObject(name);
+            root.AddComponent<PooledFx>().Lifetime = 0.45f;
+            var line = root.AddComponent<LineRenderer>();
+            line.sharedMaterial = material;
+            line.useWorldSpace = true;
+            line.positionCount = 2;
+            line.widthMultiplier = 0.1f;
+            line.numCapVertices = 2;
+            line.textureMode = LineTextureMode.Stretch;
+            line.shadowCastingMode = ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            line.startColor = Color.Lerp(color, Color.white, 0.6f);
+            line.endColor = color;
+            var tracer = root.AddComponent<TracerFx>();
+            EditorUtil.SetFloat(tracer, "speed", 160f);
+            EditorUtil.SetFloat(tracer, "streakLength", 60f);
+            EditorUtil.SetFloat(tracer, "width", 0.1f);
+            return root;
+        }
+
+        static GameObject BuildSkillBurst(string name, Material material, Color color)
+        {
+            var root = new GameObject(name);
+            root.AddComponent<PooledFx>().Lifetime = 0.7f;
+
+            ParticleSystem flash = AddSystem(root, "Flash", material);
+            Configure(flash, lifetime: (0.1f, 0.14f), speed: (0f, 0f), size: (0.9f, 1.1f), colorA: Color.Lerp(color, Color.white, 0.5f), colorB: color, burst: 1, max: 4);
+            SetShape(flash, ParticleSystemShapeType.Sphere, 0.001f, 0f);
+
+            ParticleSystem shards = AddSystem(root, "Shards", material);
+            Configure(shards, lifetime: (0.25f, 0.5f), speed: (2f, 7f), size: (0.08f, 0.2f), colorA: color, colorB: Color.white, burst: 22, max: 48);
+            SetShape(shards, ParticleSystemShapeType.Sphere, 0.15f, 0f);
+            ParticleSystem.MainModule main = shards.main;
+            main.gravityModifier = 0.4f;
+
+            AddFlashLight(root, color, 5f);
+            return root;
+        }
+
+        static GameObject BuildSkillArea(string name, Material material, Color color)
+        {
+            var root = new GameObject(name);
+            root.AddComponent<PooledFx>().Lifetime = 0.9f;
+
+            ParticleSystem glow = AddSystem(root, "GroundGlow", material);
+            Configure(glow, lifetime: (0.45f, 0.5f), speed: (0f, 0f), size: (2f, 2f), colorA: color, colorB: color, burst: 1, max: 2);
+            SetShape(glow, ParticleSystemShapeType.Sphere, 0.001f, 0f);
+            glow.GetComponent<ParticleSystemRenderer>().renderMode = ParticleSystemRenderMode.HorizontalBillboard;
+            ParticleSystem.SizeOverLifetimeModule grow = glow.sizeOverLifetime;
+            grow.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.35f, 1f, 1f));
+
+            ParticleSystem ring = AddSystem(root, "RingSparks", material);
+            Configure(ring, lifetime: (0.4f, 0.7f), speed: (0.4f, 1.4f), size: (0.12f, 0.26f), colorA: color, colorB: Color.Lerp(color, Color.white, 0.5f), burst: 36, max: 64);
+            SetShape(ring, ParticleSystemShapeType.Circle, 1f, 0f);
+            ParticleSystem.ShapeModule ringShape = ring.shape;
+            ringShape.radiusThickness = 0f;
+            ringShape.rotation = new Vector3(90f, 0f, 0f);
+            ParticleSystem.MainModule ringMain = ring.main;
+            ringMain.gravityModifier = -0.25f;
+
+            ParticleSystem column = AddSystem(root, "Column", material);
+            Configure(column, lifetime: (0.3f, 0.5f), speed: (2f, 4f), size: (0.2f, 0.4f), colorA: color, colorB: Color.white, burst: 10, max: 24);
+            SetShape(column, ParticleSystemShapeType.Cone, 0.4f, 10f);
+            ParticleSystem.ShapeModule columnShape = column.shape;
+            columnShape.rotation = new Vector3(-90f, 0f, 0f);
+
+            foreach (ParticleSystem ps in root.GetComponentsInChildren<ParticleSystem>())
+            {
+                // Authored for a 1 m radius: the caster scales the root to the effect radius.
+                ParticleSystem.MainModule m = ps.main;
+                m.scalingMode = ParticleSystemScalingMode.Hierarchy;
+                m.simulationSpace = ParticleSystemSimulationSpace.Local;
+            }
+
+            AddFlashLight(root, color, 8f);
+            return root;
+        }
+
+        static GameObject BuildSkillAura(string name, Material material, Color color)
+        {
+            var root = new GameObject(name);
+            root.AddComponent<PooledFx>().Lifetime = 1f;
+
+            ParticleSystem rise = AddSystem(root, "Rise", material);
+            Configure(rise, lifetime: (0.5f, 0.8f), speed: (2f, 3.5f), size: (0.08f, 0.16f), colorA: color, colorB: Color.white, burst: 26, max: 48);
+            SetShape(rise, ParticleSystemShapeType.Cone, 0.6f, 4f);
+            ParticleSystem.ShapeModule riseShape = rise.shape;
+            riseShape.radiusThickness = 0f;
+            riseShape.rotation = new Vector3(-90f, 0f, 0f);
+
+            ParticleSystem glow = AddSystem(root, "GroundGlow", material);
+            Configure(glow, lifetime: (0.5f, 0.55f), speed: (0f, 0f), size: (1.8f, 1.8f), colorA: color, colorB: color, burst: 1, max: 2);
+            SetShape(glow, ParticleSystemShapeType.Sphere, 0.001f, 0f);
+            glow.GetComponent<ParticleSystemRenderer>().renderMode = ParticleSystemRenderMode.HorizontalBillboard;
+            return root;
+        }
+
+        static GameObject BuildTelegraph(Material material)
+        {
+            var root = new GameObject("FX_Skill_Telegraph");
+            root.AddComponent<PooledFx>().Lifetime = 1f;
+            var steady = new Gradient();
+            steady.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(1f, 0.9f), new GradientAlphaKey(0f, 1f) });
+
+            ParticleSystem zone = AddSystem(root, "Zone", material);
+            Configure(zone, lifetime: (0.9f, 0.9f), speed: (0f, 0f), size: (2f, 2f), colorA: Color.white, colorB: Color.white, burst: 1, max: 2);
+            SetShape(zone, ParticleSystemShapeType.Sphere, 0.001f, 0f);
+            zone.GetComponent<ParticleSystemRenderer>().renderMode = ParticleSystemRenderMode.HorizontalBillboard;
+            ParticleSystem.ColorOverLifetimeModule zoneColor = zone.colorOverLifetime;
+            zoneColor.color = new ParticleSystem.MinMaxGradient(steady);
+            ParticleSystem.SizeOverLifetimeModule zoneSize = zone.sizeOverLifetime;
+            zoneSize.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 1f));
+
+            ParticleSystem converge = AddSystem(root, "Converge", material);
+            Configure(converge, lifetime: (0.9f, 0.9f), speed: (0f, 0f), size: (1.6f, 1.6f), colorA: Color.white, colorB: Color.white, burst: 1, max: 2);
+            SetShape(converge, ParticleSystemShapeType.Sphere, 0.001f, 0f);
+            converge.GetComponent<ParticleSystemRenderer>().renderMode = ParticleSystemRenderMode.HorizontalBillboard;
+            ParticleSystem.SizeOverLifetimeModule convergeSize = converge.sizeOverLifetime;
+            convergeSize.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.1f));
+
+            foreach (ParticleSystem ps in root.GetComponentsInChildren<ParticleSystem>())
+            {
+                ParticleSystem.MainModule m = ps.main;
+                m.scalingMode = ParticleSystemScalingMode.Hierarchy;
+                m.simulationSpace = ParticleSystemSimulationSpace.Local;
+                m.duration = 0.9f;
+            }
+
+            return root;
+        }
+
+        static void AddFlashLight(GameObject root, Color color, float range)
+        {
+            var lightGo = new GameObject("Light");
+            lightGo.transform.SetParent(root.transform, false);
+            lightGo.transform.localPosition = new Vector3(0f, 0.5f, 0f);
+            var light = lightGo.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.range = range;
+            light.color = color;
+            light.shadows = LightShadows.None;
+            light.intensity = 0f;
+            var flash = lightGo.AddComponent<LightFlash>();
+            EditorUtil.SetFloat(flash, "duration", 0.15f);
+            EditorUtil.SetFloat(flash, "peakIntensity", 6f);
+        }
+
+        static GameObject EnsureIn(string folder, string name, bool overwrite, System.Func<GameObject> build)
+        {
+            string path = $"{folder}/{name}.prefab";
+            if (!overwrite && EditorUtil.Exists(path))
+            {
+                return AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            }
+
+            GameObject go = build();
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
+            Object.DestroyImmediate(go);
+            return prefab;
         }
 
         static GameObject Ensure(string name, bool overwrite, System.Func<GameObject> build)

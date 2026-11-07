@@ -14,6 +14,7 @@ namespace CoopDeck.Enemies
         float phase;
         Health health;
         Rigidbody body;
+        ForceReceiver receiver;
 
         public void Configure(Vector3 travel, float moveSpeed, float phaseOffset)
         {
@@ -27,6 +28,13 @@ namespace CoopDeck.Enemies
             origin = transform.position;
             health = GetComponent<Health>();
             body = GetComponent<Rigidbody>();
+            receiver = GetComponent<ForceReceiver>();
+            if (receiver != null)
+            {
+                // The patrol owns the position; skill pulls are added as an offset.
+                receiver.ExternallyDriven = true;
+            }
+
             float length = localTravel.magnitude;
             phase = startPhase * (length > 0f ? 2f * length / speed : 0f);
         }
@@ -48,6 +56,10 @@ namespace CoopDeck.Enemies
             float t = Mathf.PingPong(phase * speed / length, 1f);
             float eased = t * t * (3f - 2f * t);
             Vector3 target = origin + transform.rotation * localTravel * (eased - 0.5f);
+            if (receiver != null)
+            {
+                target += receiver.Offset;
+            }
 
             if (body != null && body.isKinematic)
             {

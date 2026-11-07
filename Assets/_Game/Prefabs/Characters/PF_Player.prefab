@@ -517,6 +517,10 @@ GameObject:
   - component: {fileID: 1951947001026093815}
   - component: {fileID: 8297622115542364290}
   - component: {fileID: 6611361532840172764}
+  - component: {fileID: 2744960229989766494}
+  - component: {fileID: 3939776202828424111}
+  - component: {fileID: 5631766884011611418}
+  - component: {fileID: 5909787761985430556}
   m_Layer: 6
   m_Name: PF_Player
   m_TagString: Untagged
@@ -683,6 +687,63 @@ MonoBehaviour:
   health: {fileID: 6894272300664389023}
   weapon: {fileID: 1951947001026093815}
   commandSourceComponent: {fileID: 7608635730101473072}
+--- !u!114 &2744960229989766494
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2203744421934304508}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68ba0147f5ce8564aa8c2b4ec8b1c85e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CoopDeck.Combat::CoopDeck.Combat.CombatStatus
+--- !u!114 &3939776202828424111
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2203744421934304508}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5e0648a0cd898b4e8c51ac03b15a28b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CoopDeck.Player::CoopDeck.Player.PlayerRespawn
+  respawnDelay: 2.5
+--- !u!114 &5631766884011611418
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2203744421934304508}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e5c01330f86d584086ee27139424dfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CoopDeck.Skills::CoopDeck.Skills.SkillCaster
+  castOrigin: {fileID: 2704641573580765417}
+--- !u!114 &5909787761985430556
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2203744421934304508}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f26d9e7464b663e41a14f4bcc64a06aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CoopDeck.Skills::CoopDeck.Skills.DeckController
+  startingDeck: {fileID: 11400000, guid: a6d34a923be0ee84099c40c14b50cd5f, type: 2}
+  startingItems:
+  - {fileID: 11400000, guid: 24170b86587469b49be8b99695f615fd, type: 2}
+  - {fileID: 11400000, guid: ef7b5c63e61fc2f4db353ee92119a8f0, type: 2}
+  randomSeed: 0
+  character: {fileID: 6611361532840172764}
+  caster: {fileID: 5631766884011611418}
 --- !u!1 &2427943215742224065
 GameObject:
   m_ObjectHideFlags: 0

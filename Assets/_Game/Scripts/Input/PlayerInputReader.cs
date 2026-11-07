@@ -42,7 +42,10 @@ namespace CoopDeck.Input
         InputAction useItem;
         InputAction cycleItem;
         InputAction pause;
+        InputAction selectPrev;
+        InputAction selectNext;
         readonly InputAction[] skills = new InputAction[CharacterCommands.SkillSlotCount];
+        readonly InputAction[] selectCard = new InputAction[CharacterCommands.SkillSlotCount];
 
         InputActionAsset runtimeActions;
         bool sprintToggled;
@@ -76,9 +79,12 @@ namespace CoopDeck.Input
             useItem = map.FindAction(GameInputActions.UseItem, true);
             cycleItem = map.FindAction(GameInputActions.CycleItem, true);
             pause = map.FindAction(GameInputActions.Pause, true);
+            selectPrev = map.FindAction(GameInputActions.SelectCardPrev, true);
+            selectNext = map.FindAction(GameInputActions.SelectCardNext, true);
             for (int i = 0; i < skills.Length; i++)
             {
                 skills[i] = map.FindAction(GameInputActions.SkillActions[i], true);
+                selectCard[i] = map.FindAction(GameInputActions.SelectCardActions[i], true);
             }
         }
 
@@ -181,6 +187,21 @@ namespace CoopDeck.Input
                 {
                     commands.SetSkillPressed(i);
                 }
+
+                if (selectCard[i].WasPressedThisFrame())
+                {
+                    commands.RequestCardSelect(i);
+                }
+            }
+
+            if (selectPrev.WasPressedThisFrame())
+            {
+                commands.CardSelectStep -= 1;
+            }
+
+            if (selectNext.WasPressedThisFrame())
+            {
+                commands.CardSelectStep += 1;
             }
 
             return commands;

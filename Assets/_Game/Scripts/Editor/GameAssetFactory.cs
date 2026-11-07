@@ -151,7 +151,7 @@ namespace CoopDeck.EditorTools
             return m;
         }
 
-        static Material Fx(string name, Color color, float intensity, float radial, float falloff)
+        public static Material Fx(string name, Color color, float intensity, float radial, float falloff)
         {
             Material m = LoadOrCreate(GamePaths.VfxMaterials, name, FxShaderName);
             m.SetColor("_BaseColor", color);
@@ -215,6 +215,14 @@ namespace CoopDeck.EditorTools
         public static InputActionAsset EnsureInputActions(bool overwrite)
         {
             EditorUtil.EnsureFolder(Path.GetDirectoryName(GamePaths.InputActions)?.Replace('\\', '/'));
+            if (!overwrite && File.Exists(GamePaths.InputActions) && MissingActions(AssetDatabase.LoadAssetAtPath<InputActionAsset>(GamePaths.InputActions)))
+            {
+                // The code added actions the saved asset does not have (e.g. card selection):
+                // regenerate it, otherwise PlayerInputReader would fail to find them.
+                Debug.LogWarning("[CoopDeck] GameControls.inputactions is missing actions; regenerating it from GameInputActions.");
+                overwrite = true;
+            }
+
             if (overwrite || !File.Exists(GamePaths.InputActions))
             {
                 InputActionAsset asset = GameInputActions.CreateDefaultAsset();
@@ -230,6 +238,24 @@ namespace CoopDeck.EditorTools
             }
 
             return imported;
+        }
+
+        static bool MissingActions(InputActionAsset asset)
+        {
+            if (asset == null)
+            {
+                return true;
+            }
+
+            foreach (string action in GameInputActions.AllPlayerActions)
+            {
+                if (asset.FindAction($"{GameInputActions.PlayerMap}/{action}") == null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public static MovementProfile EnsureMovementProfile()

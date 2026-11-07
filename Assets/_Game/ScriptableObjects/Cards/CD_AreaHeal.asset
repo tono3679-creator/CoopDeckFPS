@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974513b0d97bf004687f6ca9ef7dff4e, type: 3}
+  m_Name: CD_AreaHeal
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.CardDefinition
+  cardId: card.area_heal
+  displayName: "\u7BC4\u56F2\u56DE\u5FA9"
+  description: "\u81EA\u5206\u3068\u534A\u5F848m\u306E\u5473\u65B9\u306EHP\u309245\u56DE\u5FA9\u3002"
+  type: 0
+  element: 0
+  rarity: 0
+  maxGauge: 100
+  gaugeCost: 50
+  cooldown: 3
+  targeting: 3
+  range: 50
+  impactDelay: 0
+  effects:
+  - kind: 3
+    amount: 45
+    radius: 8
+    duration: 0
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  icon: {fileID: 21300000, guid: df4549ae09c8fd54f9e1c4ecc7f3147e, type: 3}
+  beamFx: {fileID: 0}
+  impactFx: {fileID: 2778870476830987134, guid: 14799983fd526994d9a9be3f4a438abe, type: 3}
+  areaFx: {fileID: 3755440470276625321, guid: 17d46db5523f423448975948b791c48f, type: 3}
+  auraFx: {fileID: 2272157927554116003, guid: 93f498600833dd74e9ab04f48aa3b5c0, type: 3}
+  telegraphFx: {fileID: 0}

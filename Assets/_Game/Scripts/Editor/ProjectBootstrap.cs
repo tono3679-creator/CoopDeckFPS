@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using CoopDeck.Cards;
+using CoopDeck.Items;
 using CoopDeck.Player;
 using CoopDeck.Weapons;
 using UnityEditor;
@@ -56,11 +59,16 @@ namespace CoopDeck.EditorTools
             InputActionAsset input = GameAssetFactory.EnsureInputActions(overwriteData);
             MaterialSet materials = GameAssetFactory.EnsureMaterials();
             FxPrefabSet fx = FxPrefabBuilder.EnsureFxPrefabs(materials, overwrite: true);
+            SkillFxSet skillFx = FxPrefabBuilder.EnsureSkillFx(overwrite: true);
             WeaponDefinition rifle = GameAssetFactory.EnsureAssaultRifle(fx);
             MovementProfile movement = GameAssetFactory.EnsureMovementProfile();
             VolumeProfile volume = GameAssetFactory.EnsureSandboxVolumeProfile();
 
-            GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials);
+            List<CardDefinition> cards = CardDataFactory.EnsureCards(skillFx, overwriteIcons: false);
+            DeckDefinition starterDeck = CardDataFactory.EnsureStarterDeck(cards);
+            List<GaugeItemDefinition> items = CardDataFactory.EnsureGaugeItems();
+
+            GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials, starterDeck, items);
             GameObject dummy = CharacterPrefabBuilder.BuildTargetDummy(materials, fx);
             SandboxSceneBuilder.Build(player, dummy, materials, volume);
 

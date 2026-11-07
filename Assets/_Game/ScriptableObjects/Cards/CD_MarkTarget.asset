@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974513b0d97bf004687f6ca9ef7dff4e, type: 3}
+  m_Name: CD_MarkTarget
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.CardDefinition
+  cardId: card.mark_target
+  displayName: "\u6575\u306E\u30DE\u30FC\u30AD\u30F3\u30B0"
+  description: "\u7167\u6E96\u5148\u306E\u65751\u4F53\u3092\u30DE\u30FC\u30AF\uFF1A8\u79D2\u9593\u3001\u53D7\u3051\u308B\u30C0\u30E1\u30FC\u30B8+30%\u3002"
+  type: 0
+  element: 0
+  rarity: 0
+  maxGauge: 100
+  gaugeCost: 34
+  cooldown: 1
+  targeting: 1
+  range: 60
+  impactDelay: 0
+  effects:
+  - kind: 6
+    amount: 0.3
+    radius: 0
+    duration: 8
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  icon: {fileID: 21300000, guid: bd1534eb5c21c8b43998969aa801676e, type: 3}
+  beamFx: {fileID: 1023553394034266189, guid: 79d26dda681b21b4f97f0774a7611af0, type: 3}
+  impactFx: {fileID: 2778870476830987134, guid: 14799983fd526994d9a9be3f4a438abe, type: 3}
+  areaFx: {fileID: 0}
+  auraFx: {fileID: 0}
+  telegraphFx: {fileID: 0}

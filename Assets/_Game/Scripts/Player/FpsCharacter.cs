@@ -25,16 +25,24 @@ namespace CoopDeck.Player
         [SerializeField] MonoBehaviour commandSourceComponent;
 
         ICharacterCommandSource commandSource;
+        CombatStatus status;
 
-        /// <summary>Skill slot index pressed (0..2). The deck system subscribes in Phase 3.</summary>
+        /// <summary>Skill slot index pressed (0..2). The deck system subscribes.</summary>
         public event Action<int> SkillSlotRequested;
 
         public event Action ItemUseRequested;
         public event Action ItemCycleRequested;
 
+        /// <summary>A hand slot was picked directly (keys 1/2/3).</summary>
+        public event Action<int> CardSelectRequested;
+
+        /// <summary>Card selection moved by -1 / +1 (gamepad D-pad left/right).</summary>
+        public event Action<int> CardSelectStepRequested;
+
         public string DisplayName => displayName;
         public TeamId Team => health != null ? health.Team : TeamId.Players;
         public Health Health => health;
+        public CombatStatus Status => status != null ? status : status = GetComponent<CombatStatus>();
         public Vector3 Position => transform.position;
         public bool IsAlive => health == null || health.IsAlive;
         public FpsMotor Motor => motor;
@@ -113,6 +121,18 @@ namespace CoopDeck.Player
                 weapon.Tick(deltaTime);
             }
 
+            // Selection first, so "pick card 2 + use potion" in the same frame targets card 2.
+            if (commands.TryGetCardSelect(out int selectedSlot))
+            {
+                CardSelectRequested?.Invoke(selectedSlot);
+            }
+
+            if (commands.CardSelectStep != 0)
+            {
+                CardSelectStepRequested?.Invoke(commands.CardSelectStep);
+            }
+
+            // Skills run alongside shooting: the weapon already ticked above and is not touched here.
             for (int slot = 0; slot < CharacterCommands.SkillSlotCount; slot++)
             {
                 if (commands.IsSkillPressed(slot))
