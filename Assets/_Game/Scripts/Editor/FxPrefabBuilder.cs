@@ -215,6 +215,39 @@ namespace CoopDeck.EditorTools
             return root;
         }
 
+        /// <summary>Enemy attack telegraph: a glow that swells over the wind-up (follows the enemy).</summary>
+        public static GameObject EnsureEnemyWindupFx(bool overwrite)
+        {
+            Material material = GameAssetFactory.Fx("M_FX_EnemyWindup", new Color(1f, 0.28f, 0.2f), 2.4f, 1f, 1.1f);
+            return Ensure("FX_Enemy_Windup", overwrite, () =>
+            {
+                var root = new GameObject("FX_Enemy_Windup");
+                root.AddComponent<PooledFx>().Lifetime = 0.8f;
+
+                var ramp = new Gradient();
+                ramp.SetKeys(
+                    new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                    new[] { new GradientAlphaKey(0.2f, 0f), new GradientAlphaKey(1f, 0.85f), new GradientAlphaKey(0f, 1f) });
+
+                ParticleSystem charge = AddSystem(root, "Charge", material);
+                Configure(charge, lifetime: (0.68f, 0.68f), speed: (0f, 0f), size: (0.45f, 0.45f), colorA: Color.white, colorB: Color.white, burst: 1, max: 2);
+                SetShape(charge, ParticleSystemShapeType.Sphere, 0.001f, 0f);
+                ParticleSystem.ColorOverLifetimeModule chargeColor = charge.colorOverLifetime;
+                chargeColor.color = new ParticleSystem.MinMaxGradient(ramp);
+                ParticleSystem.SizeOverLifetimeModule chargeSize = charge.sizeOverLifetime;
+                chargeSize.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.6f, 1f, 2.6f));
+                ParticleSystem.MainModule main = charge.main;
+                main.simulationSpace = ParticleSystemSimulationSpace.Local;
+
+                ParticleSystem sparks = AddSystem(root, "Sparks", material);
+                Configure(sparks, lifetime: (0.25f, 0.4f), speed: (-2.5f, -1.5f), size: (0.05f, 0.1f), colorA: Color.white, colorB: new Color(1f, 0.6f, 0.3f), burst: 12, max: 24);
+                SetShape(sparks, ParticleSystemShapeType.Sphere, 0.8f, 0f);
+                ParticleSystem.MainModule sparksMain = sparks.main;
+                sparksMain.simulationSpace = ParticleSystemSimulationSpace.Local;
+                return root;
+            });
+        }
+
         static void AddFlashLight(GameObject root, Color color, float range)
         {
             var lightGo = new GameObject("Light");

@@ -12,6 +12,10 @@
         "CoopDeck.Deck",
         "CoopDeck.Items",
         "CoopDeck.Skills",
+        "CoopDeck.Effects",
+        "CoopDeck.Enemies",
+        "CoopDeck.AI",
+        "Unity.AI.Navigation",
         "Unity.InputSystem"
     ],
     "includePlatforms": [],

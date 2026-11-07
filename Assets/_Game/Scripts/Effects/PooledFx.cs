@@ -124,6 +124,12 @@ namespace CoopDeck.Effects
             return (short)Mathf.Max(1, Mathf.RoundToInt(count * density));
         }
 
+        /// <summary>Returns the object to the pool before its lifetime ends (projectile hit).</summary>
+        public void ReleaseNow()
+        {
+            FxPool.Release(this);
+        }
+
         void Update()
         {
             remaining -= Time.deltaTime;

@@ -13,7 +13,7 @@
 ## はじめかた
 
 1. Git LFS を有効にしてクローンする（`git lfs install` → `git clone ...`）。
-2. Unity **6000.5.4f1**（6000.6.8f1 へ更新予定）でプロジェクトを開く。
+2. Unity **6000.5.4f1** でプロジェクトを開く（6000.6.8f1 への更新は保留中）。
 3. `Assets/_Game/Scenes/Sandbox_Phase1.unity` を開いて Play。
 4. シーンや Prefab が無い・壊れた場合は `CoopDeck > Setup > Run Phase 1 Bootstrap` で再生成できる。
 
@@ -33,11 +33,12 @@
 | 操作ヒント / 性能表示 | F1 / F3 | — / View |
 
 テストシーン：右手のオレンジの床に立つと HP が減る（回復・シールドの確認用）。射撃場右側のピンクの床に的が 5 体密集（範囲・連鎖・吸引の確認用）。
+北西のシアンの枠が**敵アリーナ**：中に入るとウェーブが始まり、近接型のスラッシャーと遠距離型のシューター（胸の光るコアが弱点）が出現する。攻撃の前に予兆（腕を振り上げる・光る）があり、その間にダッシュや横移動で避けられる。倒れると 2.5 秒後にスタート地点で復活し、アリーナを出て 6 秒たつと出現が止まる。
 
 ## ビルド
 
 `CoopDeck > Build > Windows (Release)` → `Builds/Windows/CoopDeckFPS.exe`（Git 管理外）。
-ROG Ally X での無人計測: `CoopDeckFPS.exe -perfrun 30 -perfout C:\temp\perf.json`（詳細は ARCHITECTURE.md 6 章）。
+ROG Ally X での無人計測: `CoopDeckFPS.exe -perfrun 30 -perfout C:\temp\perf.json`、敵との戦闘込みは `-perfarena` を追加（詳細は ARCHITECTURE.md 6 章）。
 
 ## 秘密情報
 

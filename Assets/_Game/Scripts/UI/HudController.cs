@@ -27,6 +27,7 @@ namespace CoopDeck.UI
         static readonly Color HeadshotColor = new Color(1f, 0.85f, 0.2f, 1f);
         static readonly Color KillColor = new Color(1f, 0.25f, 0.3f, 1f);
         static readonly Color SkillHitColor = new Color(0.75f, 0.6f, 1f, 1f);
+        static readonly Color CriticalColor = new Color(1f, 0.55f, 0.15f, 1f);
         static readonly Color ShieldColor = new Color(0.55f, 0.9f, 1f, 1f);
 
         RectTransform root;
@@ -200,18 +201,20 @@ namespace CoopDeck.UI
 
             bool killed = e.Result.Killed;
             bool headshot = e.Result.IsHeadshot;
+            bool critical = (e.Result.Flags & DamageFlags.Critical) != 0;
             bool skill = e.Info.Kind == DamageKind.Skill || e.Info.Kind == DamageKind.Status;
             if (e.Info.Kind != DamageKind.Status)
             {
                 hitMarkerTimer = 0.14f;
-                hitMarkerScale = killed ? 1.6f : headshot ? 1.3f : 1f;
-                hitMarkerColor = killed ? KillColor : headshot ? HeadshotColor : HitColor;
+                hitMarkerScale = killed ? 1.6f : headshot || critical ? 1.3f : 1f;
+                hitMarkerColor = killed ? KillColor : headshot ? HeadshotColor : critical ? CriticalColor : HitColor;
             }
 
-            SpawnDamageNumber(e.Info.Point, e.Result.Damage, headshot, killed, skill, e.Info.Kind == DamageKind.Status);
+            SpawnDamageNumber(e.Info.Point, e.Result.Damage, headshot || critical, killed, skill, e.Info.Kind == DamageKind.Status,
+                critical ? CriticalColor : (Color?)null);
         }
 
-        void SpawnDamageNumber(Vector3 world, float amount, bool headshot, bool killed, bool skill, bool overTime)
+        void SpawnDamageNumber(Vector3 world, float amount, bool headshot, bool killed, bool skill, bool overTime, Color? colorOverride = null)
         {
             if (amount < 0.5f)
             {
@@ -227,7 +230,7 @@ namespace CoopDeck.UI
             n.Active = true;
             n.Text.text = Mathf.RoundToInt(amount).ToString();
             n.Text.fontSize = headshot || skill && !overTime ? 38 : overTime ? 24 : 30;
-            n.Text.color = killed ? KillColor : headshot ? HeadshotColor : skill ? SkillHitColor : Color.white;
+            n.Text.color = killed ? KillColor : colorOverride ?? (headshot ? HeadshotColor : skill ? SkillHitColor : Color.white);
             n.Text.gameObject.SetActive(true);
         }
 

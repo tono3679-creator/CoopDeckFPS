@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.IO;
+using CoopDeck.Combat;
 using CoopDeck.Core;
+using CoopDeck.Enemies;
 using CoopDeck.Player;
 using UnityEngine;
 
@@ -10,10 +12,12 @@ namespace CoopDeck.UI.Diagnostics
     /// <summary>
     /// Unattended performance capture for builds.
     ///
-    ///   CoopDeckFPS.exe -perfrun 30 [-perfout C:\path\result.json] [-perfidle] [-tier handheld] [-uncapped]
+    ///   CoopDeckFPS.exe -perfrun 30 [-perfout C:\path\result.json] [-perfidle] [-perfarena] [-tier handheld] [-uncapped]
     ///
     /// Waits 3 s, measures for N seconds while the autopilot shoots (unless -perfidle), writes a
-    /// JSON result and a screenshot next to it, then quits.
+    /// JSON result and a screenshot next to it, then quits. -perfarena starts the player inside the
+    /// combat arena so enemy waves (AI, NavMesh, projectiles) are part of the measurement; the
+    /// player cannot die during that run so the fight keeps going.
     /// </summary>
     public class AutoPerfRunner : MonoBehaviour
     {
@@ -32,6 +36,9 @@ namespace CoopDeck.UI.Diagnostics
             public int vSyncCount;
             public int targetFrameRate;
             public bool autopilot;
+            public bool arena;
+            public int waveReached;
+            public int maxEnemiesAlive;
             public float seconds;
             public int frames;
             public float averageFps;
@@ -48,6 +55,10 @@ namespace CoopDeck.UI.Diagnostics
         float duration;
         string outputPath;
         bool autopilot;
+        bool arena;
+        WaveDirector director;
+        bool measuring;
+        int maxEnemiesAlive;
         FrameTimeMonitor monitor;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -67,6 +78,43 @@ namespace CoopDeck.UI.Diagnostics
             runner.duration = Mathf.Max(5f, seconds);
             runner.outputPath = PerformanceBootstrap.GetArgValue(args, "-perfout");
             runner.autopilot = Array.IndexOf(args, "-perfidle") < 0;
+            runner.arena = Array.IndexOf(args, "-perfarena") >= 0;
+        }
+
+        void Update()
+        {
+            if (measuring && director != null)
+            {
+                maxEnemiesAlive = Mathf.Max(maxEnemiesAlive, director.AliveEnemies.Count);
+            }
+        }
+
+        /// <summary>Moves the player into the arena (facing the spawn side) so the waves start.</summary>
+        void EnterArena(FpsCharacter character)
+        {
+            director = FindAnyObjectByType<WaveDirector>();
+            if (director == null || character == null)
+            {
+                Debug.LogWarning("[AutoPerfRunner] -perfarena: no WaveDirector or player in the scene");
+                return;
+            }
+
+            Vector3 center = director.transform.position;
+            Vector3 start = center + new Vector3(0f, 0.3f, -director.ZoneBounds.extents.z * 0.6f);
+            if (character.Motor != null)
+            {
+                character.Motor.Teleport(start);
+            }
+
+            if (character.Look != null)
+            {
+                character.Look.SetRotation(0f, 0f); // +Z: the spawn points are on the far side
+            }
+
+            if (character.Health != null)
+            {
+                character.Health.SetMaxHealth(100000f, true);
+            }
         }
 
         IEnumerator Start()
@@ -75,18 +123,34 @@ namespace CoopDeck.UI.Diagnostics
             monitor.AutoRecompute = false;
             monitor.SetCapacity(Mathf.CeilToInt(duration * 250f));
 
-            if (autopilot)
+            FpsCharacter player = FindAnyObjectByType<FpsCharacter>();
+            if (arena)
             {
-                FpsCharacter character = FindAnyObjectByType<FpsCharacter>();
-                if (character != null)
+                yield return null; // let the scene's Start() methods run first
+                EnterArena(player);
+            }
+
+            if (autopilot && player != null)
+            {
+                FpsLook look = player.Look;
+                var pilot = new AutopilotCommandSource(look != null ? () => look.Pitch : null);
+                if (director != null && look != null)
                 {
-                    FpsLook look = character.Look;
-                    character.CommandSource = new AutopilotCommandSource(look != null ? () => look.Pitch : null);
+                    // Fight the waves: track the nearest enemy's chest instead of sweeping.
+                    pilot.AimReader = look.GetAimRay;
+                    pilot.TargetProvider = () =>
+                    {
+                        ICombatActor enemy = CombatantRegistry.FindNearestHostile(TeamId.Players, player.Position, 60f);
+                        return enemy != null ? enemy.Position + Vector3.up * 1.1f : (Vector3?)null;
+                    };
                 }
+
+                player.CommandSource = pilot;
             }
 
             yield return new WaitForSecondsRealtime(WarmupSeconds);
             monitor.ResetStats();
+            measuring = true;
 
             float half = duration * 0.5f;
             yield return new WaitForSecondsRealtime(half);
@@ -122,6 +186,9 @@ namespace CoopDeck.UI.Diagnostics
                 vSyncCount = QualitySettings.vSyncCount,
                 targetFrameRate = Application.targetFrameRate,
                 autopilot = autopilot,
+                arena = arena && director != null,
+                waveReached = director != null ? director.Schedule.WaveNumber : 0,
+                maxEnemiesAlive = maxEnemiesAlive,
                 seconds = duration,
                 frames = monitor.SampleCount,
                 averageFps = monitor.AverageFps,
@@ -136,7 +203,8 @@ namespace CoopDeck.UI.Diagnostics
             };
 
             File.WriteAllText(Path.GetFullPath(outputPath), JsonUtility.ToJson(result, true));
-            Debug.Log($"[AutoPerfRunner] avg {result.averageFps:0.0} fps, 1% low {result.onePercentLowFps:0.0} fps, worst {result.worstMs:0.0} ms -> {outputPath}");
+            Debug.Log($"[AutoPerfRunner] avg {result.averageFps:0.0} fps, 1% low {result.onePercentLowFps:0.0} fps, worst {result.worstMs:0.0} ms, " +
+                      $"arena {result.arena} (wave {result.waveReached}, max {result.maxEnemiesAlive} enemies) -> {outputPath}");
 
             yield return null;
             Application.Quit();

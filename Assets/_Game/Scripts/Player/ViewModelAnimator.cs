@@ -37,6 +37,7 @@ namespace CoopDeck.Player
         Vector3 restPosition;
         Quaternion restRotation;
         float bobPhase;
+        float breathPhase;
         Vector2 sway;
         float kick;
         float landingDip;
@@ -146,6 +147,11 @@ namespace CoopDeck.Player
 
             float bobWeight = grounded ? speed : 0f;
             Vector3 bob = new Vector3(Mathf.Cos(bobPhase) * bobAmplitude.x, Mathf.Abs(Mathf.Sin(bobPhase)) * bobAmplitude.y, 0f) * bobWeight;
+
+            // Idle breathing: a slow, tiny drift that fades out once walking.
+            breathPhase += dt * Mathf.PI * 2f * 0.28f;
+            float idleWeight = 1f - Mathf.Clamp01(speed * 2f);
+            bob += new Vector3(Mathf.Sin(breathPhase * 0.5f) * 0.0015f, Mathf.Sin(breathPhase) * 0.004f, 0f) * idleWeight;
 
             // Sway lags behind view rotation.
             Vector2 look = character.Look != null ? character.Look.LastLookDelta : Vector2.zero;

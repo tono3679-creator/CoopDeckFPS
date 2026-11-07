@@ -1,6 +1,6 @@
 # ARCHITECTURE — 実装アーキテクチャ
 
-Phase 1 時点で**実際に存在するコード**の構成と、その後のフェーズが接続する場所をまとめる。
+Phase 2（敵 AI・仮モーション）と Phase 3（デッキ）時点で**実際に存在するコード**の構成と、その後のフェーズが接続する場所をまとめる。
 仕様の背景は `PROJECT_OVERVIEW.md`、カードは `CARD_SYSTEM.md`、通信は `MULTIPLAYER_PLAN.md` を参照。
 
 ---
@@ -21,11 +21,12 @@ Phase 1 時点で**実際に存在するコード**の構成と、その後の�
 ## 2. アセンブリ構成と依存関係
 
 ```
-CoopDeck.Core      （依存なし）  CharacterCommands, ICharacterCommandSource, IAimProvider,
+CoopDeck.Core      （依存なし）  CharacterCommands, ICharacterCommandSource, IAimProvider, ILocomotionSource,
                                    Element, TeamId, GameLayers, PerformanceSettings/Bootstrap
    ▲
+   ├── CoopDeck.Animation  AnimatorParams, LocomotionMath（純関数）, CharacterAnimatorDriver
    ├── CoopDeck.Combat   DamageInfo/Result, IDamageable, ICombatActor, Health(+HealthModel),
-   │                     HitZone, DamageRules, CombatEvents,
+   │                     HitZone, DamageRules, CombatEvents, CombatantRegistry（戦闘者の一覧・最寄りの敵）,
    │                     CombatStatus(+StatusEffectsModel: シールド/攻撃強化/被ダメ増/継続ダメ), ForceReceiver(吸引)
    ├── CoopDeck.Cards    CardDefinition, SkillEffectSpec, DeckDefinition, ElementStyle（データのみ）
    │     └── CoopDeck.Deck   CardRuntime, DeckState, IRandom/SeededRandom（純 C#）
@@ -34,23 +35,30 @@ CoopDeck.Core      （依存なし）  CharacterCommands, ICharacterCommandSourc
    ├── CoopDeck.Effects  FxPool, PooledFx, TracerFx, LightFlash
    │
    ├── CoopDeck.Weapons  WeaponDefinition, WeaponState, HitscanWeapon, WeaponFx  ← Combat, Effects
-   ├── CoopDeck.Enemies  TargetDummy, PatrolMover, HitFlash                       ← Combat, Effects
+   ├── CoopDeck.Enemies  TargetDummy, PatrolMover, HitFlash, DamageZone,
+   │                     EnemyDefinition, EnemyActor, EnemyProjectile,
+   │                     WaveSchedule（純 C#）, WaveDirector                       ← Combat, Effects
+   │     └── CoopDeck.AI  EnemyStateMachine（純 C#）, EnemyBrain（NavMeshAgent）    ← Combat, Effects, Enemies, Animation
    ├── CoopDeck.Player   MovementProfile, MotorMath, FpsMotor, FpsLook,
-   │                     FpsCharacter, ViewModelAnimator                          ← Combat, Weapons
+   │                     FpsCharacter, ViewModelAnimator, PlayerRespawn           ← Combat, Weapons, Animation
    ├── CoopDeck.Skills   SkillCaster（効果の実行）, DeckController（キャラ⇔デッキ⇔アイテム）
    │                                                                              ← Combat, Effects, Cards, Deck, Items, Player
    └── CoopDeck.UI       HudController, DeckHud, HudKit, WorldHealthBar, FrameTimeMonitor,
-                         Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, Cards, Deck, Items, Skills, InputSystem, uGUI
-   （CoopDeck.Enemies に DamageZone、CoopDeck.Player に PlayerRespawn を追加）
+                         DamageFeedbackHud（被弾方向・ダウン表示）, ArenaHud（ウェーブ表示）,
+                         Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, Cards, Deck, Items, Skills, Enemies, InputSystem, uGUI
 
-CoopDeck.Editor           ProjectBootstrap ほか生成ツール（カード・アイコン・スキル VFX 含む） ← 全ランタイム + URP
-CoopDeck.Tests.EditMode   83 テスト（純ロジック・デッキ規則・アイテム・状態効果・生成データ・入力定義・ティア判定）
-CoopDeck.Tests.PlayMode   21 テスト（移動・射撃・デッキ×FPS 統合・仮想キーボード/ゲームパッド・各スキル効果）
+CoopDeck.Editor           ProjectBootstrap ほか生成ツール（カード・アイコン・スキル VFX・仮リグ・アニメ・敵 Prefab・NavMesh 含む）
+                          ← 全ランタイム + URP + Unity.AI.Navigation + Unity.Animation.Rigging
+CoopDeck.Tests.EditMode   111 テスト（純ロジック・デッキ規則・アイテム・状態効果・敵の状態遷移・ウェーブ・移動ブレンド・
+                          弱点・生成データ（カード／Animator／敵 Prefab／シーンの NavMesh）・入力定義・ティア判定）
+CoopDeck.Tests.PlayMode   28 テスト（移動・射撃・デッキ×FPS 統合・仮想キーボード/ゲームパッド・各スキル効果・
+                          敵の追跡と攻撃・回避・敵弾・ウェーブ進行・NavMesh 上の吸引・入力遅延）
 ```
 
 - **`CoopDeck.Player` は `CoopDeck.Input` を参照しない。** 入力は `ICharacterCommandSource` 経由でのみ届く。
-- 予定アセンブリ（フォルダのみ作成済み）：`Cards` `Deck` `Skills` `Combos` `Items` `NPC` `AI` `Animation` `Networking` `Save`。
-  - `Deck`（純 C#）→ `Core` のみ参照、`Skills` → `Deck` `Combat` `Effects`、`Combos` → `Combat`、`NPC`/`AI` → `Player` `Deck` `Combat`、`Networking` → 全体（逆参照はしない）。
+- `CoopDeck.Player` と `CoopDeck.AI` はお互いを参照しない。敵はプレイヤーを `CombatantRegistry`（`ICombatActor`）経由でだけ知る。
+- 予定アセンブリ（フォルダのみ作成済み）：`Combos` `NPC` `Networking` `Save`。
+  - `Combos` → `Combat`、`NPC` → `Player` `Deck` `Combat`（敵 AI の状態機械の考え方を流用）、`Networking` → 全体（逆参照はしない）。
 
 ---
 
@@ -80,6 +88,27 @@ FpsCharacter.Step(dt)
 射撃（4）とスキル（6）は同じフレーム内の別処理で、互いの状態（弾数・ゲージ）に触れない。攻撃力強化だけは `ICombatActor.Status` 経由で両方のダメージに乗る。
 
 `FpsCharacter.Step` は public なので、将来の固定ティック（ネットワーク）やテストからも同じ処理を呼べる。
+
+### 3.1 1フレームの流れ（敵）
+
+```
+WaveDirector.Update                       プレイヤーがアリーナ内 → WaveSchedule.Start / Tick
+        └─ 出現する種類 → Instantiate（出現点を順番に使用、AlertOnSpawn = true）
+EnemyBrain.Update(dt)
+  1. CombatantRegistry.FindNearestHostile   最寄りの生存している敵対者（プレイヤー／将来の NPC）
+  2. Physics.Linecast（SightBlockingMask）  視線。キャラクターは遮らず、壁・遮蔽物だけが遮る
+  3. EnemyStateMachine.Tick(知覚, 調整値)   Idle → Chase → Windup（予兆）→ 攻撃 → Recover → Chase
+        │                                   被弾・出現直後は視線がなくても追跡を開始
+  4. NavMeshAgent.SetDestination（0.25 s ごと）、予兆中は停止して対象へ向き直る
+  5. Windup 開始：FX_Enemy_Windup を FxPool で再生 + Attack トリガー（WindupStarted イベント）
+  6. 攻撃発生：近接＝距離（射程 +0.6 m）と正面 70° を判定して Health.ApplyDamage
+             遠距離＝EnemyProjectile を FxPool から発射（毎フレーム SphereCast、EnemyShotMask）
+             （AttackReleased イベント）
+CharacterAnimatorDriver.Update              ILocomotionSource（NavMeshAgent／FpsMotor の速度）→ MoveX/MoveY/Speed
+Health.Died → EnemyActor                    コライダー無効化・撃破 FX・Defeated → WaveDirector → WaveSchedule.NotifyDefeated
+```
+
+予兆（0.55〜0.7 s）の間にダッシュ・横移動すれば、近接は射程外・正面外で外れ、弾は発射時点の位置を狙うので当たらない（いずれも PlayMode テストで確認）。
 
 ---
 
@@ -134,6 +163,39 @@ FpsCharacter.Step(dt)
 - `DeckHud`：手札 3 枚・山札／捨て札枚数・アイテム欄・破棄／ドロー演出（`CARD_SYSTEM.md` §11）。日本語は OS フォント（Yu Gothic UI → Meiryo → MS Gothic）を使用。
 - `FrameTimeMonitor`：平均 FPS・1% Low・最悪フレーム。
 - `AutoPerfRunner`：ビルドの無人計測（下記 6 章）。
+- `DamageFeedbackHud`：被弾時の赤い周辺減光（シールドだけで防いだときはシアン）、攻撃が来た方向の矢印（同時に 4 個まで）、ダウン中の「ダウン！ まもなく復活します」。
+- `ArenaHud`：アリーナに入る前は「北西のシアンの枠（アリーナ）に入ると敵が出現します」、戦闘中は「WAVE n」「残りの敵 m」、クリア時は「WAVE n クリア！」と「次のウェーブまで n」。
+- `HudController`：弱点（Critical）ヒットはオレンジのマーカーとダメージ数値。
+
+### 4.7 敵・AI（`CoopDeck.Enemies / AI`）
+
+| クラス | 役割 |
+|---|---|
+| `EnemyDefinition` (SO) | HP・移動速度・加速・旋回・索敵 30 m／追跡打ち切り 60 m・攻撃種別（近接／弾）・射程・維持距離・ダメージ・予兆／硬直／間隔・近接の角度・弾 Prefab と弾速・半径・予兆／撃破 FX |
+| `EnemyActor` | 敵の `ICombatActor`。`CombatantRegistry` に登録、死亡時にコライダーを切って撃破 FX、`Defeated` を発火し 2.2 s 後に削除 |
+| `EnemyStateMachine` | 純 C# の状態機械（上記 3.1）。攻撃は予兆 1 回につき必ず 1 回、間隔中は再攻撃しない |
+| `EnemyBrain` | 状態機械の意図を NavMeshAgent・向き・攻撃に反映。頭の向き用の `LookTarget` を毎フレーム対象へ移動 |
+| `EnemyProjectile` | 見える速さの弾（`PooledFx`）。最初に触れた敵対者に 1 回ダメージを与えて消える |
+| `WaveSchedule` | 純 C# のウェーブ進行（出現順は種類を交互に、同時最大数、休憩、最終ウェーブ後は各種類 +1 でループ） |
+| `WaveDirector` | アリーナの範囲・出現点・敵 Prefab。全員が範囲外に 6 s 出ると出現を一時停止（残った敵は戦い続ける） |
+| `CombatantRegistry`（Combat） | 有効な戦闘者の一覧。AI の対象探索にシーン検索を使わない。`SubsystemRegistration` でリセット |
+| `ForceReceiver`（Combat） | 吸引。NavMeshAgent を持つ敵は `agent.Move` で動かすので NavMesh の外へ押し出されない |
+
+敵の種類：
+
+| | スラッシャー（近接） | シューター（遠距離） |
+|---|---|---|
+| 見た目 | 赤い体・黄色い頭・白いバイザー | 紫の体・シアンのバイザー・胸に光る弱点コア |
+| HP / 速度 | 140 / 4.2 m/s | 90 / 3.4 m/s |
+| 攻撃 | 射程 2.2 m、14 ダメージ、予兆 0.55 s、間隔 1.3 s | 射程 20 m（約 11 m を維持）、弾 9 ダメージ・20 m/s、予兆 0.7 s、間隔 1.8 s |
+| 部位 | 胴・頭 | 胴・頭・弱点（×1.75） |
+
+### 4.8 アニメーション（`CoopDeck.Animation`）
+
+- `CharacterAnimatorDriver`：`ILocomotionSource` の速度を向きに対するローカル値（`LocomotionMath.LocalBlend`）にして `MoveX/MoveY` に、歩幅に合わせた再生速度を `LocomotionSpeed` に渡す（減衰 0.1 s）。射撃・リロード・攻撃・被弾はトリガー、死亡は `Dead`。
+- プレイヤーの全身（`BodyVisual`）は影だけ描画。`FpsCharacter` が武器・HP のイベントでトリガーを送る。
+- 敵の頭は Animation Rigging の Multi-Aim（±70°）で対象を向く。
+- Animator の構成は `ANIMATION_GUIDELINES.md` §3.1。
 
 ---
 
@@ -145,6 +207,8 @@ FpsCharacter.Step(dt)
 | Enemy | 7 | 敵・的 |
 | ViewModel | 8 | 一人称の腕と銃。本体カメラは描かず、オーバーレイカメラ（FOV 55°、near 0.01）だけが描く → 壁にめり込まない |
 
+- 判定用マスク（`GameLayers`）：プレイヤーの射撃＝Player・ViewModel・UI 以外、敵弾＝Enemy・ViewModel・UI 以外、敵の視線＝Player・Enemy・ViewModel・UI 以外（キャラクター同士は視線を遮らない）。
+- NavMesh：`Environment` に置いた `NavMeshSurface`（物理コライダーから生成、Default レイヤー）。データは `Scenes/Sandbox_Phase1_NavMesh.asset`。
 - 本体カメラ：FOV 68°（スプリントで +5°）、FXAA、ポストプロセス有効。
 - ポストプロセス（`VP_Sandbox`）：Bloom（しきい値 1.0・強度 0.55）、Neutral トーンマップ、彩度 +18・コントラスト +8、弱いビネット。カラフルで視認性の高い見た目の土台（トゥーンシェーダーは Phase 5）。
 - 自分の体（カプセル）は影だけ描画。
@@ -171,10 +235,11 @@ FpsCharacter.Step(dt)
 ### 無人計測
 
 ```
-Builds\Windows\CoopDeckFPS.exe -perfrun 30 -perfout C:\temp\perf.json [-tier handheld] [-uncapped] [-perfidle]
+Builds\Windows\CoopDeckFPS.exe -perfrun 30 -perfout C:\temp\perf.json [-tier handheld] [-uncapped] [-perfidle] [-perfarena]
 ```
 
 3 秒待機後に 30 秒間計測し（既定は自動操縦で視点を振りながら連射）、JSON（平均 FPS・1% Low・最悪 ms・ティア・解像度・GPU 等）と同名の PNG スクリーンショットを書き出して終了する。結果は `DEVELOPMENT_PLAN.md` の記録表に転記する。
+`-perfarena` はプレイヤーを敵アリーナに置き（計測中は倒れない）、自動操縦が最寄りの敵を狙って戦う。JSON に到達ウェーブと最大同時敵数が入る。
 
 ---
 
@@ -182,7 +247,7 @@ Builds\Windows\CoopDeckFPS.exe -perfrun 30 -perfout C:\temp\perf.json [-tier han
 
 | メニュー / メソッド | 内容 |
 |---|---|
-| `CoopDeck > Setup > Run Phase 1 Bootstrap` / `ProjectBootstrap.RunBatch` | レイヤー、URP ティア、Player Settings、入力アセット、マテリアル、エフェクト Prefab、武器・移動データ、プレイヤー／的 Prefab、`Sandbox_Phase1` シーン、ビルド設定を生成。データ資産（武器・移動・入力）は既存なら保持 |
+| `CoopDeck > Setup > Run Phase 1 Bootstrap` / `ProjectBootstrap.RunBatch` | レイヤー、URP ティア、Player Settings、入力アセット、マテリアル、エフェクト Prefab、武器・移動データ、仮アニメーション（`AnimationAssetFactory`）、敵データと敵 Prefab（`EnemyFactory`、仮リグは `PlaceholderRigBuilder`）、プレイヤー／的 Prefab、`Sandbox_Phase1` シーン（敵アリーナと NavMesh の生成を含む）、ビルド設定を生成。データ資産（武器・移動・入力・敵）は既存なら保持。仮アニメーションは既存なら保持し、`-coopdeckOverwriteAnimations` で作り直す |
 | `CoopDeck > Build > Windows (Development/Release)` / `BuildScript.BuildWindowsBatch` | `Builds/Windows/CoopDeckFPS.exe` を出力（Mono、x64） |
 
 バッチ実行例（プロジェクトを Editor で開いていない状態で）：
@@ -209,11 +274,17 @@ Assets/_Game/
   ScriptableObjects/Characters/MP_Default.asset
   Settings/Input/GameControls.inputactions
   Settings/Rendering/URP_{High,Handheld}(_Renderer).asset, VP_Sandbox.asset
-  Scenes/Sandbox_Phase1.unity                             射撃場＋移動コース＋的の密集エリア＋ダメージ床
+  Scenes/Sandbox_Phase1.unity                             射撃場＋移動コース＋的の密集エリア＋ダメージ床＋敵アリーナ（26×18 m、遮蔽物 4、出現点 4）
   ScriptableObjects/Cards/CD_*.asset, Cards/Decks/DD_Starter.asset   カード 12 種と初期デッキ
   ScriptableObjects/Items/GI_*.asset                      チャージポーション、共鳴結晶
   Art/UI/CardIcons/ICON_*.png                             生成アイコン（差し替え可）
   Prefabs/Skills/FX_Skill_*.prefab                        属性別スキル VFX（21 個）
+  Animations/Placeholder/A_Placeholder_*.anim             仮クリップ 16 本（待機・8 方向歩行・落下・死亡・近接・射撃姿勢・被弾・射撃・リロード）
+  Animations/Placeholder/AC_PlaceholderHumanoid.controller, AOC_Shooter.overrideController, AM_UpperBody.mask
+  ScriptableObjects/Enemies/ED_Slasher.asset, ED_Shooter.asset   敵の調整値
+  Prefabs/Enemies/PF_Enemy_Slasher.prefab, PF_Enemy_Shooter.prefab, PF_EnemyProjectile.prefab
+  Prefabs/VFX/FX_Enemy_Windup.prefab                      敵の攻撃予兆
+  Scenes/Sandbox_Phase1_NavMesh.asset                     シーンの NavMesh データ（敵アリーナはシーン北西）
 ```
 
 テンプレート由来の `Assets/Settings`（PC/Mobile アセット）、`Assets/Scenes/SampleScene`、`TutorialInfo` は削除せず残している（現在は未使用）。
@@ -224,9 +295,9 @@ Assets/_Game/
 
 | フェーズ | 接続先 |
 |---|---|
-| 2 敵 AI | `ICombatActor` を実装した敵、`Health`/`HitZone` はそのまま。NavMesh は AI Navigation |
-| 2 モーション | `ViewModelAnimator` を Animator 駆動に置き換え。全身は `BodyVisual` を差し替え、`FpsMotor.Velocity`/`IsGrounded` を Animator パラメータへ |
-| 2.5 通信 | `ICharacterCommandSource` のネットワーク版、`FpsCharacter.Step` を固定ティックで呼ぶ |
+| 2 敵 AI（実装済み） | 新しい敵は `EnemyDefinition` と Prefab の追加で作れる。特殊な行動は `EnemyStateMachine` に状態を足すか、別の Brain を作る |
+| 2 モーション（実装済み・仮） | 本番モデルは `AC_PlaceholderHumanoid` と同じパラメータ名で Humanoid の Controller を作り、`CharacterAnimatorDriver` の Animator を差し替える。一人称は現状プロシージャル（`ViewModelAnimator`） |
+| 2.5 通信 | `ICharacterCommandSource` のネットワーク版、`FpsCharacter.Step` を固定ティックで呼ぶ。敵はホストだけで `EnemyBrain` を動かし、クライアントには位置・状態・攻撃イベントを送る想定 |
 | 3 デッキ（実装済み） | 報酬は `DeckState.AddCard`、強化は `UpgradeCard`（強化表は未実装）、パッシブは `DeckState.Passives` |
 | 4 コンボ | `CombatEvents.DamageApplied` を購読、`DamageInfo.Element`・`CombatStatus.Model.LastElement` と `DamageFlags.ComboDamage` で連鎖制御 |
 | 4 NPC | NPC 用の `ICharacterCommandSource` がスキル枠を押すだけで `DeckController` が同じ規則でカードを使う（8 枚・2 枠は `Rebuild` の引数） |

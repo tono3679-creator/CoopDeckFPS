@@ -1,4 +1,5 @@
 using System;
+using CoopDeck.Animation;
 using CoopDeck.Combat;
 using CoopDeck.Core;
 using CoopDeck.Weapons;
@@ -23,6 +24,9 @@ namespace CoopDeck.Player
 
         [Tooltip("Component implementing ICharacterCommandSource. Defaults to one on this GameObject.")]
         [SerializeField] MonoBehaviour commandSourceComponent;
+
+        [Tooltip("Full-body animation (seen by others, and as the local player's shadow). Optional.")]
+        [SerializeField] CharacterAnimatorDriver bodyAnimator;
 
         ICharacterCommandSource commandSource;
         CombatStatus status;
@@ -71,8 +75,25 @@ namespace CoopDeck.Player
             if (weapon != null)
             {
                 weapon.Initialize(this, look, Team, GameLayers.PlayerShotMask);
+                if (bodyAnimator != null)
+                {
+                    weapon.Fired += _ => bodyAnimator.Trigger(AnimatorParams.FireId);
+                    weapon.ReloadStarted += () => bodyAnimator.Trigger(AnimatorParams.ReloadId);
+                }
+            }
+
+            if (bodyAnimator != null && health != null)
+            {
+                health.Damaged += (info, result) => bodyAnimator.Trigger(AnimatorParams.HitId);
+                health.Died += (h, info) => bodyAnimator.SetDead(true);
+                health.Revived += h => bodyAnimator.SetDead(false);
             }
         }
+
+        // Registered while enabled so enemies (and later NPC allies) can find this character.
+        void OnEnable() => CombatantRegistry.Register(this);
+
+        void OnDisable() => CombatantRegistry.Unregister(this);
 
         void Update()
         {

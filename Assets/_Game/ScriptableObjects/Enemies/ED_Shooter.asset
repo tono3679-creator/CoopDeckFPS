@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa9d2b9e1d2ae2c42abadff27fbd79c1, type: 3}
+  m_Name: ED_Shooter
+  m_EditorClassIdentifier: CoopDeck.Enemies::CoopDeck.Enemies.EnemyDefinition
+  enemyId: enemy.shooter
+  displayName: "\u30B7\u30E5\u30FC\u30BF\u30FC"
+  maxHealth: 90
+  moveSpeed: 3.4
+  acceleration: 18
+  angularSpeed: 720
+  detectionRange: 30
+  loseInterestRange: 60
+  attackKind: 1
+  attackRange: 20
+  preferredRange: 11
+  damage: 9
+  windup: 0.7
+  recover: 0.3
+  cooldown: 1.8
+  meleeArc: 70
+  projectilePrefab: {fileID: 6681179331154720706, guid: 3fb731e7d8fbd9f45882f0c18c825161, type: 3}
+  projectileSpeed: 20
+  projectileRadius: 0.25
+  windupFx: {fileID: 8397359973763530148, guid: a73d2756b34de2d44b178d7a262879c0, type: 3}
+  deathFx: {fileID: 3289323573342211340, guid: 427c520c792e4744d92004c31a76321d, type: 3}

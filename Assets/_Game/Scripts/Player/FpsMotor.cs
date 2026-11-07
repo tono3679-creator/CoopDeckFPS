@@ -11,7 +11,7 @@ namespace CoopDeck.Player
     /// It is driven by <see cref="Simulate"/> only, never by input directly.
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
-    public class FpsMotor : MonoBehaviour
+    public class FpsMotor : MonoBehaviour, ILocomotionSource
     {
         [SerializeField] MovementProfile profile;
 

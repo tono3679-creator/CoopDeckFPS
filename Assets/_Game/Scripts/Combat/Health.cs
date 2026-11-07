@@ -73,6 +73,10 @@ namespace CoopDeck.Combat
             {
                 result.Flags |= DamageFlags.Headshot;
             }
+            else if (zone == HitZoneType.Weakpoint)
+            {
+                result.Flags |= DamageFlags.Critical;
+            }
 
             result.Applied = dealt > 0f || absorbed > 0f;
             result.Damage = dealt;

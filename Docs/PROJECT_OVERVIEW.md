@@ -60,12 +60,12 @@
 
 | 分類 | 採用技術 | 備考 |
 |---|---|---|
-| エンジン | Unity 6（現在 **6000.5.4f1**、ダウンロード完了後 **6000.6.8f1** へ更新予定） | 更新前に必ず Git でチェックポイントを作る |
+| エンジン | Unity 6（現在 **6000.5.4f1**。**6000.6.8f1** はインストール済みだが、ユーザー指示で更新は保留） | 更新前に必ず Git でチェックポイントを作る |
 | レンダリング | Universal Render Pipeline（URP） | Unity 6 URP テンプレートから作成 |
 | 言語 | C# | ルート名前空間 `CoopDeck` |
 | 入力 | Unity Input System | キーボード＆マウス／ゲームパッド両対応 |
-| AI移動 | Unity AI Navigation | NPC・敵の経路探索（Phase 4） |
-| IK | Unity Animation Rigging | 左手グリップIK、上半身エイム、足IK |
+| AI移動 | Unity AI Navigation 2.0.13 | 敵の経路探索（Phase 2 で導入済み）、NPC（Phase 4） |
+| IK | Unity Animation Rigging 1.4.1 | 敵の頭のエイム（Phase 2 で導入済み）。左手グリップIK・上半身エイム・足IKは本番モデル導入時 |
 | テスト | Unity Test Framework | EditMode／PlayMode |
 | Editor操作 | Unity CLI（`unity` コマンド）＋ Pipeline パッケージ（`com.unity.pipeline`、導入済み） | Claude Code から Editor を操作。MCP for Unity（mcp-unity）は本プロジェクトには未導入（必要になったら追加） |
 | バージョン管理 | Git / GitHub / Git LFS | `Library/` 等の自動生成物は管理しない |

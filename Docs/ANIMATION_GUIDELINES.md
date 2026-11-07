@@ -82,8 +82,32 @@ Down（IsDown = true） → Revive（Revive トリガー） → Locomotion
 | `IsDown` | bool | ダウン中 | 戦闘状態 |
 | `Revive` | trigger | 蘇生 | 戦闘状態 |
 
-- パラメータは「アニメーション駆動コンポーネント」（予定：`CharacterAnimationDriver`）がモーター・武器・ヘルスのイベントから設定する。ゲームロジックは Animator に依存しない。
+- パラメータは「アニメーション駆動コンポーネント」（実装：`CharacterAnimatorDriver`）がモーター・武器・ヘルスのイベントから設定する。ゲームロジックは Animator に依存しない。
 - オンラインでは、リモートキャラクターは同期された速度・状態からローカルでパラメータを計算する（アニメーション自体は同期しない）。
+
+### 3.1 Phase 2 で実装した仮の Animator（2026-11-07）
+
+生成ツール（`AnimationAssetFactory`）が `Assets/_Game/Animations/Placeholder/` に作る。外部素材は使っていない。
+
+| 資産 | 内容 |
+|---|---|
+| 仮リグ（`PlaceholderRigBuilder`） | プリミティブで組んだ Generic 階層：`Hips` / `Hips/Spine` / `Hips/Spine/Head` / `Hips/Spine/Shoulder_L・R` / `Hips/Hip_L・R` |
+| クリップ 16 本 | `A_Placeholder_Idle`、`Walk_F/FR/R/BR/B/BL/L/FL`、`Fall`、`Death`、`AttackMelee`、`AttackShoot`、`Hit`、`Fire`、`Reload`。回転・位置のカーブをコードで生成 |
+| `AC_PlaceholderHumanoid` | Base：`Locomotion`（2D Freeform Directional、MoveX/MoveY、中心に Idle＋8 方向）、`Airborne`（`IsGrounded` が false の間）、`Death`（Any State から `Dead`）。UpperBody（`AM_UpperBody`、Override、重み 1）：`Empty` から `Attack` / `Hit` / `Fire` / `Reload` をトリガーで再生して戻る |
+| `AOC_Shooter` | 上記の Override Controller。`AttackMelee` だけを `AttackShoot`（構えて撃つ姿勢）に差し替え |
+| `AM_UpperBody` | Spine・Head・両肩が有効、Hips・両脚は無効 |
+
+実装済みのパラメータ：`MoveX` `MoveY` `Speed` `LocomotionSpeed`（歩行クリップの再生速度。足滑り対策で地上速度÷歩幅、0.75〜1.8 倍）`IsGrounded` `VerticalSpeed` `Fire` `Reload` `Attack`（敵の攻撃予兆）`Hit` `Dead`。
+
+計画からの差分（未実装）：
+- Sprint は専用クリップではなく `LocomotionSpeed` で歩行を速く再生して代用。Jump / Land は `Airborne` 1 ステート。
+- `Skill` / `SkillId` / `IsDown` / `Revive` と Additive レイヤーはまだない（プレイヤーのダウンは `Dead` で代用）。
+- 仮リグは Humanoid ではないので、本番モデルでは同じパラメータ名・ステート名で Humanoid 用の Controller を作り、クリップを差し替える。
+
+使われ方：
+- 敵：`PF_Enemy_Slasher` は `AC_PlaceholderHumanoid`、`PF_Enemy_Shooter` は `AOC_Shooter`。速度は NavMeshAgent から。
+- プレイヤー：`PF_Player` の `BodyVisual` に同じ Controller。影だけ描画（自分のカメラにメッシュは映らない）。速度は `FpsMotor` から。
+- 一人称の腕・武器はクリップではなく `ViewModelAnimator` のプロシージャル動作（Phase 2 で待機時の呼吸を追加）。
 
 ---
 
@@ -95,6 +119,7 @@ Down（IsDown = true） → Revive（Revive トリガー） → Locomotion
 | Multi-Aim（脊椎・首・頭） | 上半身と頭をエイムポイントに向ける。ピッチ方向の制限を設定 |
 | 足 IK／接地 | 段差・坂で足を地面に合わせる（Raycast で接地点を求めて IK ターゲットを移動） |
 
+- 実装状況（Phase 2）：敵の頭の **Multi-Aim** のみ（`Rig` + `MultiAimConstraint`、`LookTarget` を対象の胸の高さへ毎フレーム移動、左右・上下 ±70°）。左手 Two Bone IK と足 IK は本番モデル導入時に追加する（仮リグには手・足のボーンがない）。
 - IK のウェイトはステートに応じて切り替える（例：リロード中は左手 IK を弱める、ダウン中は Aim を切る）。
 - Ally X では足 IK を遠距離キャラクターで無効化するなど、性能ティアで負荷を調整できるようにする。
 

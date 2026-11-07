@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using CoopDeck.Enemies;
 using CoopDeck.Player;
 using CoopDeck.Skills;
 using CoopDeck.UI;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -16,7 +18,9 @@ namespace CoopDeck.EditorTools
     /// </summary>
     public static class SandboxSceneBuilder
     {
-        public static void Build(GameObject playerPrefab, GameObject dummyPrefab, MaterialSet m, VolumeProfile volumeProfile)
+        public const string NavMeshDataPath = GamePaths.Root + "/Scenes/Sandbox_Phase1_NavMesh.asset";
+
+        public static void Build(GameObject playerPrefab, GameObject dummyPrefab, MaterialSet m, VolumeProfile volumeProfile, EnemySet enemies)
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -27,6 +31,8 @@ namespace CoopDeck.EditorTools
             BuildShootingRange(environment, m, dummyPrefab);
             BuildMovementCourse(environment, m);
             BuildSlopeTests(environment, m);
+            WaveDirector director = BuildCombatArena(environment, m, enemies);
+            BakeNavMesh(environment);
 
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
             player.transform.SetPositionAndRotation(new Vector3(0f, 0.05f, -30f), Quaternion.identity);
@@ -38,6 +44,10 @@ namespace CoopDeck.EditorTools
             EditorUtil.SetObject(hudController, "frameMonitor", monitor);
             var deckHud = hud.AddComponent<DeckHud>();
             EditorUtil.SetObject(deckHud, "deckController", player.GetComponent<DeckController>());
+            var damageHud = hud.AddComponent<DamageFeedbackHud>();
+            EditorUtil.SetObject(damageHud, "player", player.GetComponent<FpsCharacter>());
+            var arenaHud = hud.AddComponent<ArenaHud>();
+            EditorUtil.SetObject(arenaHud, "director", director);
 
             EditorUtil.EnsureFolder(System.IO.Path.GetDirectoryName(GamePaths.SandboxScene)?.Replace('\\', '/'));
             EditorSceneManager.SaveScene(scene, GamePaths.SandboxScene);
@@ -183,6 +193,69 @@ namespace CoopDeck.EditorTools
                     Block(course, "Pillar", new Vector3(-24f + x * 4f, 1.5f, 12f + z * 4f), new Vector3(1f, 3f, 1f), (x + z) % 2 == 0 ? m.Coral : m.Sun, new Vector3(0f, 45f * ((x + z) % 2), 0f));
                 }
             }
+        }
+
+        /// <summary>
+        /// North-west combat arena (x −41…−15, z 24…42): cyan border, cover, four spawn points at the
+        /// far wall and a <see cref="WaveDirector"/> that starts when the player steps inside.
+        /// </summary>
+        static WaveDirector BuildCombatArena(Transform parent, MaterialSet m, EnemySet enemies)
+        {
+            var arena = new GameObject("CombatArena").transform;
+            arena.SetParent(parent, false);
+            var center = new Vector3(-28f, 0f, 33f);
+            var size = new Vector3(26f, 6f, 18f);
+
+            Block(arena, "Border_N", center + new Vector3(0f, 0.03f, size.z * 0.5f), new Vector3(size.x, 0.06f, 0.3f), m.GlowCyan);
+            Block(arena, "Border_S", center + new Vector3(0f, 0.03f, -size.z * 0.5f), new Vector3(size.x, 0.06f, 0.3f), m.GlowCyan);
+            Block(arena, "Border_W", center + new Vector3(-size.x * 0.5f, 0.03f, 0f), new Vector3(0.3f, 0.06f, size.z), m.GlowCyan);
+            Block(arena, "Border_E", center + new Vector3(size.x * 0.5f, 0.03f, 0f), new Vector3(0.3f, 0.06f, size.z), m.GlowCyan);
+            Block(arena, "Gate_L", new Vector3(-17f, 1.5f, 24f), new Vector3(0.6f, 3f, 0.6f), m.WallDark);
+            Block(arena, "Gate_R", new Vector3(-21f, 1.5f, 24f), new Vector3(0.6f, 3f, 0.6f), m.WallDark);
+            Block(arena, "Gate_Top", new Vector3(-19f, 3.2f, 24f), new Vector3(4.6f, 0.4f, 0.6f), m.GlowCyan);
+
+            Block(arena, "Cover_A", new Vector3(-32f, 0.75f, 30f), new Vector3(3f, 1.5f, 0.6f), m.Violet);
+            Block(arena, "Cover_B", new Vector3(-23f, 0.75f, 35f), new Vector3(0.6f, 1.5f, 3f), m.Violet);
+            Block(arena, "Cover_C", new Vector3(-28f, 1.25f, 38f), new Vector3(2f, 2.5f, 2f), m.WallDark);
+            Block(arena, "Cover_D", new Vector3(-36f, 0.5f, 35.5f), new Vector3(1.5f, 1f, 1.5f), m.Sun);
+
+            Vector3[] spawns = { new Vector3(-38f, 0f, 41f), new Vector3(-31f, 0f, 41.5f), new Vector3(-24f, 0f, 41.5f), new Vector3(-17f, 0f, 41f) };
+            var points = new Transform[spawns.Length];
+            for (int i = 0; i < spawns.Length; i++)
+            {
+                var point = new GameObject($"SpawnPoint_{i}").transform;
+                point.SetParent(arena, false);
+                point.position = spawns[i];
+                points[i] = point;
+                Block(arena, $"SpawnPad_{i}", spawns[i] + new Vector3(0f, 0.02f, 0f), new Vector3(1.6f, 0.04f, 1.6f), m.GlowPink);
+            }
+
+            var directorGo = new GameObject("WaveDirector");
+            directorGo.transform.SetParent(arena, false);
+            directorGo.transform.position = center;
+            var director = directorGo.AddComponent<WaveDirector>();
+            var waves = new List<WaveDirector.WaveCounts>
+            {
+                new WaveDirector.WaveCounts { counts = new List<int> { 3, 0 } },
+                new WaveDirector.WaveCounts { counts = new List<int> { 2, 2 } },
+                new WaveDirector.WaveCounts { counts = new List<int> { 4, 2 } },
+                new WaveDirector.WaveCounts { counts = new List<int> { 3, 4 } },
+            };
+            director.Configure(new List<GameObject> { enemies.SlasherPrefab, enemies.ShooterPrefab }, waves, points, size);
+            return director;
+        }
+
+        /// <summary>Bakes walkable areas from the environment colliders (Default layer only) and saves the data.</summary>
+        static void BakeNavMesh(Transform environment)
+        {
+            var surface = environment.gameObject.AddComponent<NavMeshSurface>();
+            surface.collectObjects = CollectObjects.Children;
+            surface.useGeometry = UnityEngine.AI.NavMeshCollectGeometry.PhysicsColliders;
+            surface.layerMask = 1 << 0;
+            surface.BuildNavMesh();
+
+            AssetDatabase.DeleteAsset(NavMeshDataPath);
+            AssetDatabase.CreateAsset(surface.navMeshData, NavMeshDataPath);
         }
 
         static void BuildSlopeTests(Transform parent, MaterialSet m)

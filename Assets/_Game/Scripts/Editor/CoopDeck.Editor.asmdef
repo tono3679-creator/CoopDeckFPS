@@ -13,8 +13,12 @@
         "CoopDeck.Deck",
         "CoopDeck.Items",
         "CoopDeck.Skills",
+        "CoopDeck.Animation",
+        "CoopDeck.AI",
         "CoopDeck.UI",
         "Unity.InputSystem",
+        "Unity.AI.Navigation",
+        "Unity.Animation.Rigging",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",
         "UnityEngine.UI"

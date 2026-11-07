@@ -4,7 +4,8 @@
     "references": [
         "CoopDeck.Core",
         "CoopDeck.Combat",
-        "CoopDeck.Weapons"
+        "CoopDeck.Weapons",
+        "CoopDeck.Animation"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

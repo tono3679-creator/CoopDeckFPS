@@ -23,6 +23,12 @@ namespace CoopDeck.Core
         /// <summary>What hitscan shots from a player can hit: everything but players, view models and UI.</summary>
         public static int PlayerShotMask => Without(Physics.DefaultRaycastLayers, Player, ViewModel, LayerMask.NameToLayer("UI"));
 
+        /// <summary>What enemy projectiles can hit: players and the world, never other enemies.</summary>
+        public static int EnemyShotMask => Without(Physics.DefaultRaycastLayers, Enemy, ViewModel, LayerMask.NameToLayer("UI"));
+
+        /// <summary>What blocks an enemy's line of sight: the world only (characters do not).</summary>
+        public static int SightBlockingMask => Without(Physics.DefaultRaycastLayers, Player, Enemy, ViewModel, LayerMask.NameToLayer("UI"));
+
         /// <summary>Area queries for skills: every character and target, allies included (teams are filtered in code).</summary>
         public static int SkillQueryMask => Without(Physics.DefaultRaycastLayers, ViewModel, LayerMask.NameToLayer("UI"));
 

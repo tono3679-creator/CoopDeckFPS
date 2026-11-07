@@ -23,6 +23,19 @@ namespace CoopDeck.UI.Diagnostics
         /// <summary>Seconds between skill-card uses (cycles through the three slots). 0 disables skills.</summary>
         public float SkillInterval { get; set; } = 2.2f;
 
+        /// <summary>
+        /// Optional point to aim at (e.g. the nearest enemy's chest). When it returns a value the
+        /// autopilot turns toward it and only fires once on target; null keeps the sweep.
+        /// Needs <see cref="AimReader"/>.
+        /// </summary>
+        public Func<Vector3?> TargetProvider { get; set; }
+
+        /// <summary>The character's current aim ray, used with <see cref="TargetProvider"/>.</summary>
+        public Func<Ray> AimReader { get; set; }
+
+        /// <summary>Maximum turn rate while tracking a target, degrees per second.</summary>
+        public float TrackingTurnSpeed { get; set; } = 240f;
+
         /// <param name="pitchReader">Returns the character's current pitch (degrees, up positive) for recoil control. May be null.</param>
         public AutopilotCommandSource(Func<float> pitchReader = null, float sweepAmplitudeDegrees = 35f,
             float sweepRadiansPerSecond = 0.5f, float burstSeconds = 1.4f, float pauseSeconds = 0.6f)
@@ -46,6 +59,20 @@ namespace CoopDeck.UI.Diagnostics
             // Aim slightly below the horizon (targets are at chest height) and fight recoil climb.
             float pitch = currentPitch != null ? currentPitch() : 0f;
             float pitchDelta = Mathf.Clamp((-2f - pitch) * 4f, -60f, 60f) * deltaTime;
+
+            Vector3? target = TargetProvider != null && AimReader != null ? TargetProvider() : null;
+            if (target.HasValue)
+            {
+                Ray aim = AimReader();
+                Vector3 to = target.Value - aim.origin;
+                float flat = new Vector2(to.x, to.z).magnitude;
+                float yawError = Mathf.DeltaAngle(Mathf.Atan2(aim.direction.x, aim.direction.z) * Mathf.Rad2Deg,
+                    Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg);
+                float pitchError = Mathf.Atan2(to.y, flat) * Mathf.Rad2Deg - Mathf.Asin(Mathf.Clamp(aim.direction.y, -1f, 1f)) * Mathf.Rad2Deg;
+                yawDelta = Mathf.Clamp(yawError * 12f, -TrackingTurnSpeed, TrackingTurnSpeed) * deltaTime;
+                pitchDelta = Mathf.Clamp(pitchError * 12f, -TrackingTurnSpeed, TrackingTurnSpeed) * deltaTime;
+                firing &= Mathf.Abs(yawError) < 4f && Mathf.Abs(pitchError) < 4f;
+            }
 
             var commands = new CharacterCommands
             {

@@ -65,7 +65,11 @@ namespace CoopDeck.Combat
                 return;
             }
 
-            if (TryGetComponent(out CharacterController controller) && controller.enabled)
+            if (TryGetComponent(out UnityEngine.AI.NavMeshAgent agent) && agent.enabled && agent.isOnNavMesh)
+            {
+                agent.Move(step); // stays on the NavMesh instead of being pushed into walls
+            }
+            else if (TryGetComponent(out CharacterController controller) && controller.enabled)
             {
                 controller.Move(step);
             }

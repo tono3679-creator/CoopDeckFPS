@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CoopDeck.Animation;
 using CoopDeck.Cards;
 using CoopDeck.Combat;
 using CoopDeck.Core;
@@ -26,7 +27,7 @@ namespace CoopDeck.EditorTools
         public const float EyeHeight = 1.62f;
 
         public static GameObject BuildPlayer(InputActionAsset input, WeaponDefinition weapon, MovementProfile movement, MaterialSet m,
-            DeckDefinition starterDeck, List<GaugeItemDefinition> startingItems)
+            DeckDefinition starterDeck, List<GaugeItemDefinition> startingItems, RuntimeAnimatorController bodyController)
         {
             EditorUtil.EnsureFolder(GamePaths.CharacterPrefabs);
 
@@ -64,10 +65,16 @@ namespace CoopDeck.EditorTools
             EditorUtil.SetObject(deckController, "character", character);
             EditorUtil.SetObject(deckController, "caster", caster);
 
-            // Third-person body placeholder. The local player only sees its shadow.
-            GameObject body = EditorUtil.VisualPrimitive(PrimitiveType.Capsule, "BodyVisual", root.transform,
-                new Vector3(0f, 0.9f, 0f), new Vector3(0.76f, 0.9f, 0.76f), m.PlayerBody);
-            body.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+            // Full-body placeholder rig with the shared Animator (others will see it; the local player sees its shadow).
+            RigParts bodyRig = PlaceholderRigBuilder.Build(root.transform, m.PlayerBody, m.Glove, m.PlayerBody, m.GunGlow, shadowsOnly: true);
+            bodyRig.Visual.name = "BodyVisual";
+            var bodyAnimator = bodyRig.Visual.gameObject.AddComponent<Animator>();
+            bodyAnimator.runtimeAnimatorController = bodyController;
+            bodyAnimator.applyRootMotion = false;
+            var bodyDriver = root.AddComponent<CharacterAnimatorDriver>();
+            bodyDriver.Configure(bodyAnimator, motor, movement != null ? movement.walkSpeed : 6.5f, 4f);
+            EditorUtil.SetObject(character, "bodyAnimator", bodyDriver);
+            GameObject body = bodyRig.Visual.gameObject;
 
             var pivot = new GameObject("CameraPivot");
             pivot.transform.SetParent(root.transform, false);
@@ -118,7 +125,7 @@ namespace CoopDeck.EditorTools
             EditorUtil.SetObject(animator, "viewModelRoot", viewModelRoot.transform);
 
             root.layer = GameLayers.PlayerIndex;
-            body.layer = GameLayers.PlayerIndex;
+            EditorUtil.SetLayerRecursively(body, GameLayers.PlayerIndex);
             EditorUtil.SetLayerRecursively(viewModelRoot, GameLayers.ViewModelIndex);
 
             string path = GamePaths.CharacterPrefabs + "/PF_Player.prefab";

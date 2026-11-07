@@ -10,6 +10,7 @@
         "CoopDeck.Deck",
         "CoopDeck.Items",
         "CoopDeck.Skills",
+        "CoopDeck.Enemies",
         "Unity.InputSystem",
         "UnityEngine.UI"
     ],
