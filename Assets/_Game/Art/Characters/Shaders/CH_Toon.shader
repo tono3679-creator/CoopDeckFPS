@@ -4,8 +4,9 @@
 // - Additional lights: the same step, scaled by their attenuation.
 // - Ambient from light probes, a soft rim, and an inverted-hull outline pass ("SRPDefaultUnlit",
 //   which URP draws together with UniversalForward for opaque objects).
-// Base colour only: the Meshy texture already carries the painted detail, so there is no normal map.
-// Outlines need smooth normals (ArtSource/Tools/prepare_for_unity.py welds the mesh and smooths them).
+// Base colour plus optional emission (glowing parts): the Meshy texture already carries the painted detail,
+// so there is no normal map. Outlines need smooth normals: characters are smoothed in Blender
+// (prepare_for_unity.py); hard-surface props keep hard edges and use averaged normals from UV3.
 Shader "CoopDeck/Character/Toon"
 {
     Properties
@@ -26,9 +27,17 @@ Shader "CoopDeck/Character/Toon"
         _RimPower ("Rim Power", Range(0.5, 10)) = 4.5
         _RimStrength ("Rim Strength", Range(0, 1)) = 0.3
 
+        [Header(Emission)]
+        [Toggle(_EMISSION)] _UseEmission ("Emission", Float) = 0
+        _EmissionMap ("Emission Map", 2D) = "black" {}
+        [HDR] _EmissionColor ("Emission Color", Color) = (0, 0, 0, 1)
+
         [Header(Outline)]
         _OutlineColor ("Outline Color", Color) = (0.17, 0.09, 0.07, 1)
         _OutlineWidth ("Outline Width (m, at 4 m or closer)", Range(0, 0.02)) = 0.004
+        // Hard-surface meshes keep split normals for crisp panels; the outline then extrudes along the
+        // position-averaged normals that ToonOutlineNormalsPostprocessor stores in UV3, so it does not crack.
+        [Toggle(_OUTLINE_UV3_NORMALS)] _OutlineUV3Normals ("Outline Uses Smoothed Normals (UV3)", Float) = 0
     }
 
     SubShader
@@ -46,6 +55,7 @@ Shader "CoopDeck/Character/Toon"
 
         TEXTURE2D(_BaseMap);
         SAMPLER(sampler_BaseMap);
+        TEXTURE2D(_EmissionMap);
 
         // Every property lives in UnityPerMaterial so all passes stay SRP Batcher compatible.
         CBUFFER_START(UnityPerMaterial)
@@ -62,6 +72,7 @@ Shader "CoopDeck/Character/Toon"
             half _RimStrength;
             half4 _OutlineColor;
             float _OutlineWidth;
+            half4 _EmissionColor;
         CBUFFER_END
 
         struct Attributes
@@ -104,6 +115,7 @@ Shader "CoopDeck/Character/Toon"
             #pragma multi_compile_fragment _ _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
+            #pragma shader_feature_local_fragment _EMISSION
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
@@ -200,6 +212,11 @@ Shader "CoopDeck/Character/Toon"
                 half rim = pow(saturate(1.0 - dot(normalWS, viewDirWS)), _RimPower) * _RimStrength;
                 color += _RimColor.rgb * mainColor * rim * (0.35 + 0.65 * lit);
 
+            #if defined(_EMISSION)
+                // Glowing parts (energy cells, muzzle core): HDR so bloom picks them up.
+                color += SAMPLE_TEXTURE2D(_EmissionMap, sampler_BaseMap, input.uv).rgb * _EmissionColor.rgb;
+            #endif
+
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0);
             }
@@ -220,6 +237,15 @@ Shader "CoopDeck/Character/Toon"
             #pragma fragment Frag
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
+            #pragma shader_feature_local_vertex _OUTLINE_UV3_NORMALS
+
+            struct OutlineAttributes
+            {
+                float4 positionOS     : POSITION;
+                float3 normalOS       : NORMAL;
+                float3 smoothNormalOS : TEXCOORD3;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
 
             struct Varyings
             {
@@ -229,15 +255,20 @@ Shader "CoopDeck/Character/Toon"
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
-            Varyings Vert(Attributes input)
+            Varyings Vert(OutlineAttributes input)
             {
                 Varyings output = (Varyings)0;
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
+            #if defined(_OUTLINE_UV3_NORMALS)
+                float3 normalOS = input.smoothNormalOS; // rigid meshes only: UV3 is not skinned
+            #else
+                float3 normalOS = input.normalOS;
+            #endif
                 float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
-                float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
+                float3 normalWS = TransformObjectToWorldNormal(normalOS);
                 // Fixed thickness up close; grows with distance up to 3x so the silhouette still reads at mid range.
                 float distanceScale = clamp(distance(positionWS, GetCameraPositionWS()) / 4.0, 1.0, 3.0);
                 positionWS += normalWS * (_OutlineWidth * distanceScale);

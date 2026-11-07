@@ -105,8 +105,10 @@ namespace CoopDeck.EditorTools
             AnimationClip run = ConfigureClip(RunPath, RunClipName);
             AnimationClip idle = EnsureIdleClip(walk, overwriteAnimations);
             AnimatorController controller = EnsureController(idle, walk, run, overwriteAnimations);
-            Material material = EnsureMaterial();
-            GameObject prefab = BuildBodyPrefab(material, controller);
+            Material material = EnsureMaterial(); // the original cel material, kept for comparison (and backed up)
+            // The body wears the soft-toon look (Shader Graph + surface mask) and a thin outline as a second material.
+            FoxGunnerLookFactory.Look look = FoxGunnerLookFactory.EnsureAll(rebuildMask: false);
+            GameObject prefab = BuildBodyPrefab(new[] { look.SoftToon, look.Outline }, controller);
             AssetDatabase.SaveAssets();
 
             LogSummary(prefab, avatar);
@@ -493,8 +495,8 @@ namespace CoopDeck.EditorTools
             return material;
         }
 
-        /// <summary>A prefab variant of the FBX: Animator with the controller, toon material, no root motion.</summary>
-        static GameObject BuildBodyPrefab(Material material, AnimatorController controller)
+        /// <summary>A prefab variant of the FBX: Animator with the controller, the given materials, no root motion.</summary>
+        static GameObject BuildBodyPrefab(Material[] materials, AnimatorController controller)
         {
             var model = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath);
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(model);
@@ -513,7 +515,7 @@ namespace CoopDeck.EditorTools
 
             foreach (SkinnedMeshRenderer skinned in instance.GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {
-                skinned.sharedMaterial = material;
+                skinned.sharedMaterials = materials; // one submesh: extra materials redraw it (the outline)
                 skinned.updateWhenOffscreen = false;
                 skinned.skinnedMotionVectors = true;
                 skinned.shadowCastingMode = ShadowCastingMode.On;

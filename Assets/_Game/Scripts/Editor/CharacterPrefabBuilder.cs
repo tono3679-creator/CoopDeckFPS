@@ -28,7 +28,7 @@ namespace CoopDeck.EditorTools
         public const float EyeHeight = 1.62f;
 
         public static GameObject BuildPlayer(InputActionAsset input, WeaponDefinition weapon, MovementProfile movement, MaterialSet m,
-            DeckDefinition starterDeck, List<GaugeItemDefinition> startingItems, GameObject bodyPrefab,
+            DeckDefinition starterDeck, List<GaugeItemDefinition> startingItems, GameObject bodyPrefab, FireRifleAssets rifleVisual,
             DeckDefinition practiceDeck = null)
         {
             EditorUtil.EnsureFolder(GamePaths.CharacterPrefabs);
@@ -82,6 +82,13 @@ namespace CoopDeck.EditorTools
             var bodyAnimator = body.GetComponent<Animator>();
             bodyAnimator.applyRootMotion = false;
             bodyAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate; // bones may drive sockets/IK even when off screen
+
+            // The same Fire Rifle the first-person view shows, carried in the body's right hand (its shadow for now).
+            FireRifleAssetFactory.RightHandHold(bodyPrefab, out Vector3 holdPosition, out Quaternion holdRotation);
+            var heldRifle = (GameObject)PrefabUtility.InstantiatePrefab(rifleVisual.Prefab, bodyAnimator.GetBoneTransform(HumanBodyBones.RightHand));
+            heldRifle.name = "HeldRifle";
+            heldRifle.transform.SetLocalPositionAndRotation(holdPosition, holdRotation);
+
             foreach (Renderer bodyRenderer in body.GetComponentsInChildren<Renderer>(true))
             {
                 bodyRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
@@ -123,7 +130,7 @@ namespace CoopDeck.EditorTools
             viewModelData.renderShadows = false;
             cameraData.cameraStack.Add(viewModelCamera);
 
-            Transform muzzle = BuildRifleViewModel(cameraGo.transform, m, out GameObject viewModelRoot);
+            Transform muzzle = BuildRifleViewModel(cameraGo.transform, m, rifleVisual, out GameObject viewModelRoot);
 
             EditorUtil.SetObject(hitscan, "muzzle", muzzle);
             EditorUtil.SetObject(caster, "castOrigin", muzzle);
@@ -150,8 +157,11 @@ namespace CoopDeck.EditorTools
             return prefab;
         }
 
-        /// <summary>Blocky placeholder rifle and gloves. Returns the muzzle transform.</summary>
-        static Transform BuildRifleViewModel(Transform cameraTransform, MaterialSet m, out GameObject viewModelRoot)
+        /// <summary>
+        /// Fire Rifle model (nested PF_Weapon_FireRifle, thin-outline material) and placeholder gloves.
+        /// Returns the rifle's muzzle socket.
+        /// </summary>
+        static Transform BuildRifleViewModel(Transform cameraTransform, MaterialSet m, FireRifleAssets rifleVisual, out GameObject viewModelRoot)
         {
             viewModelRoot = new GameObject("ViewModel");
             viewModelRoot.transform.SetParent(cameraTransform, false);
@@ -160,17 +170,22 @@ namespace CoopDeck.EditorTools
 
             var rifle = new GameObject("Rifle");
             rifle.transform.SetParent(viewModelRoot.transform, false);
+            // The Fire Rifle is bulkier than the old placeholder: further out and lower keeps the stock off the lens
+            // and the scope under the crosshair line; turning the muzzle a little toward the crosshair shows the
+            // rifle's side (flame emblem, energy cell). The gloves move with it.
+            rifle.transform.SetLocalPositionAndRotation(ViewModelRifleOffset, Quaternion.Euler(0f, ViewModelRifleYaw, 0f));
             Transform r = rifle.transform;
 
-            EditorUtil.VisualPrimitive(PrimitiveType.Cube, "Receiver", r, new Vector3(0f, 0f, 0f), new Vector3(0.07f, 0.09f, 0.4f), m.GunBody, castShadows: false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Cube, "Handguard", r, new Vector3(0f, 0.004f, 0.27f), new Vector3(0.082f, 0.075f, 0.2f), m.GunAccent, castShadows: false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Cylinder, "Barrel", r, new Vector3(0f, 0.012f, 0.42f), new Vector3(0.024f, 0.09f, 0.024f), m.GunMetal, new Vector3(90f, 0f, 0f), false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Cube, "Magazine", r, new Vector3(0f, -0.1f, 0.07f), new Vector3(0.05f, 0.15f, 0.08f), m.GunMetal, new Vector3(12f, 0f, 0f), false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Cube, "Grip", r, new Vector3(0f, -0.085f, -0.09f), new Vector3(0.045f, 0.11f, 0.05f), m.GunMetal, new Vector3(-15f, 0f, 0f), false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Cube, "Stock", r, new Vector3(0f, -0.015f, -0.25f), new Vector3(0.06f, 0.085f, 0.12f), m.GunBody, castShadows: false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Cube, "Sight", r, new Vector3(0f, 0.068f, 0.03f), new Vector3(0.03f, 0.045f, 0.09f), m.GunMetal, castShadows: false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Cube, "GlowStrip", r, new Vector3(0.042f, 0.012f, 0.08f), new Vector3(0.006f, 0.014f, 0.28f), m.GunGlow, castShadows: false);
-            EditorUtil.VisualPrimitive(PrimitiveType.Cube, "GlowStripL", r, new Vector3(-0.042f, 0.012f, 0.08f), new Vector3(0.006f, 0.014f, 0.28f), m.GunGlow, castShadows: false);
+            // The model's origin is its pistol grip: put it in the right hand. Its LeftHandGrip socket lands on the left hand.
+            var model = (GameObject)PrefabUtility.InstantiatePrefab(rifleVisual.Prefab, r);
+            model.name = "FireRifle";
+            model.transform.SetLocalPositionAndRotation(ViewModelGripPosition, Quaternion.identity);
+            foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>(true))
+            {
+                renderer.sharedMaterial = rifleVisual.ViewModelMaterial;
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+            }
 
             // Placeholder hands, to be replaced by the first-person arm rig (see ANIMATION_GUIDELINES.md).
             EditorUtil.VisualPrimitive(PrimitiveType.Capsule, "RightHand", r, new Vector3(0.01f, -0.1f, -0.1f), new Vector3(0.065f, 0.08f, 0.065f), m.Glove, new Vector3(-20f, 0f, 0f), false);
@@ -178,11 +193,17 @@ namespace CoopDeck.EditorTools
             EditorUtil.VisualPrimitive(PrimitiveType.Capsule, "LeftHand", r, new Vector3(-0.03f, -0.05f, 0.27f), new Vector3(0.065f, 0.07f, 0.065f), m.Glove, new Vector3(0f, 0f, 80f), false);
             EditorUtil.VisualPrimitive(PrimitiveType.Capsule, "LeftForearm", r, new Vector3(-0.12f, -0.13f, 0.18f), new Vector3(0.07f, 0.13f, 0.07f), m.Glove, new Vector3(-50f, 40f, 0f), false);
 
-            var muzzle = new GameObject("Muzzle");
-            muzzle.transform.SetParent(r, false);
-            muzzle.transform.localPosition = new Vector3(0f, 0.012f, 0.52f);
-            return muzzle.transform;
+            return model.transform.Find(FireRifleAssetFactory.MuzzleSocket);
         }
+
+        /// <summary>Where the first-person rifle's grip sits inside ViewModel/Rifle (the right-hand glove).</summary>
+        public static readonly Vector3 ViewModelGripPosition = new Vector3(0f, -0.11f, -0.12f);
+
+        /// <summary>ViewModel/Rifle (rifle and gloves together) relative to the view-model root.</summary>
+        public static readonly Vector3 ViewModelRifleOffset = new Vector3(0.01f, -0.035f, 0.11f);
+
+        /// <summary>Muzzle turned this many degrees toward the screen centre.</summary>
+        public const float ViewModelRifleYaw = -6f;
 
         public static GameObject BuildTargetDummy(MaterialSet m, FxPrefabSet fx)
         {

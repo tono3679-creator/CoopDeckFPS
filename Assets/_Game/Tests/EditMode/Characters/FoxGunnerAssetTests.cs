@@ -23,6 +23,12 @@ namespace CoopDeck.Tests
         const string ControllerPath = "Assets/_Game/Animations/FoxGunner/AC_FoxGunner_TP.controller";
         const string PrefabPath = "Assets/_Game/Prefabs/Characters/PF_FoxGunner_Body.prefab";
         const string ShaderName = "CoopDeck/Character/Toon";
+        const string SoftToonShaderName = "CoopDeck/Character/SG_Character_SoftToon";
+        const string BaseMapPath = "Assets/_Game/Art/Characters/FoxGunner/Textures/T_FoxGunner_BaseColor.png";
+        const string SurfaceMaskPath = "Assets/_Game/Art/Characters/FoxGunner/Textures/T_FoxGunner_SurfaceMask.png";
+        const string SoftToonMaterialPath = "Assets/_Game/Art/Characters/FoxGunner/Materials/M_FoxGunner_SoftToon.mat";
+        const string OutlineMaterialPath = "Assets/_Game/Art/Characters/FoxGunner/Materials/M_FoxGunner_Outline.mat";
+        const string BackupMaterialPath = "Assets/_Game/Art/Characters/FoxGunner/Materials/Backup/M_FoxGunner_Toon_Original.mat";
 
         GameObject instance;
 
@@ -123,12 +129,73 @@ namespace CoopDeck.Tests
         }
 
         [Test]
-        public void Material_UsesTheToonShader_WithTheBaseMap()
+        public void Body_WearsTheSoftToonLook_WithAThinOutline_AndTheOriginalIsBackedUp()
         {
-            var material = Load<Material>(MaterialPath);
-            Assert.That(material.shader.name, Is.EqualTo(ShaderName));
-            Assert.That(material.GetTexture("_BaseMap"), Is.Not.Null);
-            Assert.That(SpawnBody().GetComponentInChildren<SkinnedMeshRenderer>().sharedMaterial, Is.EqualTo(material));
+            var softToon = Load<Material>(SoftToonMaterialPath);
+            var outline = Load<Material>(OutlineMaterialPath);
+            Material[] worn = SpawnBody().GetComponentInChildren<SkinnedMeshRenderer>().sharedMaterials;
+            Assert.That(worn, Is.EqualTo(new[] { softToon, outline }), "surface first, outline as a second pass over the same submesh");
+
+            Assert.That(softToon.shader.name, Is.EqualTo(SoftToonShaderName));
+            Assert.That(softToon.GetTexture("_BaseMap"), Is.EqualTo(Load<Texture2D>(BaseMapPath)), "the Meshy colours are unchanged");
+            Assert.That(softToon.GetTexture("_SurfaceMask"), Is.EqualTo(Load<Texture2D>(SurfaceMaskPath)));
+            Assert.That(softToon.GetFloat("_ToonBlend"), Is.LessThanOrEqualTo(0.6f), "shadow steps stay gentle");
+
+            Assert.That(outline.shader.name, Is.EqualTo("CoopDeck/Character/Outline"));
+            Assert.That(outline.GetFloat("_OutlineWidth"), Is.LessThanOrEqualTo(0.0025f), "no thick ink lines");
+
+            // The cel material from before the look work is kept, untouched and backed up, for comparison.
+            Assert.That(Load<Material>(MaterialPath).shader.name, Is.EqualTo(ShaderName));
+            Assert.That(Load<Material>(BackupMaterialPath).shader.name, Is.EqualTo(ShaderName));
+        }
+
+        [Test]
+        public void SurfaceMask_SplitsFurFaceClothLeatherAndMetal()
+        {
+            // R softness, G smoothness, B metallic, A warmth (FoxGunnerLookFactory presets).
+            var texture = new Texture2D(2, 2);
+            texture.LoadImage(System.IO.File.ReadAllBytes(SurfaceMaskPath));
+            Color32[] p = texture.GetPixels32().Where(c => c.r + c.g + c.b + c.a > 0).ToArray(); // texels the mesh uses
+            Object.DestroyImmediate(texture);
+            float Share(System.Func<Color32, bool> test) => p.Count(test) / (float)p.Length;
+
+            float soft = Share(c => c.r >= 200);                    // fur and face
+            float face = Share(c => c.a >= 190);                    // face only (warmest)
+            float matteCloth = Share(c => c.g <= 20 && c.r < 200);   // cloth
+            float leather = Share(c => c.g >= 95 && c.g <= 120);    // leather sheen
+            float metal = Share(c => c.b >= 128);                    // metallic
+            Assert.That(soft, Is.InRange(0.3f, 0.6f), $"fur and face {soft:P0}");
+            Assert.That(face, Is.InRange(0.01f, 0.12f), $"face {face:P0}");
+            Assert.That(matteCloth, Is.InRange(0.1f, 0.4f), $"cloth {matteCloth:P0}");
+            Assert.That(leather, Is.InRange(0.1f, 0.4f), $"leather {leather:P0}");
+            Assert.That(metal, Is.InRange(0.005f, 0.12f), $"metal {metal:P0}");
+        }
+
+        [Test]
+        public void SoftToonAndOutlineShaders_Compile_WithShadowAndDepthPasses()
+        {
+            foreach (string name in new[] { SoftToonShaderName, "CoopDeck/Character/Outline" })
+            {
+                Shader shader = Shader.Find(name);
+                Assert.That(shader, Is.Not.Null, name);
+                Assert.That(ShaderUtil.ShaderHasError(shader), Is.False, name + " has errors (see the console)");
+            }
+
+            // A Shader Graph shader carries several SubShaders; read every pass of every one.
+            ShaderData data = ShaderUtil.GetShaderData(Shader.Find(SoftToonShaderName));
+            var modes = new HashSet<string>();
+            for (int s = 0; s < data.SubshaderCount; s++)
+            {
+                ShaderData.Subshader subshader = data.GetSubshader(s);
+                for (int p = 0; p < subshader.PassCount; p++)
+                {
+                    modes.Add(subshader.GetPass(p).FindTagValue(new ShaderTagId("LightMode")).name.ToUpperInvariant());
+                }
+            }
+
+            Assert.That(modes, Does.Contain("SHADOWCASTER"), "casts the body's shadow (the local player only sees that)");
+            Assert.That(modes, Does.Contain("DEPTHONLY"));
+            Assert.That(modes.Any(m => m.StartsWith("UNIVERSALFORWARD")), Is.True, "forward pass");
         }
 
         [Test]

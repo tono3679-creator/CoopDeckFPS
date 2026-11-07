@@ -104,10 +104,59 @@ Unity（エディターを閉じた状態でバッチ実行。開いている場
 
 ---
 
-## 6. 未対応（次の作業）
+## 6. 武器（Fire Rifle、2026-11-07）
 
+三面図の下段（側面・正面・上面・背面）から作成。手順はキャラクターと同じで、リギングの代わりに `ArtSource/Tools/prepare_prop_for_unity.py` を使う。
+
+| 段階 | 内容 |
+|---|---|
+| 参照画像 | 4 枚を正方形 PNG に（`ArtSource/FireRifle/Reference/`）。正面・背面は元の絵が小さく約 6 倍に拡大 |
+| Meshy | Multi-Image to 3D（側面を先頭に 4 枚、meshy-7.1 + meshy-7 2K、生成時に約 8,000 三角形へリメッシュ）**30 クレジット**（残高 1,566 → 1,536） |
+| Blender | 頂点を結合（12,656 → 3,840）。**40° 以上の角は硬いまま**（全体を平滑化すると平らなパネルの陰影がにじむ）。銃口を前、全長 0.85 m、原点をピストルグリップ（右手）に。銃口と左手の位置を空のオブジェクト（`Muzzle`、`LeftHandGrip`）として FBX に入れる |
+| Unity | `FireRifleAssetFactory`（メニュー `CoopDeck > Art > Import Fire Rifle`）：取り込み設定、発光マップ（基本色の明るいオレンジ〜黄色の部分）、トゥーンマテリアル 2 種、`PF_Weapon_FireRifle` |
+
+```powershell
+& $blender -b --factory-startup -P ArtSource\Tools\prepare_prop_for_unity.py -- --name FireRifle `
+  --model ArtSource\FireRifle\Meshy\FireRifle_mesh.glb --texture ArtSource\FireRifle\Meshy\FireRifle_mesh_base_color.png `
+  --forward=-X --length 0.85 --pivot=0.40,0,-0.22 --socket Muzzle=-0.957,0,0.088 --socket LeftHandGrip=-0.50,0,-0.06 `
+  --model-out Assets\_Game\Art\Weapons\FireRifle\Models --texture-out Assets\_Game\Art\Weapons\FireRifle\Textures `
+  --glb-out ArtSource\FireRifle\Export
+```
+
+- 輪郭線：硬い角では法線が分かれ、押し出した輪郭が割れる。`ToonOutlineNormalsPostprocessor` が `Art/Weapons/` 以下のモデルの取り込み時に「位置ごとに平均した法線」を UV3 に書き、シェーダーの `_OUTLINE_UV3_NORMALS` で輪郭線だけそれを使う（UV3 はスキニングされないので、スキンメッシュのキャラクターには使わない）。
+- 発光：シェーダーに `_EMISSION`（発光マップ × HDR 色 2.0）を追加。ブルームのしきい値 1 を超えて光る。
+- マテリアル：`M_FireRifle_Toon`（三人称・輪郭 3 mm）と `M_FireRifle_Toon_FP`（一人称・輪郭 0.7 mm。カメラから 0.3〜0.6 m なので同じ太さだと太すぎる）。
+- 一人称：`ViewModel/Rifle` の仮の箱の銃を置き換え。グリップを右手の手袋に、`LeftHandGrip` が左手の手袋に重なる。銃床がレンズに近すぎないよう 11 cm 前・3.5 cm 下、銃口を 6° 内向き（側面の紋章とエネルギー帯が見える）。`HitscanWeapon.muzzle` と `SkillCaster.castOrigin` はライフルの `Muzzle`。
+- 三人称：体の右手のボーンの子。待機姿勢でグリップを手のひらに、銃口を前下がり 35°（ローレディ）にしたときの手からの相対位置を、ポーズを付けた複製で測って設定（`FireRifleAssetFactory.RightHandHold`）。自分には体と同じく影だけ見える。
+- テスト：`Tests/EditMode/Weapons/FireRifleAssetTests.cs`（長さ・向き・ソケット・予算・UV3 の輪郭用法線と硬い角・マテリアル・発光の範囲・プレイヤーの一人称と右手）。
+
+---
+
+## 7. 質感の改善（フィギュアっぽさを減らす、2026-11-07）
+
+モデル・リグ・アニメーション・UV・テクスチャの色は変えず、マテリアルとシェーダーだけで素材ごとの質感を付けた。
+
+| 手順 | 内容 |
+|---|---|
+| バックアップ | 変更前の `M_FoxGunner_Toon`（CH_Toon の 2 階調）は残し、`Materials/Backup/M_FoxGunner_Toon_Original.mat` にも複製 |
+| 部位マスク | `FoxGunnerLookFactory` がテクスチャの色（橙・白系・赤・暗色・冷たい灰色・琥珀など）×スキンのボーン（頭・首・胴・鎖骨・腕・手・腰・脚・足・尻尾）×位置（顔の範囲・尻尾・ベルト・ブーツ）で、UV 上のテクセルごとに 毛 / 顔 / 目 / 布 / 革 / 金属 / ガラス を判定。結果を質感パラメータとして `T_FoxGunner_SurfaceMask.png`（R 柔らかさ・G 滑らかさ・B 金属度・A 暖かみ、1024、リニア）と URP Lit 用 `T_FoxGunner_MetallicSmoothness.png` に書く。ボーン名で判定するので尻尾・耳・指のボーンが増えても動く |
+| 1. URP Lit | 部位マスク由来の金属度・滑らかさマップで `M_FoxGunner_Lit` を作って比較。陰影は自然になるが、影側が灰色に沈み（つや消しのソフビ人形風）、輪郭線・リム・毛や顔の暖かみは出せない |
+| 2. Shader Graph | 足りない部分だけ拡張：`SG_Character_SoftToon`（Unlit、Keep Lighting Variants で影・追加ライト・Forward+ 対応）が `FoxSoftToonLighting.hlsl` を Custom Function で呼ぶ。部位ごとに巻き込みのある柔らかい陰影（段差は弱め）、顔と毛の境目の暖色、毛・布はつや消し、革は柔らかいつや、金属は色付きの反射、控えめなリム |
+| 輪郭線 | `CH_Outline`（2 枚目のマテリアル、1.8 mm、線色は表面色を暗くしたもの）。変更前の 4 mm の黒線は薄い毛先から透けて黒い塊になっていた |
+
+部位ごとの値（`FoxGunnerLookFactory.Presets`、柔らかさ / 滑らかさ / 金属度 / 暖かみ）：毛 0.85/0.12/0/0.55、顔 1/0.16/0/0.8、目 0.5/0.75/0/0、布 0.6/0.06/0/0.15、革 0.3/0.42/0/0、金属 0.15/0.62/0.85/0、ガラス 0.2/0.85/0/0。マテリアル側の全体調整は `M_FoxGunner_SoftToon`（Toon Blend 0.45、Toon Width 0.32、Rim 0.18 など）。
+
+比較撮影（同じ照明：太陽・空の環境光・サンドボックスのポストエフェクト）：メニュー `CoopDeck > Art > Fox Gunner Look: Capture Comparison`、またはバッチの `FoxGunnerLookFactory.RunBatch`（`-coopdeckRebuildMask` でマスクも作り直す）。出力は `Screenshots/FoxLook_Compare.png`（上から変更前・URP Lit・Shader Graph 版）、`FoxLook_BeforeAfter.png`、`FoxLook_Sandbox_BeforeAfter.png`（ゲームの照明）、`FoxLook_Regions.png`（部位の判定）。
+
+負荷（ROG Ally X、Handheld 画質、1280×720 を埋めるキツネ 9 体、`FoxGunnerLookFactory.BenchmarkBatch`）：キツネなし 3.16 ms、変更前 3.98 ms、URP Lit 4.17 ms、Shader Graph 版＋輪郭線 4.50 ms（1 体あたり変更前より約 0.06 ms 増）。自分の体は影だけ描画なので、通常のプレイでは影のパスしか動かない。
+
+---
+
+## 8. 未対応（次の作業）
+
+- 三人称のライフルは素手の歩き・走りモーションに付いているだけなので、走ると腕の振りで銃が上を向く。ライフルを構えた待機・移動・射撃のモーションと、左手を `LeftHandGrip` に合わせる IK（ANIMATION_GUIDELINES §4）が要る。
+- 一人称の手は仮のカプセルのまま。
 - 移動クリップは前進の歩き・走りだけ。横移動・後退でも前向きに走る（自分には影しか見えないが、オンラインでは他のプレイヤーに見える）。8 方向・ジャンプ・射撃・リロード・被弾・ダウン・蘇生のクリップが要る（`meshy_animate` で 1 本 3 クレジット、または既製モーション）。ダウン中も立ったまま。
 - カメラの高さ（1.62 m）と CharacterController（1.8 m）は仮リグのまま。キツネは身長 1.6 m なので、頭の高さに合わせるかはゲームプレイの判断（変えていない）。
 - スプリント（9.5 m/s）では走りが約 2.4 倍速になる。見た目を良くするなら専用のスプリントクリップ。
 - 尻尾・耳・マフラーにボーンがない（腰・頭と一緒に動くだけ）。揺れが欲しければ Blender でボーンを足すか、揺れ物の仕組みを入れる。
-- 武器（炎属性ライフル）は未作成。

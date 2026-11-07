@@ -2,6 +2,41 @@
 
 形式：日付ごとに「追加 / 変更 / 修正 / 検証」。検証していないものは「検証」に書かない。
 
+## 2026-11-07 — Fox Gunner の質感改善（フィギュアっぽさを減らす）
+
+外部素材・有料サービスなし（Shader Graph の作りは Unity 公式サンプル「Custom Lighting」を参考、Unity Companion License）。手順と数値は `CHARACTER_PIPELINE.md` §7。
+
+### 追加
+- 部位マスク（毛・顔・目・布・革・金属・ガラス）をテクスチャの色・スキンのボーン・位置から自動生成する `FoxGunnerLookFactory`。質感パラメータのマスク `T_FoxGunner_SurfaceMask` と URP Lit 用 `T_FoxGunner_MetallicSmoothness`。
+- Shader Graph `SG_Character_SoftToon`＋`FoxSoftToonLighting.hlsl`（部位ごとの柔らかい陰影、顔・毛の暖色、素材ごとのつや、控えめなリム）と、表面色から線色を取る細い輪郭線 `CH_Outline`。
+- 比較撮影（同じ照明で変更前・URP Lit・Shader Graph 版、サンドボックスの照明でも）と Ally X での負荷計測のバッチ。
+
+### 変更
+- `PF_FoxGunner_Body`（とプレイヤーの体）のマテリアルを `M_FoxGunner_SoftToon`＋`M_FoxGunner_Outline` に。変更前の `M_FoxGunner_Toon` は残し、`Materials/Backup/` にも複製。
+
+### 検証
+- EditMode 214/214、PlayMode 54/54（Unity 6000.5.4f1）。追加：部位マスクの割合、Shader Graph と輪郭線シェーダーのコンパイル・影と深度のパス、体のマテリアル構成。
+- 同じ照明での比較画像（`Screenshots/FoxLook_*.png`）で、2 段の硬い陰影と太い黒線（尻尾の縁の黒い塊を含む）がなくなり、毛・顔の暖かいグラデーション、布・革・金属の違いが出たことを確認。
+- ROG Ally X（Handheld 画質）で、画面を埋めるキツネ 9 体の描画が 3.98 → 4.50 ms（キツネなし 3.16 ms）。
+
+## 2026-11-07 — プレイヤーの武器「Fire Rifle」（Meshy → Blender → Unity）
+
+有料サービス Meshy を使用（ユーザー承認済み、30 クレジット：4 枚の図からの 3D 生成）。手順は `CHARACTER_PIPELINE.md` §6。
+
+### 追加
+- 三面図下段の 4 つの図から作ったトゥーン調の炎属性ライフル：FBX（7,678 三角形、全長 0.85 m、原点はグリップ、`Muzzle`・`LeftHandGrip` ソケット付き）、2K テクスチャ、発光マップ、`PF_Weapon_FireRifle`。GLB は `ArtSource/FireRifle/Export/`。
+- Blender スクリプト `ArtSource/Tools/prepare_prop_for_unity.py`（頂点の結合、角度による硬い角、向き・長さ・原点の調整、ソケット、FBX/GLB の書き出し）。
+- `FireRifleAssetFactory`（メニュー `CoopDeck > Art > Import Fire Rifle`）、`ToonOutlineNormalsPostprocessor`（`Art/Weapons/` 以下のモデルに輪郭線用の平均法線を UV3 で追加）。
+- トゥーンシェーダーに発光（`_EMISSION`）と、UV3 の平均法線で押し出す輪郭線（`_OUTLINE_UV3_NORMALS`）。どちらも切り替え式で、キツネの見た目は変わらない。
+
+### 変更
+- 一人称の仮の箱の銃をこのライフルに置き換え（輪郭の細い専用マテリアル、11 cm 前・3.5 cm 下・銃口 6° 内向き）。武器とスキルの発射位置はライフルの `Muzzle`。
+- 体の右手にも同じライフルを持たせる（待機姿勢で前下がり 35° の構え、影のみ描画）。
+
+### 検証
+- EditMode 212/212、PlayMode 54/54（Unity 6000.5.4f1）。追加：`FireRifleAssetTests`（5 件）。
+- サンドボックスシーンで描画を確認（`Screenshots/FireRifle_FirstPerson.png`、`FireRifle_ThirdPerson.png`）：一人称の位置と輪郭・発光、三人称の構え（真横から前下がり 35°）。
+
 ## 2026-11-07 — プレイヤーの本番モデル「Fox Gunner」（Meshy → Blender → Unity）
 
 有料サービス Meshy を使用（ユーザー承認済み、35 クレジット：複数画像からの 3D 生成 30＋自動リギング 5）。Blender 5.2.3（GPL、winget の公式版）を追加。手順は `CHARACTER_PIPELINE.md`。

@@ -82,7 +82,8 @@ namespace CoopDeck.EditorTools
 
             // The player's full-body model (Meshy → Blender → Unity, Docs/CHARACTER_PIPELINE.md). The NPC keeps the placeholder rig.
             FoxGunnerAssets fox = FoxGunnerAssetFactory.EnsureAll(overwriteAnimations);
-            GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials, starterDeck, items, fox.BodyPrefab, practiceDeck);
+            FireRifleAssets fireRifle = FireRifleAssetFactory.EnsureAll();
+            GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials, starterDeck, items, fox.BodyPrefab, fireRifle, practiceDeck);
             GameObject dummy = CharacterPrefabBuilder.BuildTargetDummy(materials, fx);
             NpcAssetSet npc = NpcFactory.EnsureNpc(movement, rifle, allCards, npcDecks, animations.Humanoid);
             SandboxSceneBuilder.Build(player, dummy, materials, volume, enemies, combos, npc.Prefab);
