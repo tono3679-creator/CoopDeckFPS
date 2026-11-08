@@ -9,6 +9,22 @@ using UnityEngine;
 
 namespace CoopDeck.Skills
 {
+    /// <summary>Where a projectile skill landed (tests, analytics).</summary>
+    public struct ProjectileImpact
+    {
+        public CardDefinition Card;
+        public Vector3 Point;
+        public Vector3 Normal;
+
+        /// <summary>The enemy it hit directly, or null for the world.</summary>
+        public Health Target;
+
+        /// <summary>False when it ran out of range without hitting anything (no damage).</summary>
+        public bool Hit;
+
+        public float TimeInFlight;
+    }
+
     /// <summary>What one cast did (tests, HUD feedback, analytics).</summary>
     public struct SkillCastReport
     {
@@ -28,6 +44,9 @@ namespace CoopDeck.Skills
     /// Executes a card's effects in the world. Targeting: a ray along the crosshair (Aim /
     /// AimPoint) or the caster (Self / AreaAroundSelf). Damage and effects are resolved first,
     /// then purely visual prefabs are played through <see cref="FxPool"/>.
+    /// Projectile cards (<see cref="ProjectileSpec"/>) charge in the casting hand, launch along the
+    /// crosshair after the cast motion's delay, fly as a swept sphere and resolve the same effects where
+    /// they land. The flight is simulated here; the visual only follows it.
     /// It never touches the weapon, so skills and shooting run side by side.
     /// </summary>
     public class SkillCaster : MonoBehaviour
@@ -35,8 +54,19 @@ namespace CoopDeck.Skills
         const float ChainDamageFactor = 0.75f;
         const float FxHeight = 1.1f;
 
+        /// <summary>The visible projectile leaves the hand and joins the crosshair path within this distance.</summary>
+        public const float ConvergeDistance = 6f;
+
         [Tooltip("Where beams start (the view-model muzzle for the local player).")]
         [SerializeField] Transform castOrigin;
+
+        [Tooltip("The casting hand (the first-person left hand for the local player): hand charges and projectiles start at its palm.")]
+        [SerializeField] Transform castHand;
+
+        [Tooltip("With World Camera: the hand is drawn by this view-model camera, so its position is converted to the world view.")]
+        [SerializeField] Camera viewModelCamera;
+
+        [SerializeField] Camera worldCamera;
 
         ICombatActor owner;
         IAimProvider aim;
@@ -44,12 +74,54 @@ namespace CoopDeck.Skills
         int areaMask = Physics.DefaultRaycastLayers;
         readonly List<Health> targets = new List<Health>();
         readonly HashSet<Health> visited = new HashSet<Health>();
+        readonly HashSet<Health> impactShown = new HashSet<Health>();
         readonly List<Health> affectedEnemies = new List<Health>();
+
+        struct PendingLaunch
+        {
+            public CardDefinition Card;
+            public int UpgradeLevel;
+            public float LaunchTime;
+        }
+
+        struct Flight
+        {
+            public CardDefinition Card;
+            public int UpgradeLevel;
+            public Vector3 Position;
+            public Vector3 Direction;
+            public float Speed;
+            public float Radius;
+            public float Travelled;
+            public float MaxDistance;
+            public float Age;
+            public Vector3 VisualOffset;
+            public Vector3 LastVisual;
+            public IProjectileFx Visual;
+        }
+
+        readonly List<PendingLaunch> pending = new List<PendingLaunch>();
+        readonly List<Flight> flights = new List<Flight>();
+        static readonly RaycastHit[] SweepHits = new RaycastHit[16];
 
         /// <summary>Raised when a cast's effects have been applied (immediately, or after impactDelay).</summary>
         public event Action<SkillCastReport> EffectsApplied;
 
+        /// <summary>A projectile left the hand (position = where the visible shot starts).</summary>
+        public event Action<CardDefinition, Vector3> ProjectileLaunched;
+
+        /// <summary>A projectile landed (or ran out of range).</summary>
+        public event Action<ProjectileImpact> ProjectileEnded;
+
         public bool IsInitialized => owner != null && aim != null;
+
+        /// <summary>Projectiles in the air.</summary>
+        public int FlyingCount => flights.Count;
+
+        /// <summary>Projectile casts waiting for the cast motion to launch them.</summary>
+        public int PendingCount => pending.Count;
+
+        public Transform CastHand => castHand;
 
         public void Initialize(ICombatActor ownerActor, IAimProvider aimProvider, int raycastMask, int areaQueryMask)
         {
@@ -64,12 +136,25 @@ namespace CoopDeck.Skills
             castOrigin = origin;
         }
 
+        /// <summary>The hand that charges and throws projectiles; with both cameras, a first-person hand is converted to the world view.</summary>
+        public void SetCastHand(Transform hand, Camera viewModel = null, Camera world = null)
+        {
+            castHand = hand;
+            viewModelCamera = viewModel;
+            worldCamera = world;
+        }
+
         /// <param name="upgradeLevel">The card copy's upgrade level; carried to the element hits (combo tier).</param>
         public SkillCastReport CastCard(CardDefinition card, int upgradeLevel = 0)
         {
             if (card == null || !IsInitialized)
             {
                 return default;
+            }
+
+            if (card.projectile.IsProjectile)
+            {
+                return BeginProjectile(card, upgradeLevel);
             }
 
             Ray ray = aim.GetAimRay();
@@ -132,12 +217,320 @@ namespace CoopDeck.Skills
             }
         }
 
+        // ------------------------------------------------------------------ projectiles
+
+        readonly HashSet<CardDefinition> prewarmed = new HashSet<CardDefinition>();
+
+        /// <summary>Instantiates a projectile card's effects into the pool up front (several shots and blasts can overlap).</summary>
+        public void Prewarm(CardDefinition card)
+        {
+            if (card == null || !card.projectile.IsProjectile || !prewarmed.Add(card))
+            {
+                return;
+            }
+
+            FxPool.Prewarm(card.castFx, 2);
+            FxPool.Prewarm(card.projectileFx, 4);
+            FxPool.Prewarm(card.areaFx, 3);
+            FxPool.Prewarm(card.impactFx, 3);
+        }
+
+        SkillCastReport BeginProjectile(CardDefinition card, int upgradeLevel)
+        {
+            PlayCastFx(card);
+            pending.Add(new PendingLaunch { Card = card, UpgradeLevel = upgradeLevel, LaunchTime = Time.time + card.projectile.launchDelay });
+            if (card.projectile.launchDelay <= 0f)
+            {
+                LaunchDue();
+            }
+
+            return new SkillCastReport { Card = card, Delayed = true };
+        }
+
+        /// <summary>The charge gathering in the casting hand while the cast motion brings the palm forward.</summary>
+        void PlayCastFx(CardDefinition card)
+        {
+            if (card.castFx == null)
+            {
+                return;
+            }
+
+            Transform hand = castHand != null ? castHand : castOrigin;
+            if (hand == null)
+            {
+                return;
+            }
+
+            Vector3 palm = PalmPoint(hand, AimDirectionNow(), viewModelCamera);
+            Vector3 local = hand.InverseTransformPoint(palm);
+            PooledFx fx = FxPool.Spawn(card.castFx, palm, hand.rotation, hand, hand.gameObject.layer);
+            if (fx != null)
+            {
+                fx.transform.localPosition = local;
+                fx.transform.localScale = Vector3.one;
+            }
+        }
+
+        void Update()
+        {
+            if (pending.Count > 0)
+            {
+                LaunchDue();
+            }
+
+            if (flights.Count > 0)
+            {
+                StepProjectiles(Time.deltaTime);
+            }
+        }
+
+        void LaunchDue()
+        {
+            float now = Time.time;
+            for (int i = 0; i < pending.Count; i++)
+            {
+                if (pending[i].LaunchTime > now)
+                {
+                    continue;
+                }
+
+                PendingLaunch launch = pending[i];
+                pending.RemoveAt(i);
+                i--;
+                Launch(launch.Card, launch.UpgradeLevel);
+            }
+        }
+
+        void Launch(CardDefinition card, int upgradeLevel)
+        {
+            if (!IsInitialized)
+            {
+                return;
+            }
+
+            // The shot flies along the crosshair (exact aim); the visible fireball starts at the palm and joins
+            // that path within ConvergeDistance, so it leaves the hand yet lands where the player aimed.
+            Ray ray = aim.GetAimRay();
+            Vector3 direction = ray.direction.normalized;
+            Vector3 visualStart = VisibleCastPoint(direction, ray.origin);
+            var flight = new Flight
+            {
+                Card = card,
+                UpgradeLevel = upgradeLevel,
+                Position = ray.origin,
+                Direction = direction,
+                Speed = card.projectile.speed,
+                Radius = card.projectile.Radius,
+                MaxDistance = Mathf.Max(1f, card.range),
+                VisualOffset = visualStart - ray.origin,
+                LastVisual = visualStart,
+            };
+
+            if (card.projectileFx != null)
+            {
+                PooledFx fx = FxPool.Spawn(card.projectileFx, visualStart, Quaternion.LookRotation(direction));
+                if (fx != null)
+                {
+                    fx.transform.localScale = Vector3.one;
+                    flight.Visual = fx.GetComponent<IProjectileFx>();
+                    flight.Visual?.Launch(visualStart, VisualDirection(flight, 0f), card.projectile.VisualScale);
+                }
+            }
+
+            flights.Add(flight);
+            ProjectileLaunched?.Invoke(card, visualStart);
+        }
+
+        /// <summary>Moves every projectile by <paramref name="deltaTime"/> (public so a fixed network tick or a test can drive it).</summary>
+        public void StepProjectiles(float deltaTime)
+        {
+            for (int i = flights.Count - 1; i >= 0; i--)
+            {
+                Flight f = flights[i];
+                float step = f.Speed * deltaTime;
+                f.Age += deltaTime;
+                if (Sweep(f.Position, f.Direction, f.Radius, step, out Vector3 point, out Vector3 normal, out Health target))
+                {
+                    flights.RemoveAt(i);
+                    Land(f, point, normal, target);
+                    continue;
+                }
+
+                f.Position += f.Direction * step;
+                f.Travelled += step;
+                if (f.Travelled >= f.MaxDistance)
+                {
+                    flights.RemoveAt(i);
+                    f.Visual?.End(false);
+                    ProjectileEnded?.Invoke(new ProjectileImpact { Card = f.Card, Point = f.Position, Normal = -f.Direction, TimeInFlight = f.Age });
+                    continue;
+                }
+
+                if (f.Visual != null)
+                {
+                    Vector3 visual = f.Position + f.VisualOffset * VisualOffsetWeight(f.Travelled);
+                    Vector3 moved = visual - f.LastVisual;
+                    f.Visual.Fly(visual, moved.sqrMagnitude > 1e-8f ? moved : f.Direction);
+                    f.LastVisual = visual;
+                }
+
+                flights[i] = f;
+            }
+        }
+
+        /// <summary>1 at the hand .. 0 once the visible shot has joined the crosshair path.</summary>
+        public static float VisualOffsetWeight(float travelled)
+        {
+            return 1f - Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(travelled / ConvergeDistance));
+        }
+
+        static Vector3 VisualDirection(in Flight f, float travelled)
+        {
+            // Direction of the visible path just after `travelled` (it bends from the hand onto the crosshair line).
+            float ahead = travelled + 0.5f;
+            Vector3 now = f.Position + f.Direction * travelled + f.VisualOffset * VisualOffsetWeight(travelled);
+            Vector3 next = f.Position + f.Direction * ahead + f.VisualOffset * VisualOffsetWeight(ahead);
+            Vector3 d = next - now;
+            return d.sqrMagnitude > 1e-8f ? d.normalized : f.Direction;
+        }
+
+        /// <summary>
+        /// Nearest thing the sphere touches along the step: the world, or a living enemy. Allies, the caster
+        /// and the dead are passed through. Uses a shared buffer (no allocation).
+        /// </summary>
+        bool Sweep(Vector3 from, Vector3 direction, float radius, float distance, out Vector3 point, out Vector3 normal, out Health target)
+        {
+            point = default;
+            normal = default;
+            target = null;
+            int count = Physics.SphereCastNonAlloc(from, radius, direction, SweepHits, distance, rayMask, QueryTriggerInteraction.Ignore);
+            float best = float.MaxValue;
+            bool found = false;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = SweepHits[i];
+                Health health = hit.collider.GetComponentInParent<Health>();
+                if (health != null && !IsEnemy(health))
+                {
+                    continue; // allies, the caster and dead characters do not stop the shot
+                }
+
+                if (hit.distance >= best)
+                {
+                    continue;
+                }
+
+                best = hit.distance;
+                found = true;
+                target = health;
+                if (hit.distance <= 0f && hit.point == Vector3.zero)
+                {
+                    point = from; // already touching at the start of the step
+                    normal = -direction;
+                }
+                else
+                {
+                    point = hit.point;
+                    normal = hit.normal;
+                }
+            }
+
+            return found;
+        }
+
+        void Land(in Flight f, Vector3 point, Vector3 normal, Health target)
+        {
+            f.Visual?.End(true);
+            bool onCharacter = target != null;
+            Vector3 center = onCharacter ? point : point + normal * 0.05f;
+            Resolve(f.Card, center, target, point - f.Direction, f.UpgradeLevel, normal, onCharacter);
+            ProjectileEnded?.Invoke(new ProjectileImpact
+            {
+                Card = f.Card,
+                Point = point,
+                Normal = normal,
+                Target = target,
+                Hit = true,
+                TimeInFlight = f.Age,
+            });
+        }
+
+        Vector3 AimDirectionNow()
+        {
+            return aim != null ? aim.GetAimRay().direction.normalized : transform.forward;
+        }
+
+        /// <summary>Where the visible projectile starts, in the world view: the palm, converted from the view-model camera.</summary>
+        Vector3 VisibleCastPoint(Vector3 aimDirection, Vector3 fallback)
+        {
+            Transform hand = castHand != null ? castHand : castOrigin;
+            if (hand == null)
+            {
+                return fallback;
+            }
+
+            return ToWorldView(PalmPoint(hand, aimDirection, viewModelCamera));
+        }
+
+        /// <summary>
+        /// In front of the palm: along the hand (wrist to fingers) and toward the aim. Seen from the player's own eye
+        /// (a first-person hand) it also sits a little toward the screen centre, so the hand does not hide it.
+        /// </summary>
+        static Vector3 PalmPoint(Transform hand, Vector3 aimDirection, Camera eye)
+        {
+            Vector3 along = hand.parent != null ? hand.position - hand.parent.position : Vector3.zero;
+            along = along.sqrMagnitude > 1e-6f ? along.normalized : aimDirection;
+            Vector3 point = hand.position + along * 0.05f + aimDirection * 0.06f;
+            if (eye != null)
+            {
+                point += aimDirection * 0.04f + eye.transform.right * 0.045f + eye.transform.up * 0.01f;
+            }
+
+            return point;
+        }
+
+        /// <summary>
+        /// The view model is drawn by its own camera (a narrower field of view from the same eye). A point there
+        /// is moved to the world-camera position that shows up at the same spot on screen, at the same depth.
+        /// </summary>
+        Vector3 ToWorldView(Vector3 point)
+        {
+            if (viewModelCamera == null || worldCamera == null)
+            {
+                return point;
+            }
+
+            Vector3 viewport = viewModelCamera.WorldToViewportPoint(point);
+            return worldCamera.ViewportToWorldPoint(viewport);
+        }
+
+        void OnDisable()
+        {
+            foreach (Flight f in flights)
+            {
+                f.Visual?.End(false);
+            }
+
+            flights.Clear();
+            pending.Clear();
+        }
+
+        // ------------------------------------------------------------------ resolution
+
         SkillCastReport Resolve(CardDefinition card, Vector3 center, Health primary, Vector3 origin, int upgradeLevel)
+        {
+            return Resolve(card, center, primary, origin, upgradeLevel, null, false);
+        }
+
+        /// <param name="surfaceNormal">Set for projectiles: the blast is turned to the surface it hit (up on characters).</param>
+        SkillCastReport Resolve(CardDefinition card, Vector3 center, Health primary, Vector3 origin, int upgradeLevel,
+            Vector3? surfaceNormal, bool onCharacter)
         {
             var report = new SkillCastReport { Card = card, Point = center, PrimaryTarget = primary };
             CombatStatus ownerStatus = owner.Status;
             float damageMultiplier = ownerStatus != null ? ownerStatus.Model.OutgoingDamageMultiplier : 1f;
             visited.Clear();
+            impactShown.Clear();
             affectedEnemies.Clear();
 
             foreach (SkillEffectSpec effect in card.effects)
@@ -234,7 +627,19 @@ namespace CoopDeck.Skills
             }
 
             float radius = card.MaxRadius;
-            if (radius > 0f)
+            if (surfaceNormal.HasValue)
+            {
+                // Projectile: the blast sits exactly where it hit, turned to the surface; on a character it stands
+                // upright and faces back toward the shot (its ring is a vertical impact ring, not a halo at chest height).
+                Vector3 up = onCharacter ? FacingBack(origin - center) : surfaceNormal.Value.sqrMagnitude < 1e-6f ? Vector3.up : surfaceNormal.Value.normalized;
+                GameObject blast = radius > 0f ? card.areaFx : primary == null ? card.impactFx : null;
+                PooledFx fx = PlayFx(blast, center, Quaternion.FromToRotation(Vector3.up, up), radius);
+                if (fx != null && fx.TryGetComponent(out ISurfaceFx surface))
+                {
+                    surface.SetSurface(up, onCharacter);
+                }
+            }
+            else if (radius > 0f)
             {
                 PlayFx(card.areaFx, center + Vector3.up * 0.1f, Quaternion.identity, radius);
             }
@@ -319,8 +724,27 @@ namespace CoopDeck.Skills
                 Direction = (point - from).normalized,
                 HeadshotMultiplier = 1f,
             });
-            PlayFx(card.impactFx, point, Quaternion.identity, 0f);
+            if (impactShown.Add(target))
+            {
+                PlayImpact(card, target, point); // once per enemy per cast, even when two effects hit it
+            }
+
             return result.Damage;
+        }
+
+        static void PlayImpact(CardDefinition card, Health target, Vector3 point)
+        {
+            if (card.impactFx == null)
+            {
+                return;
+            }
+
+            Transform parent = card.attachImpactFx && target != null ? target.transform : null;
+            PooledFx fx = FxPool.Spawn(card.impactFx, point, Quaternion.identity, parent);
+            if (fx != null)
+            {
+                fx.transform.localScale = Vector3.one;
+            }
         }
 
         void Count(Health target, ref SkillCastReport report, bool isEnemy)
@@ -447,19 +871,44 @@ namespace CoopDeck.Skills
             }
         }
 
-        /// <param name="radius">When above 0, the prefab (authored for a 1 m radius) is scaled to match.</param>
-        static void PlayFx(GameObject prefab, Vector3 position, Quaternion rotation, float radius)
+        /// <param name="radius">
+        /// When above 0, the prefab is fitted to it: an <see cref="IRadiusFx"/> sizes its own layers, any other
+        /// prefab (authored for a 1 m radius) is scaled as a whole.
+        /// </param>
+        /// <summary>The horizontal direction back toward where a shot came from (up when it came straight down).</summary>
+        static Vector3 FacingBack(Vector3 towardShooter)
+        {
+            Vector3 flat = Vector3.ProjectOnPlane(towardShooter, Vector3.up);
+            return flat.sqrMagnitude > 1e-6f ? flat.normalized : Vector3.up;
+        }
+
+        static PooledFx PlayFx(GameObject prefab, Vector3 position, Quaternion rotation, float radius)
         {
             if (prefab == null)
             {
-                return;
+                return null;
             }
 
             PooledFx fx = FxPool.Spawn(prefab, position, rotation);
-            if (fx != null)
+            if (fx == null)
+            {
+                return null;
+            }
+
+            if (fx.TryGetComponent(out IRadiusFx sized))
+            {
+                fx.transform.localScale = Vector3.one;
+                if (radius > 0f)
+                {
+                    sized.SetRadius(radius);
+                }
+            }
+            else
             {
                 fx.transform.localScale = radius > 0f ? Vector3.one * radius : Vector3.one;
             }
+
+            return fx;
         }
     }
 }

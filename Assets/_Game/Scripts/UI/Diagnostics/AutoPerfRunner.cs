@@ -24,6 +24,9 @@ namespace CoopDeck.UI.Diagnostics
     /// combat arena so enemy waves (AI, NavMesh, projectiles) are part of the measurement; the
     /// player cannot die during that run so the fight keeps going. -perfpractice switches to the
     /// combo practice deck so element combos happen often; the JSON counts them.
+    /// -perffireball [seconds] also throws the fireball skill along the aim every 0.3 s (or the given
+    /// interval) straight through the player's SkillCaster, gauge aside, so several shots, blasts and
+    /// burns overlap; the JSON counts the shots, the blasts and the most fireballs in the air at once.
     /// </summary>
     public class AutoPerfRunner : MonoBehaviour
     {
@@ -69,6 +72,12 @@ namespace CoopDeck.UI.Diagnostics
             public int npcEvades;
             public int coopCombos;
 
+            // Phase 5: fireball stress (-perffireball).
+            public bool fireballStress;
+            public int fireballsCast;
+            public int fireballsLanded;
+            public int maxFireballsInFlight;
+
             // CPU / GPU frame timing (FrameTimingManager) and managed allocations.
             public bool frameTimingSupported;
             public float avgCpuFrameMs;
@@ -98,6 +107,11 @@ namespace CoopDeck.UI.Diagnostics
         int maxEnemiesAlive;
         bool practice;
         int combos;
+        float fireballInterval;
+        SkillCaster fireballCaster;
+        int fireballsCast;
+        int fireballsLanded;
+        int maxFireballsInFlight;
         int coopCombos;
         FrameTimeMonitor monitor;
         NpcController npc;
@@ -142,6 +156,16 @@ namespace CoopDeck.UI.Diagnostics
             runner.autopilot = Array.IndexOf(args, "-perfidle") < 0;
             runner.arena = Array.IndexOf(args, "-perfarena") >= 0;
             runner.practice = Array.IndexOf(args, "-perfpractice") >= 0;
+            int fireballArg = Array.IndexOf(args, "-perffireball");
+            if (fireballArg >= 0)
+            {
+                runner.fireballInterval = 0.3f;
+                if (fireballArg + 1 < args.Length && float.TryParse(args[fireballArg + 1], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float interval) && interval > 0.05f)
+                {
+                    runner.fireballInterval = interval;
+                }
+            }
         }
 
         void Update()
@@ -149,6 +173,11 @@ namespace CoopDeck.UI.Diagnostics
             if (measuring && director != null)
             {
                 maxEnemiesAlive = Mathf.Max(maxEnemiesAlive, director.AliveEnemies.Count);
+            }
+
+            if (measuring && fireballCaster != null)
+            {
+                maxFireballsInFlight = Mathf.Max(maxFireballsInFlight, fireballCaster.FlyingCount);
             }
 
             FrameTimingManager.CaptureFrameTimings();
@@ -266,6 +295,45 @@ namespace CoopDeck.UI.Diagnostics
             gcAllocRecorder.Dispose();
         }
 
+        /// <summary>Throws the fireball card along the aim at a fixed interval (not limited by its gauge or cooldown).</summary>
+        IEnumerator ThrowFireballs(FpsCharacter player)
+        {
+            yield return null; // the deck is built in DeckController.Awake
+            fireballCaster = player.GetComponent<SkillCaster>();
+            var deck = player.GetComponent<DeckController>();
+            CoopDeck.Cards.CardDefinition fireball = deck != null && deck.StartingDeck != null
+                ? deck.StartingDeck.cards.Find(c => c != null && c.cardId == "card.fireball")
+                : null;
+            if (fireballCaster == null || fireball == null)
+            {
+                Debug.LogWarning("[AutoPerfRunner] -perffireball: no SkillCaster or fireball card on the player");
+                yield break;
+            }
+
+            fireballCaster.ProjectileEnded += impact =>
+            {
+                if (measuring && impact.Hit)
+                {
+                    fireballsLanded++;
+                }
+            };
+            var wait = new WaitForSeconds(fireballInterval);
+            while (true)
+            {
+                yield return wait;
+                if (!fireballCaster.IsInitialized)
+                {
+                    continue;
+                }
+
+                fireballCaster.CastCard(fireball);
+                if (measuring)
+                {
+                    fireballsCast++;
+                }
+            }
+        }
+
         /// <summary>Moves the player into the arena (facing the spawn side) so the waves start.</summary>
         void EnterArena(FpsCharacter character)
         {
@@ -347,6 +415,11 @@ namespace CoopDeck.UI.Diagnostics
                 player.CommandSource = pilot;
             }
 
+            if (fireballInterval > 0f && player != null)
+            {
+                StartCoroutine(ThrowFireballs(player));
+            }
+
             yield return new WaitForSecondsRealtime(WarmupSeconds);
             BeginMeasuring();
 
@@ -408,6 +481,10 @@ namespace CoopDeck.UI.Diagnostics
                 npcComboSetupCasts = npc != null ? npc.ComboSetupCasts - npcSetupStart : 0,
                 npcEvades = npc != null ? npc.EvadeCount - npcEvadeStart : 0,
                 coopCombos = coopCombos,
+                fireballStress = fireballInterval > 0f,
+                fireballsCast = fireballsCast,
+                fireballsLanded = fireballsLanded,
+                maxFireballsInFlight = maxFireballsInFlight,
                 frameTimingSupported = timingSamples > 0,
                 avgCpuFrameMs = timingSamples > 0 ? (float)(cpuSum / timingSamples) : 0f,
                 avgCpuMainThreadMs = timingSamples > 0 ? (float)(cpuMainSum / timingSamples) : 0f,

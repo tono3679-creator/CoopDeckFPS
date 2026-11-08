@@ -17,6 +17,9 @@ namespace CoopDeck.EditorTools
         public GameObject LightningAura;
         public GameObject GravityAura;
         public GameObject CoopFx;
+
+        /// <summary>Flames on a burning enemy (FireballVfxFactory), shown alongside the element auras.</summary>
+        public GameObject Burning;
     }
 
     /// <summary>

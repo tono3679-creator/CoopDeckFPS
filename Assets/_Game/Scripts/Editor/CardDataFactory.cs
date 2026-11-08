@@ -208,6 +208,75 @@ namespace CoopDeck.EditorTools
             }
         }
 
+        public const string FireballCardPath = CardFolder + "/CD_Fireball.asset";
+
+        /// <summary>
+        /// The fox's basic fire skill: a fireball thrown from the left palm (the quick-cast motion launches it at
+        /// 0.12 s) that flies at 45 m/s and bursts where it lands: 45 to the enemy hit, 20 within 2.5 m and a burn
+        /// (6 per second for 3 s), all through SkillCaster's usual effects (element hit, combos). Numbers are kept
+        /// once the asset exists; the effects are refreshed from <paramref name="vfx"/> on every bootstrap.
+        /// </summary>
+        public static CardDefinition EnsureFireball(FireballVfxSet vfx, bool overwriteIcons)
+        {
+            EditorUtil.EnsureFolder(CardFolder);
+            var card = AssetDatabase.LoadAssetAtPath<CardDefinition>(FireballCardPath);
+            if (card == null)
+            {
+                card = ScriptableObject.CreateInstance<CardDefinition>();
+                card.cardId = "card.fireball";
+                card.displayName = "火球";
+                card.description = "左手から火球を放つ。命中で45ダメージ、半径2.5mに20ダメージ＋炎上（毎秒6、3秒）。";
+                card.type = CardType.Active;
+                card.element = Element.Fire;
+                card.rarity = CardRarity.Common;
+                card.maxGauge = 100f;
+                card.gaugeCost = 25f;
+                card.cooldown = 0.5f;
+                card.targeting = CardTargeting.Aim;
+                card.range = 60f;
+                card.effects = new List<SkillEffectSpec>
+                {
+                    SkillEffectSpec.Damage(45f),
+                    SkillEffectSpec.Area(20f, FireballVfxFactory.BlastRadius),
+                    SkillEffectSpec.DamageOverTime(6f, 3f, FireballVfxFactory.BlastRadius),
+                };
+                AssetDatabase.CreateAsset(card, FireballCardPath);
+            }
+
+            if (!card.projectile.IsProjectile)
+            {
+                card.projectile = new ProjectileSpec { speed = 45f, radius = 0.2f, launchDelay = 0.12f, visualScale = 1f };
+            }
+
+            Sprite icon = CardIconPainter.EnsureIcon($"{IconFolder}/ICON_Fireball.png", CardGlyph.Fireball, ElementStyle.ColorOf(Element.Fire), overwriteIcons);
+            if (card.icon == null || overwriteIcons) card.icon = icon;
+
+            card.castFx = vfx.Cast;
+            card.projectileFx = vfx.Projectile;
+            card.areaFx = vfx.Explosion;
+            card.impactFx = vfx.TargetFlare;
+            card.attachImpactFx = true;
+            card.beamFx = null;
+            card.auraFx = null;
+            card.telegraphFx = null;
+            EditorUtility.SetDirty(card);
+            AssetDatabase.SaveAssets();
+            return card;
+        }
+
+        /// <summary>Adds a card to the existing starter deck once (the deck keeps its other cards and order).</summary>
+        public static void EnsureInStarterDeck(DeckDefinition deck, CardDefinition card)
+        {
+            if (deck == null || card == null || deck.cards.Contains(card))
+            {
+                return;
+            }
+
+            deck.cards.Add(card);
+            EditorUtility.SetDirty(deck);
+            AssetDatabase.SaveAssets();
+        }
+
         /// <summary>The 12-card starter deck: one of each starting card. Kept as-is once it exists.</summary>
         public static DeckDefinition EnsureStarterDeck(List<CardDefinition> cards)
         {

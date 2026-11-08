@@ -26,4 +26,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 431614aa4f98e184594a34742c56e57c, type: 2}
   - {fileID: 11400000, guid: 0b3046fad9e0e824aafa5a5a3b4c2dc0, type: 2}
   - {fileID: 11400000, guid: f2869be79f692874698ea6ec9e4ea4f3, type: 2}
+  - {fileID: 11400000, guid: 2886f5d78af0c344081010bca0a960c3, type: 2}
   handSize: 3

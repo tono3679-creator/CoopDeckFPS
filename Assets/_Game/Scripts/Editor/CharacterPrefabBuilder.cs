@@ -140,10 +140,15 @@ namespace CoopDeck.EditorTools
 
             Transform muzzle = BuildRifleViewModel(cameraGo.transform, m, rifleVisual, out GameObject viewModelRoot);
             // First-person arms: the fox mesh's forearms and gloves, posed every frame from the body's authored hand goals.
-            FoxGunnerAnimationFactory.AddFirstPersonArms(viewModelRoot.transform, body.transform, GameLayers.ViewModelIndex, bodyDriver);
+            GameObject fpArms = FoxGunnerAnimationFactory.AddFirstPersonArms(viewModelRoot.transform, body.transform, GameLayers.ViewModelIndex, bodyDriver);
 
             EditorUtil.SetObject(hitscan, "muzzle", muzzle);
             EditorUtil.SetObject(caster, "castOrigin", muzzle);
+            // Projectile skills (fireball) charge in and leave from the first-person left palm.
+            Transform leftHand = fpArms != null && fpArms.TryGetComponent(out FirstPersonArms armsIk) ? armsIk.Hand(true) : null;
+            EditorUtil.SetObject(caster, "castHand", leftHand);
+            EditorUtil.SetObject(caster, "viewModelCamera", viewModelCamera);
+            EditorUtil.SetObject(caster, "worldCamera", camera);
             EditorUtil.SetObject(look, "yawRoot", root.transform);
             EditorUtil.SetObject(look, "pitchPivot", pivot.transform);
             EditorUtil.SetObject(look, "viewCamera", camera);

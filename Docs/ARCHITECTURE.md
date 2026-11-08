@@ -53,6 +53,8 @@ CoopDeck.Core      （依存なし）  CharacterCommands（指示ボタン含む
                          Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, Cards, Deck, Items, Skills, Enemies, Combos, NPC, InputSystem, uGUI
    （Combat に ReviveModel/Revivable・TeamEngagementMonitor・ITrainingTarget・ThreatWarning、Player に AllyCollisionFilter を追加）
    （Combat に ElementAuraModel、Effects に CameraShaker・LightningArcFx・SpiralTrailFx・RadiusScaledFx・VfxQualityGate を追加）
+   （Phase 5 火球：Core に Palette（アートバイブルの色）、Cards に ProjectileSpec、Effects に IRadiusFx・ISurfaceFx・IProjectileFx・
+    FireballProjectileFx・FireballExplosionFx を追加。飛翔弾は SkillCaster が判定し、見た目は IProjectileFx が追うだけ。FIREBALL_VFX.md）
 
 CoopDeck.Editor           ProjectBootstrap ほか生成ツール（カード・アイコン・スキル VFX・仮リグ・アニメ・敵 Prefab・NavMesh・コンボと VFX 含む）
                           ← 全ランタイム + URP + Unity.AI.Navigation + Unity.Animation.Rigging
@@ -90,6 +92,7 @@ FpsCharacter.Step(dt)
   6. SkillSlotRequested(slot) → DeckController.UseSlot
         ├─ DeckState.TryUseCard（ゲージ消費・CD開始・0 なら捨て札→ドロー／再シャッフル）
         └─ SkillCaster.CastCard（照準レイ／自分中心 → 効果を順に適用 → VFX を FxPool で再生）
+              飛翔弾カード（火球）：左手でチャージ → launchDelay 後に照準の線上へ発射 → 毎フレーム SphereCast → 命中点で同じ効果の適用
               └─ 届いた敵ごとに CombatEvents.ElementHitApplied（属性・詠唱者 ID・チーム・カード強化段階）
                     └─ ComboSystem → ComboResolver（CombatStatus.Elements に付与 or 相方を消費してコンボ）
                           └─ コンボのダメージ（ComboDamage）→ ComboEvents.Triggered/Finished → ComboHud・VFX・画面揺れ
@@ -178,6 +181,9 @@ Health.Died → EnemyActor                    コライダー無効化・撃破 
 - `PooledFx`：子の ParticleSystem のバースト数・放出率を `PerformanceSettings.EffectDensity`（High 1.0 / Handheld 0.55）で自動スケール。
 - `LightFlash`：短いライト点滅。Handheld ティアでは無効。
 - シェーダー `CoopDeck/FX/Additive Soft`：テクスチャ不要の加算発光（UV から円形／帯状を計算、フォグ対応、SRP Batcher 対応）。
+- 火球（Phase 5）：Shader Graph 6 種 `CoopDeck/FX/SG_FX_*`（計算は `Art/VFX/Fireball/Shaders/FireballVfx.hlsl`）。炎の本体は半透明、白熱部と火花だけ加算。
+  `IRadiusFx`（範囲に合わせて自分の層を伸ばす）・`ISurfaceFx`（命中面・キャラクター命中に合わせる）・`IProjectileFx`（飛翔弾の見た目）。
+  `PooledFx.StopEmitting`（放出を止めて自然に消えてから返却）、距離あたりの放出も品質で調整。`ElementAuraPresenter` は炎上中の炎も出す。
 
 ### 4.5 デッキ・スキル（`CoopDeck.Cards / Deck / Items / Skills`）
 
@@ -302,6 +308,7 @@ Builds\Windows\CoopDeckFPS.exe -perfrun 30 -perfout C:\temp\perf.json [-tier han
 |---|---|
 | `CoopDeck > Setup > Run Phase 1 Bootstrap` / `ProjectBootstrap.RunBatch` | レイヤー、URP ティア、Player Settings、入力アセット、マテリアル、エフェクト Prefab、武器・移動データ、仮アニメーション（`AnimationAssetFactory`）、敵データと敵 Prefab（`EnemyFactory`、仮リグは `PlaceholderRigBuilder`）、プレイヤー／的 Prefab、`Sandbox_Phase1` シーン（敵アリーナと NavMesh の生成を含む）、ビルド設定を生成。データ資産（武器・移動・入力・敵）は既存なら保持。仮アニメーションは既存なら保持し、`-coopdeckOverwriteAnimations` で作り直す |
 | `CoopDeck > Build > Windows (Development/Release)` / `BuildScript.BuildWindowsBatch` | `Builds/Windows/CoopDeckFPS.exe` を出力（Mono、x64） |
+| `FireballVfxFactory.EnsureAll`（ブートストラップ内） | 火球のメッシュ・Shader Graph（`ShaderGraphWriter`）・マテリアル・Prefab を毎回生成。`CardDataFactory.EnsureFireball` がカードと初期デッキへの追加 |
 
 バッチ実行例（プロジェクトを Editor で開いていない状態で）：
 
@@ -341,6 +348,9 @@ Assets/_Game/
   ScriptableObjects/Combos/CB_*.asset                     コンボ 3 種（3 段階の数値と VFX 参照）
   ScriptableObjects/Cards/Decks/DD_ComboPractice.asset    コンボ練習デッキ（既存カード 12 枚）
   Prefabs/Combos/FX_Combo_*.prefab, FX_Aura_*.prefab      コンボ VFX（3 種×3 段階＋連鎖・爆発・雷弧）と属性オーラ 4 種
+  Art/VFX/Fireball/{Meshes,Materials,Shaders}            火球のメッシュ 6・マテリアル 18・Shader Graph 6 と FireballVfx.hlsl
+  Prefabs/Skills/Fireball/FX_*.prefab                     火球のチャージ・飛翔・爆発・敵に絡む炎・炎上
+  ScriptableObjects/Cards/CD_Fireball.asset               火球（初期デッキ 13 枚目）
 ```
 
 テンプレート由来の `Assets/Settings`（PC/Mobile アセット）、`Assets/Scenes/SampleScene`、`TutorialInfo` は削除せず残している（現在は未使用）。

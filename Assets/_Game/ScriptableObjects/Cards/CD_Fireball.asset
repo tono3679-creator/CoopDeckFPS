@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 974513b0d97bf004687f6ca9ef7dff4e, type: 3}
+  m_Name: CD_Fireball
+  m_EditorClassIdentifier: CoopDeck.Cards::CoopDeck.Cards.CardDefinition
+  cardId: card.fireball
+  displayName: "\u706B\u7403"
+  description: "\u5DE6\u624B\u304B\u3089\u706B\u7403\u3092\u653E\u3064\u3002\u547D\u4E2D\u306745\u30C0\u30E1\u30FC\u30B8\u3001\u534A\u5F842.5m\u306B20\u30C0\u30E1\u30FC\u30B8\uFF0B\u708E\u4E0A\uFF08\u6BCE\u79D26\u30013\u79D2\uFF09\u3002"
+  type: 0
+  element: 1
+  rarity: 0
+  maxGauge: 100
+  gaugeCost: 25
+  cooldown: 0.5
+  targeting: 1
+  range: 60
+  impactDelay: 0
+  effects:
+  - kind: 0
+    amount: 45
+    radius: 0
+    duration: 0
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  - kind: 1
+    amount: 20
+    radius: 2.5
+    duration: 0
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  - kind: 2
+    amount: 6
+    radius: 2.5
+    duration: 3
+    chainCount: 0
+    chainRadius: 0
+    pullSpeed: 0
+  icon: {fileID: 21300000, guid: af181642bf0bac140acd1ef1e12de303, type: 3}
+  beamFx: {fileID: 0}
+  impactFx: {fileID: 981734902567634699, guid: 5e228470983c30f4ba1a0a58eec00640, type: 3}
+  areaFx: {fileID: 8341265230016560014, guid: dce6d44de3353df4bab5ccf45930f7ea, type: 3}
+  auraFx: {fileID: 0}
+  telegraphFx: {fileID: 0}
+  attachImpactFx: 1
+  projectile:
+    speed: 45
+    radius: 0.2
+    launchDelay: 0.12
+    visualScale: 1
+  castFx: {fileID: 1899230268828725737, guid: e16017662e9ba6b45bc3458b2015a208, type: 3}
+  projectileFx: {fileID: 8930640586037347801, guid: 303dc25cb7febf64aa95d63a76dd77e4, type: 3}

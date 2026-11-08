@@ -966,6 +966,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: CoopDeck.Skills::CoopDeck.Skills.SkillCaster
   castOrigin: {fileID: 4744045120833904215}
+  castHand: {fileID: 0}
+  viewModelCamera: {fileID: 0}
+  worldCamera: {fileID: 0}
 --- !u!114 &8221320516631139121
 MonoBehaviour:
   m_ObjectHideFlags: 0

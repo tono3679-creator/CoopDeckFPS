@@ -22,13 +22,14 @@ namespace CoopDeck.Tests
         }
 
         [Test]
-        public void StarterDeck_HasTwelveDistinctActiveCards_AndThreeSlots()
+        public void StarterDeck_HasThirteenDistinctActiveCards_AndThreeSlots()
         {
             DeckDefinition deck = LoadDeck();
-            Assert.That(deck.cards.Count, Is.EqualTo(12));
+            Assert.That(deck.cards.Count, Is.EqualTo(13), "the 12 starting cards and the fireball");
             Assert.That(deck.handSize, Is.EqualTo(3));
             Assert.That(deck.cards.All(c => c != null && c.type == CardType.Active));
-            Assert.That(deck.cards.Select(c => c.cardId).Distinct().Count(), Is.EqualTo(12));
+            Assert.That(deck.cards.Select(c => c.cardId).Distinct().Count(), Is.EqualTo(13));
+            Assert.That(deck.cards.Select(c => c.cardId), Does.Contain("card.fireball"));
         }
 
         [Test]

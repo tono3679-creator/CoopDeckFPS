@@ -17,6 +17,7 @@ namespace CoopDeck.Effects
         ParticleSystem[] systems;
         VfxQualityGate[] gates;
         float[] baseRates;
+        float[] baseDistanceRates;
         short[][] baseBurstMin;
         short[][] baseBurstMax;
         float remaining;
@@ -44,6 +45,7 @@ namespace CoopDeck.Effects
 
             systems = GetComponentsInChildren<ParticleSystem>(true);
             baseRates = new float[systems.Length];
+            baseDistanceRates = new float[systems.Length];
             baseBurstMin = new short[systems.Length][];
             baseBurstMax = new short[systems.Length][];
 
@@ -51,6 +53,7 @@ namespace CoopDeck.Effects
             {
                 ParticleSystem.EmissionModule emission = systems[i].emission;
                 baseRates[i] = emission.rateOverTimeMultiplier;
+                baseDistanceRates[i] = emission.rateOverDistanceMultiplier;
                 int count = emission.burstCount;
                 baseBurstMin[i] = new short[count];
                 baseBurstMax[i] = new short[count];
@@ -86,6 +89,7 @@ namespace CoopDeck.Effects
             ApplyQualityGates();
             ApplyDensity(scaleWithEffectDensity ? PerformanceSettings.EffectDensity : 1f);
             remaining = lifetime;
+            Stopping = false;
 
             foreach (ParticleSystem ps in systems)
             {
@@ -123,6 +127,7 @@ namespace CoopDeck.Effects
             {
                 ParticleSystem.EmissionModule emission = systems[i].emission;
                 emission.rateOverTimeMultiplier = baseRates[i] * density;
+                emission.rateOverDistanceMultiplier = baseDistanceRates[i] * density;
                 for (int b = 0; b < baseBurstMin[i].Length; b++)
                 {
                     ParticleSystem.Burst burst = emission.GetBurst(b);
@@ -142,6 +147,26 @@ namespace CoopDeck.Effects
 
             return (short)Mathf.Max(1, Mathf.RoundToInt(count * density));
         }
+
+        /// <summary>
+        /// Stops every particle system from emitting (live particles finish naturally) and returns the
+        /// object to the pool after <paramref name="releaseAfter"/> seconds at most: a looping effect that
+        /// ends without popping out of existence.
+        /// </summary>
+        public void StopEmitting(float releaseAfter)
+        {
+            CacheSystems();
+            foreach (ParticleSystem ps in systems)
+            {
+                ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+            }
+
+            remaining = Mathf.Min(remaining, Mathf.Max(0f, releaseAfter));
+            Stopping = true;
+        }
+
+        /// <summary>True after <see cref="StopEmitting"/> until the effect is played again.</summary>
+        public bool Stopping { get; private set; }
 
         /// <summary>Returns the object to the pool before its lifetime ends (projectile hit).</summary>
         public void ReleaseNow()

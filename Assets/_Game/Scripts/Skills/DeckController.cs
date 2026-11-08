@@ -80,6 +80,14 @@ namespace CoopDeck.Skills
             {
                 caster.Initialize(character, character.Look, GameLayers.PlayerShotMask, GameLayers.SkillQueryMask);
             }
+
+            if (caster != null && startingDeck != null)
+            {
+                foreach (CardDefinition card in startingDeck.cards)
+                {
+                    caster.Prewarm(card); // projectile effects are pooled up front: the first fireball does not hitch
+                }
+            }
         }
 
         void OnEnable() => Subscribe();

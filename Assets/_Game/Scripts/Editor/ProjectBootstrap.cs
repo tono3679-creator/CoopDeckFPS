@@ -66,9 +66,13 @@ namespace CoopDeck.EditorTools
 
             List<CardDefinition> cards = CardDataFactory.EnsureCards(skillFx, overwriteIcons: false);
             DeckDefinition starterDeck = CardDataFactory.EnsureStarterDeck(cards);
+            // Phase 5: the fireball (the fox's basic fire skill), its projectile effects, and the 13th starter card.
+            FireballVfxSet fireballVfx = FireballVfxFactory.EnsureAll();
+            CardDataFactory.EnsureInStarterDeck(starterDeck, CardDataFactory.EnsureFireball(fireballVfx, overwriteIcons: false));
             DeckDefinition practiceDeck = CardDataFactory.EnsurePracticeDeck(cards);
             List<GaugeItemDefinition> items = CardDataFactory.EnsureGaugeItems();
             ComboAssetSet combos = ComboAssetFactory.EnsureCombos();
+            combos.Burning = fireballVfx.Burning; // shown by the scene's ElementAuraPresenter while a fire burn ticks
 
             // Phase 4: the NPC ally (its own 8-card deck from the same card pool, plus its finisher card).
             var allCards = new List<CardDefinition>(cards);

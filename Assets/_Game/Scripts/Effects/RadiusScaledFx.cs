@@ -8,7 +8,7 @@ namespace CoopDeck.Effects
     /// areas listed in <see cref="full"/> scale with the radius, <see cref="partial"/> layers grow
     /// half as fast, and an inward spiral starts at the radius.
     /// </summary>
-    public class RadiusScaledFx : MonoBehaviour
+    public class RadiusScaledFx : MonoBehaviour, IRadiusFx
     {
         [Tooltip("Scaled to the radius (authored for 1 m): ground rings, pull areas.")]
         [SerializeField] Transform[] full = new Transform[0];

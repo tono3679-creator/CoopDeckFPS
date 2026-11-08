@@ -45,7 +45,8 @@ namespace CoopDeck.Tests
             // Same CardDefinition assets as the player's deck (no separate NPC card system).
             var starter = AssetDatabase.LoadAssetAtPath<DeckDefinition>(StarterDeckPath);
             Assert.That(deck.cards.Intersect(starter.cards).Any(), Is.True);
-            Assert.That(starter.cards.Count, Is.EqualTo(12), "the player's starter deck is unchanged");
+            Assert.That(starter.cards.Count, Is.EqualTo(13), "the player's starter deck (12 cards and the fireball) is unchanged by the NPC");
+            Assert.That(deck.cards.Any(c => c.cardId == "card.fireball"), Is.False, "the fireball is the fox's skill, not the NPC's");
         }
 
         [Test]

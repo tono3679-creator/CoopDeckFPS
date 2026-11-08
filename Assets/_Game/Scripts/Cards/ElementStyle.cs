@@ -18,16 +18,7 @@ namespace CoopDeck.Cards
             }
         }
 
-        public static Color ColorOf(Element element)
-        {
-            switch (element)
-            {
-                case Element.Fire: return new Color(1f, 0.45f, 0.18f);
-                case Element.Ice: return new Color(0.42f, 0.85f, 1f);
-                case Element.Lightning: return new Color(1f, 0.88f, 0.25f);
-                case Element.Gravity: return new Color(0.65f, 0.4f, 1f);
-                default: return new Color(0.45f, 1f, 0.7f);
-            }
-        }
+        /// <summary>The element's main colour from the art bible palette.</summary>
+        public static Color ColorOf(Element element) => Palette.Of(element).Main;
     }
 }

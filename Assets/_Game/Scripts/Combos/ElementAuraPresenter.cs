@@ -8,8 +8,10 @@ namespace CoopDeck.Combos
 {
     /// <summary>
     /// Shows which elements sit on which enemy: a looping effect per element (frost, flames,
-    /// sparks, gravity rings) attached to the target while the element lasts. Purely visual: it
-    /// only reads <see cref="CombatStatus.Elements"/>, so it can be removed without changing combos.
+    /// sparks, gravity rings) attached to the target while the element lasts, and small flames on
+    /// the body while a fire damage over time (a burn) ticks. Purely visual: it only reads
+    /// <see cref="CombatStatus.Elements"/> and <see cref="CombatStatus.Model"/>, so it can be removed
+    /// without changing combos or burns.
     /// </summary>
     public class ElementAuraPresenter : MonoBehaviour
     {
@@ -19,8 +21,15 @@ namespace CoopDeck.Combos
         [SerializeField] GameObject lightningAura;
         [SerializeField] GameObject gravityAura;
 
+        [Tooltip("Looping flames on the body while a fire damage over time is ticking (synchronised with the burn).")]
+        [SerializeField] GameObject burningFx;
+        [Tooltip("Seconds the burning flames take to die out after the burn ends.")]
+        [SerializeField, Min(0f)] float burningFadeOut = 0.6f;
+
         readonly HashSet<CombatStatus> tracked = new HashSet<CombatStatus>();
         readonly Dictionary<(CombatStatus, Element), PooledFx> shown = new Dictionary<(CombatStatus, Element), PooledFx>();
+        readonly Dictionary<CombatStatus, PooledFx> burning = new Dictionary<CombatStatus, PooledFx>();
+        readonly List<CombatStatus> burningEnded = new List<CombatStatus>();
         readonly List<CombatStatus> stale = new List<CombatStatus>();
         readonly List<(CombatStatus, Element)> toRelease = new List<(CombatStatus, Element)>();
 
@@ -28,12 +37,21 @@ namespace CoopDeck.Combos
 
         public int ShownCount => shown.Count;
 
-        public void Configure(GameObject fire, GameObject ice, GameObject lightning, GameObject gravity)
+        /// <summary>Targets currently showing the burning flames.</summary>
+        public int BurningCount => burning.Count;
+
+        public void Configure(GameObject fire, GameObject ice, GameObject lightning, GameObject gravity, GameObject burn = null)
         {
             fireAura = fire;
             iceAura = ice;
             lightningAura = lightning;
             gravityAura = gravity;
+            burningFx = burn;
+        }
+
+        void Start()
+        {
+            FxPool.Prewarm(burningFx, 4);
         }
 
         void OnEnable()
@@ -53,6 +71,15 @@ namespace CoopDeck.Combos
             }
 
             shown.Clear();
+            foreach (PooledFx fx in burning.Values)
+            {
+                if (fx != null)
+                {
+                    fx.ReleaseNow();
+                }
+            }
+
+            burning.Clear();
             tracked.Clear();
         }
 
@@ -123,6 +150,7 @@ namespace CoopDeck.Combos
                     any |= has;
                 }
 
+                any |= UpdateBurning(status);
                 if (!any)
                 {
                     stale.Add(status);
@@ -153,6 +181,57 @@ namespace CoopDeck.Combos
 
                 shown.Remove(key);
             }
+
+            burningEnded.Clear();
+            foreach (KeyValuePair<CombatStatus, PooledFx> pair in burning)
+            {
+                if (pair.Key == null || !tracked.Contains(pair.Key))
+                {
+                    burningEnded.Add(pair.Key);
+                }
+            }
+
+            foreach (CombatStatus status in burningEnded)
+            {
+                if (burning.TryGetValue(status, out PooledFx fx) && fx != null && fx.gameObject.activeSelf && !fx.Stopping)
+                {
+                    fx.StopEmitting(burningFadeOut);
+                }
+
+                burning.Remove(status);
+            }
+        }
+
+        /// <summary>Keeps the burning flames in step with the target's fire damage over time. True while it burns.</summary>
+        bool UpdateBurning(CombatStatus status)
+        {
+            bool burns = burningFx != null && status.Model.HasDamageOverTime(Element.Fire)
+                         && (!status.TryGetComponent(out Health health) || health.IsAlive);
+            burning.TryGetValue(status, out PooledFx fx);
+            if (fx != null && (!fx.gameObject.activeSelf || fx.Stopping))
+            {
+                burning.Remove(status); // finished elsewhere, or fading out from an earlier burn
+                fx = null;
+            }
+
+            if (burns && fx == null)
+            {
+                PooledFx spawned = FxPool.Spawn(burningFx, status.transform.position, status.transform.rotation, status.transform);
+                if (spawned != null)
+                {
+                    spawned.transform.localPosition = Vector3.zero;
+                    spawned.transform.localRotation = Quaternion.identity;
+                    spawned.transform.localScale = Vector3.one;
+                    burning[status] = spawned;
+                }
+            }
+            else if (!burns && fx != null)
+            {
+                fx.StopEmitting(burningFadeOut); // the flames die out with the burn instead of vanishing
+                burning.Remove(status);
+            }
+
+            return burns;
         }
     }
 }

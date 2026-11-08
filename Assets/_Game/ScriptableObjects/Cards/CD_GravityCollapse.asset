@@ -45,3 +45,11 @@ MonoBehaviour:
   areaFx: {fileID: 5453279856915944243, guid: b1d4e4e5ace88fe438f1c00381de2aa6, type: 3}
   auraFx: {fileID: 0}
   telegraphFx: {fileID: 0}
+  attachImpactFx: 0
+  projectile:
+    speed: 0
+    radius: 0
+    launchDelay: 0
+    visualScale: 0
+  castFx: {fileID: 0}
+  projectileFx: {fileID: 0}

@@ -2,6 +2,32 @@
 
 形式：日付ごとに「追加 / 変更 / 修正 / 検証」。検証していないものは「検証」に書かない。
 
+## 2026-11-08 — 火球スキルと高品質 VFX（飛翔弾スキル、Shader Graph の炎、アートバイブル）
+
+詳細は `FIREBALL_VFX.md`、配色は `ART_BIBLE.md`、カードは `CARD_SYSTEM.md` §12.1。外部素材・有料サービスなし。VFX Graph は使っていない（グラフをコードで作る公開 API がないため。ユーザー確認済み）。
+
+### 追加
+- アートバイブル「夕方の空中遺跡」（ユーザー選択）と `Core/Palette.cs`（環境色・属性ごとの 3 段の色・協力コンボの金・危険色・煙）。`ElementStyle.ColorOf` はパレットから取る（UI・アイコンの色は同じ値）。
+- カード「火球」（`CD_Fireball`、火・消費 25・CD 0.5 秒・弾速 45 m/s・直撃 45＋半径 2.5 m に 20＋炎上 毎秒 6×3 秒）を初期デッキの 13 枚目に（ユーザー指示）。アイコン `ICON_Fireball`。
+- 飛翔弾スキル：`ProjectileSpec`（弾速・当たり半径・発射までの遅延・見た目の大きさ）、`CardDefinition.castFx / projectileFx / attachImpactFx`。`SkillCaster` が左手でチャージ → 0.12 秒後（クイック詠唱で手のひらが前に出る時刻）に発射 → 照準の線上を球で判定 → 命中点で既存の `Resolve`（ダメージ・範囲・炎上・属性ヒット・コンボ）。見た目は手のひらから出て 6 m で照準の線に合流（ViewModel カメラの手の位置をワールドカメラの同じ画面位置へ変換）。味方・自分はすり抜け、射程切れはダメージなし。イベント `ProjectileLaunched / ProjectileEnded`、`StepProjectiles`（固定ティック・テスト用）、`Prewarm`。
+- 演出 5 種（`Prefabs/Skills/Fireball/`）：手元のチャージ、飛翔（白熱コア・炎の殻 2 層・軌跡 2 本・置き去りの炎と火の粉・発射の噴き出し・光）、爆発（閃光・立体の火球・凹凸メッシュの炎の塊・炎・衝撃波リング・火花・跳ねる燃焼片・火の粉・煙・焦げ跡）、敵に絡みつく炎、炎上中の炎。
+- `FireballVfxFactory`（メッシュ 6 種・Shader Graph 6 種・マテリアル 18 種・Prefab 5 種を生成）、`ShaderGraphWriter`（URP Unlit の .shadergraph を Custom Function 構成で書き出す、ID は固定で再生成しても差分なし）、`FireballVfx.hlsl`（炎の温度ランプ・3D ノイズ・Dissolve・コア・炎の殻・粒子・煙・衝撃波）。
+- `FireballProjectileFx`（発射直後は小さく出て拡大、置き去りの炎は約 3 m 先から、命中で本体が消え軌跡と火の粉は自然に消える、射程切れは溶けて消える）、`FireballExplosionFx`（爆発半径・命中面の向き・キャラクター命中では小さな縦のリングと焦げ跡なし）、`IRadiusFx / ISurfaceFx / IProjectileFx`。
+- 炎上の見た目：`StatusEffectsModel.HasDamageOverTime`、`ElementAuraPresenter` が火の継続ダメージの間だけ体に炎を出す（既存の火炎旋風・焼夷グレネードの炎上にも出る）。`PooledFx.StopEmitting`（放出を止めて自然に消してから返却）。
+- 無人計測 `-perffireball [間隔]`（アリーナで戦いながら火球を連射、JSON に発射数・命中数・同時飛行数）。
+- テスト：EditMode `FireballAssetTests`（11）、PlayMode `FireballPlayModeTests`（6）、手動の撮影 `FireballCaptureTests`。
+
+### 変更
+- `PooledFx`：距離あたりの放出（rate over distance）も VFX 品質の粒子数倍率で調整。
+- `SkillCaster`：`IRadiusFx` を持つ範囲エフェクトは全体を拡大せず自分で半径に合わせる。1 回の詠唱で同じ敵に着弾エフェクトを 2 回出さない。
+- 既存スキル用エフェクト・カード資産：パレット化による色の端数の差と、新しいカードの項目（既定値）が保存されたことによる差分のみ。
+- テスト：初期デッキの枚数 12 → 13（`CardDataAssetTests`・`NpcAssetTests`）。PlayMode テストのアセンブリに URP Core Runtime の参照を追加（撮影で Volume を使う）。
+
+### 検証
+- EditMode 245/245。PlayMode 65 成功・6 スキップ（手動撮影）・1 失敗（`FoxBodyPlayModeTests.FirstPersonArms_ReachInFromTheLowerCorners_WithStraightWrists`、別セッションが作業中だった一人称の腕の作り直しによるもの。その作業の後の全件実行では 66 成功・失敗 0 との報告）。Shader Graph 6 種はエラーなくコンパイル。コンパイル警告 0（テストの非推奨 API 呼び出し 4 か所を修正後、火球 PlayMode 6/6 で確認）。
+- 撮影 `Screenshots/Fireball_*.png`（一人称の発射〜遠くの爆発、飛翔の横・前・後ろ、敵・床・壁での爆発と余韻、炎上、品質 3 段階）。
+- Windows ビルド成功（258.6 MB、エラー・警告 0）。ROG Ally X（Handheld）で敵ウェーブと戦いながら 0.3 秒ごとに火球：VFX 中・60 上限 平均 60.0／1% Low 58.4、上限なし 平均 91.1（従来と同等）、GPU 3.6〜3.8 ms、VFX 高・低も 60.0／60.0。実戦中にプレイヤーの火球 → ヴォルトの雷で協力コンボ（オーバーロード）が発生することを確認。
+
 ## 2026-11-08 — 一人称の腕の構図を作り直し（銃を持つ腕が変に見える）
 
 詳細は `FOX_ANIMATION.md` §6「一人称の構図」。

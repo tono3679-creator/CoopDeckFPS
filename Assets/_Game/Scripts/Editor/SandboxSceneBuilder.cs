@@ -65,7 +65,7 @@ namespace CoopDeck.EditorTools
                 var comboGo = new GameObject("ComboSystem");
                 comboSystem = comboGo.AddComponent<ComboSystem>();
                 comboSystem.Configure(new List<ComboDefinition>(combos.Combos));
-                comboGo.AddComponent<ElementAuraPresenter>().Configure(combos.FireAura, combos.IceAura, combos.LightningAura, combos.GravityAura);
+                comboGo.AddComponent<ElementAuraPresenter>().Configure(combos.FireAura, combos.IceAura, combos.LightningAura, combos.GravityAura, combos.Burning);
                 comboGo.AddComponent<ComboAudio>();
             }
 

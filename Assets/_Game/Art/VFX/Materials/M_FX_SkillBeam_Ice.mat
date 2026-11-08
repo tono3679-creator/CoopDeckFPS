@@ -30,6 +30,6 @@ Material:
     - _Radial: 0
     - _Ring: 0
     m_Colors:
-    - _BaseColor: {r: 0.42, g: 0.85, b: 1, a: 1}
+    - _BaseColor: {r: 0.41960785, g: 0.8509804, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

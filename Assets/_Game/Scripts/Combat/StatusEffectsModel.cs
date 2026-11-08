@@ -65,6 +65,20 @@ namespace CoopDeck.Combat
         public float IncomingDamageMultiplier => 1f + Vulnerability;
         public int DamageOverTimeCount => dots.Count;
 
+        /// <summary>True while a damage over time of this element is ticking (a burn, for fire).</summary>
+        public bool HasDamageOverTime(Element element)
+        {
+            foreach (DotInstance dot in dots)
+            {
+                if (dot.Element == element && dot.TicksLeft > 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>Most recent element applied to this actor (kept for the Phase 4 combo system).</summary>
         public Element LastElement { get; private set; }
 

@@ -18,6 +18,7 @@ namespace CoopDeck.EditorTools
         ArrowUp,
         Grenade,
         Spike,
+        Fireball,
     }
 
     /// <summary>
@@ -143,6 +144,16 @@ namespace CoopDeck.EditorTools
                     c.Ring(0.5f, 0.42f, 0.3f, 0.04f);
                     c.Ring(0.5f, 0.42f, 0.17f, 0.035f);
                     c.Polygon(new[] { new Vector2(0.5f, 0.12f), new Vector2(0.38f, 0.9f), new Vector2(0.62f, 0.9f) });
+                    break;
+                case CardGlyph.Fireball:
+                    // a ball of fire flying right, its flames streaming back to the left
+                    c.Segment(0.1f, 0.6f, 0.5f, 0.5f, 0.075f);
+                    c.Segment(0.16f, 0.34f, 0.5f, 0.44f, 0.06f);
+                    c.Segment(0.26f, 0.8f, 0.54f, 0.58f, 0.045f);
+                    c.Circle(0.63f, 0.48f, 0.22f);
+                    c.Paint = Darken(element, 0.7f);
+                    c.Circle(0.66f, 0.5f, 0.1f);
+                    c.Paint = Color.white;
                     break;
             }
         }

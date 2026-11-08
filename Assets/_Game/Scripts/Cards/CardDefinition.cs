@@ -47,6 +47,16 @@ namespace CoopDeck.Cards
         public GameObject auraFx;
         [Tooltip("Shown at the target point during impactDelay.")]
         public GameObject telegraphFx;
+        [Tooltip("The impact effect clings to the enemy it hit (follows it) instead of staying where it hit.")]
+        public bool attachImpactFx;
+
+        [Header("Projectile")]
+        [Tooltip("Speed above 0 makes the skill fly from the casting hand and resolve where it lands.")]
+        public ProjectileSpec projectile;
+        [Tooltip("Charge in the casting hand until the projectile launches.")]
+        public GameObject castFx;
+        [Tooltip("The flying projectile; follows the simulated shot (Area Fx is the blast where it lands).")]
+        public GameObject projectileFx;
 
         /// <summary>Uses from a full gauge, counting the final partial use.</summary>
         public int UsesFromFull => Mathf.CeilToInt(maxGauge / Mathf.Max(1f, gaugeCost) - 0.0001f);
