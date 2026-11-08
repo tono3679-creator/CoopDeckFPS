@@ -201,7 +201,7 @@ namespace CoopDeck.Tests
         }
 
         [Test]
-        public void Body_ShadesWithTheHighResNormalMap_AndTheFirstPersonArmsDoNot()
+        public void Body_ShadesWithTheHighResNormalMap_AndTheFirstPersonArmsHaveTheirOwnBakes()
         {
             var normalMap = Load<Texture2D>(NormalMapPath);
             var importer = (TextureImporter)AssetImporter.GetAtPath(NormalMapPath);
@@ -219,12 +219,18 @@ namespace CoopDeck.Tests
             Assert.That(tangents.Length, Is.EqualTo(mesh.vertexCount));
             Assert.That(tangents.All(t => Mathf.Abs(new Vector3(t.x, t.y, t.z).magnitude - 1f) < 0.01f && Mathf.Abs(t.w) > 0.99f), Is.True);
 
-            // The first-person arms borrow only the body's UVs for colour: same look, no body normal map.
+            // The first-person arms (cut from the sculpt, own UVs): the same look with their own colour, normal map and
+            // surface regions, baked from the same sources as the body's.
             var firstPerson = Load<Material>(FirstPersonMaterialPath);
             Assert.That(firstPerson.shader, Is.EqualTo(softToon.shader));
-            Assert.That(firstPerson.GetTexture("_BaseMap"), Is.EqualTo(Load<Texture2D>(BaseMapPath)));
-            Assert.That(firstPerson.GetTexture("_NormalMap"), Is.Null);
-            Assert.That(firstPerson.GetFloat("_NormalStrength"), Is.EqualTo(0f));
+            Assert.That(firstPerson.GetTexture("_BaseMap").name, Is.EqualTo("T_FoxGunner_FPArms_BaseColor"));
+            Assert.That(firstPerson.GetTexture("_NormalMap").name, Is.EqualTo("T_FoxGunner_FPArms_Normal"));
+            Assert.That(firstPerson.GetTexture("_SurfaceMask").name, Is.EqualTo("T_FoxGunner_FPArms_SurfaceMask"));
+            Assert.That(firstPerson.GetFloat("_NormalStrength"), Is.GreaterThan(0.5f));
+            foreach (string name in new[] { "_ToonBlend", "_ToonWidth", "_RimStrength", "_AmbientStrength" })
+            {
+                Assert.That(firstPerson.GetFloat(name), Is.EqualTo(softToon.GetFloat(name)), "same look as the body: " + name);
+            }
             Object.DestroyImmediate(instance);
             instance = (GameObject)PrefabUtility.InstantiatePrefab(Load<GameObject>(PlayerPrefabPath));
             Transform viewModel = instance.GetComponentsInChildren<Transform>(true).First(t => t.name == "ViewModel");

@@ -27,6 +27,11 @@ Shader "CoopDeck/Character/Toon"
         _RimPower ("Rim Power", Range(0.5, 10)) = 4.5
         _RimStrength ("Rim Strength", Range(0, 1)) = 0.3
 
+        [Header(Normal Map)]
+        [Toggle(_NORMALMAP)] _UseNormalMap ("Normal Map", Float) = 0
+        [Normal] _BumpMap ("Normal Map", 2D) = "bump" {}
+        _BumpScale ("Normal Strength", Range(0, 2)) = 1
+
         [Header(Emission)]
         [Toggle(_EMISSION)] _UseEmission ("Emission", Float) = 0
         _EmissionMap ("Emission Map", 2D) = "black" {}
@@ -56,6 +61,7 @@ Shader "CoopDeck/Character/Toon"
         TEXTURE2D(_BaseMap);
         SAMPLER(sampler_BaseMap);
         TEXTURE2D(_EmissionMap);
+        TEXTURE2D(_BumpMap);
 
         // Every property lives in UnityPerMaterial so all passes stay SRP Batcher compatible.
         CBUFFER_START(UnityPerMaterial)
@@ -73,12 +79,14 @@ Shader "CoopDeck/Character/Toon"
             half4 _OutlineColor;
             float _OutlineWidth;
             half4 _EmissionColor;
+            half _BumpScale;
         CBUFFER_END
 
         struct Attributes
         {
             float4 positionOS : POSITION;
             float3 normalOS   : NORMAL;
+            float4 tangentOS  : TANGENT;
             float2 uv         : TEXCOORD0;
             UNITY_VERTEX_INPUT_INSTANCE_ID
         };
@@ -116,6 +124,7 @@ Shader "CoopDeck/Character/Toon"
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
             #pragma shader_feature_local_fragment _EMISSION
+            #pragma shader_feature_local _NORMALMAP
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
@@ -128,6 +137,9 @@ Shader "CoopDeck/Character/Toon"
                 half fogFactor    : TEXCOORD3;
             #if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
                 float4 shadowCoord : TEXCOORD4;
+            #endif
+            #if defined(_NORMALMAP)
+                half4 tangentWS   : TEXCOORD5; // w: bitangent sign
             #endif
                 UNITY_VERTEX_INPUT_INSTANCE_ID
                 UNITY_VERTEX_OUTPUT_STEREO
@@ -144,6 +156,11 @@ Shader "CoopDeck/Character/Toon"
                 output.positionCS = positionInputs.positionCS;
                 output.positionWS = positionInputs.positionWS;
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
+            #if defined(_NORMALMAP)
+                VertexNormalInputs normalInputs = GetVertexNormalInputs(input.normalOS, input.tangentOS);
+                output.normalWS = normalInputs.normalWS;
+                output.tangentWS = half4(normalInputs.tangentWS, input.tangentOS.w * GetOddNegativeScale());
+            #endif
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 output.fogFactor = ComputeFogFactor(positionInputs.positionCS.z);
             #if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
@@ -165,7 +182,15 @@ Shader "CoopDeck/Character/Toon"
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
                 half3 albedo = SampleAlbedo(input.uv);
+            #if defined(_NORMALMAP)
+                // tangent-space detail baked from the high-resolution sculpt (MikkTSpace, as Blender bakes it)
+                half3 normalTS = UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BaseMap, input.uv), _BumpScale);
+                half3 bitangentWS = input.tangentWS.w * cross(input.normalWS, input.tangentWS.xyz);
+                half3 normalWS = NormalizeNormalPerPixel(TransformTangentToWorld(normalTS,
+                    half3x3(input.tangentWS.xyz, bitangentWS, input.normalWS)));
+            #else
                 half3 normalWS = NormalizeNormalPerPixel(input.normalWS);
+            #endif
                 half3 viewDirWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
 
                 // The cluster light loop macros read positionWS / normalizedScreenSpaceUV from "inputData".

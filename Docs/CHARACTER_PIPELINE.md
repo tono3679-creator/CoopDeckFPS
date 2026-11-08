@@ -131,6 +131,27 @@ Unity（エディターを閉じた状態でバッチ実行。開いている場
 - 三人称：体の右手のボーンの子。待機姿勢でグリップを手のひらに、銃口を前下がり 35°（ローレディ）にしたときの手からの相対位置を、ポーズを付けた複製で測って設定（`FireRifleAssetFactory.RightHandHold`）。自分には体と同じく影だけ見える。
 - テスト：`Tests/EditMode/Weapons/FireRifleAssetTests.cs`（長さ・向き・ソケット・予算・UV3 の輪郭用法線と硬い角・マテリアル・発光の範囲・プレイヤーの一人称と右手）。
 
+### 6.1 高精細モデルからの作り直し（2026-11-08）
+
+Meshy のリメッシュ（7,678 三角形・2K）は、一人称の近距離でスコープや炎のひれが角ばり、塗りがぼやけていた。キツネの体（§8.2）と同じく、Meshy の高精細モデル（`FireRifle_highres.glb`、437,374 三角形、UV なし）から作り直した（`ArtSource/Tools/refine_prop.py`）。
+
+| 手順 | 内容 |
+|---|---|
+| 位置合わせ | 高精細を `prepare_prop_for_unity.py` と同じ向き（`--forward=-X` を Blender の -Y へ）に回し、今の銃の外接箱に合わせる。距離は平均 0.20 mm・95% 0.48 mm。全長 0.85 m・原点（グリップ）・ソケット（`Muzzle`・`LeftHandGrip`）は同じ |
+| 削減 | Quadric collapse で 30,000 三角形。40° 以上の角は硬いまま（パネルの陰影をにじませない） |
+| UV | Smart UV Project → 島の大きさをそろえて 4096 に詰める。テクセル密度 3,555/3,997/4,228（5%/50%/95%） |
+| 色 | 今の銃の 2K アトラスを島の外へ広げてから Real-ESRGAN で 4 倍（`ArtSource/FireRifle/Export/FireRifle_atlas_x4.png`）、今の銃の UV を通して焼き直し（薄いひれのためケージ 2 mm・探索 4 mm、外れ 2.2% は同じ島の隣から） |
+| 法線マップ | 高精細から 4096（`T_FireRifle_Normal.png`）。`CH_Toon` に任意の法線マップ（`_NORMALMAP`・`_BumpMap`・`_BumpScale`、接線は MikkTSpace）を追加 |
+| Unity | `FireRifleAssetFactory`：基本色 4096・BC7・トライリニア・異方性 8、法線マップ（BC5）、発光マップは新しい基本色から作り直し（2048） |
+
+```
+blender -b --factory-startup -P ArtSource/Tools/refine_prop.py -- --name FireRifle ^
+    --prepared ArtSource/FireRifle/Export/FireRifle.glb --highres ArtSource/FireRifle/Meshy/FireRifle_highres.glb ^
+    --forward=-X --socket Muzzle=0,-0.605,0.137 --socket LeftHandGrip=0,-0.401,0.071 --esrgan <realesrgan フォルダ> ^
+    --faces 30000 --size 4096 --model-out Assets/_Game/Art/Weapons/FireRifle/Models ^
+    --texture-out Assets/_Game/Art/Weapons/FireRifle/Textures --glb-out ArtSource/FireRifle/Export [--check <dir>]
+```
+
 ---
 
 ## 7. 質感の改善（フィギュアっぽさを減らす、2026-11-07）
@@ -225,12 +246,29 @@ Unity では 40,000 三角形・52,554 頂点（毛束や重なった布が多�
 - ゲーム（ビルド、`-perfrun 30`、プレイヤーの体は影だけ）：平均 59.98 FPS（上限 60）、1% low 58.4 FPS、GPU 2.60 ms、メインスレッド 3.58 ms。15k のとき（GPU 2.4 ms）との差は約 0.2 ms。
 - 協力プレイで他のキツネが何体も見えるようになったら、遠景用の LOD（同じ UV・テクスチャのまま 15k へ削減）を検討する。
 
+### 8.3 一人称の腕を高精細モデルから切り出す（2026-11-08）
+
+一人称の腕は、三人称の体と同じ高精細スカルプトから切り出す（`fox_anim/fox_fp_arms.py`）。以前は前腕だけを切り出し、手はメタボールで造形し直した別物（`fox_fp_hands.py`、削除済み）で、腕も 1.1〜1.3 倍に伸ばしていた。今は手・指まで元のキツネで、骨の長さも体と同じ。動き・構図は `FOX_ANIMATION.md` §6。
+
+| 手順 | 内容 |
+|---|---|
+| 切り出し | 高精細を `Export/FoxGunner.glb` に合わせ、体の腕・手・指の骨に 1.2 cm 以内で付く頂点を残す（上腕は付け根から 1/4 より先）。500 頂点未満の破片は捨て、40,000 三角形に削減（39,999 三角形、Blender で 20,082 頂点） |
+| UV・色 | 4096 で開き直し、体（元 UV）＋ 8K の拡大アトラス（`FoxGunner_atlas_x4.png`）から色を焼く（ケージ 4 mm、光線 8 mm）。外れは §8 と同じく探索を広げて再ベイクし、残りを同じ島の隣から埋める |
+| 法線・質感マスク | 法線は高精細から（§8.1 と同じ `bake_normal_image`）。SoftToon の質感マスクは体のマスク（RGB＋アルファ）から 2048 で焼く |
+| スキン・骨 | 体の腕のウェイトを写す。指はメッシュのつながりで 5 本に分け、3 関節ずつのボーン（関節の前後 4 mm で混ぜる）。手のひらの向きの目印 `Palm`/`PalmOut`。計 41 ボーン |
+| Unity | `FoxGunnerAnimationFactory` が取り込み（MikkTSpace の接線、メッシュ圧縮なし、ブレンドシェイプなし）。マテリアル `M_FoxGunner_SoftToon_FirstPerson` は体の SoftToon の数値を写し、テクスチャだけ一人称用（`FoxGunnerLookFactory.EnsureFirstPersonMaterial`）。Unity で 31,642 頂点 |
+
+```
+blender -b ArtSource/FoxGunner/Animation/FoxGunner_AnimRig.blend -P ArtSource/Tools/fox_anim/fox_fp_arms.py -- --faces 40000 --size 4096
+```
+出力：`Models/FoxGunner_FPArms.fbx`、`Textures/T_FoxGunner_FPArms_BaseColor.png` / `_Normal.png` / `_SurfaceMask.png`（`--check <フォルダ>` で指を曲げた確認画像）。
+
 ---
 
 ## 9. 未対応（次の作業）
 
 - ~~三人称のライフルは素手のモーションに付いているだけ~~ → 2026-11-07 に構えのクリップ一式と両手 IK（`FOX_ANIMATION.md`）。
-- ~~一人称の手は仮のカプセルのまま~~ → キツネの腕（高解像度メッシュから）に置き換え（`FOX_ANIMATION.md` §6）。
+- ~~一人称の手は仮のカプセルのまま~~ → キツネの腕（高解像度メッシュから）に置き換え（`FOX_ANIMATION.md` §6）。2026-11-08 に手・指まで元のスカルプトから切り出し直した（§8.3）。
 - ~~移動クリップは前進の歩き・走りだけ~~ → 2026-11-07 に Blender Python で 8 方向・ジャンプ・射撃・リロード・スキル・被弾・ダウン・蘇生など一式を制作（`FOX_ANIMATION.md`）。
 - カメラの高さ（1.62 m）と CharacterController（1.8 m）は仮リグのまま。キツネは身長 1.6 m なので、頭の高さに合わせるかはゲームプレイの判断（変えていない）。
 - ~~スプリントで走りが約 2.4 倍速~~ → 専用のスプリントクリップ（9.6 m/s）。

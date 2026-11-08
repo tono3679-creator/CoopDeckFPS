@@ -18,6 +18,8 @@ namespace CoopDeck.Tests
     {
         const string ModelPath = "Assets/_Game/Art/Weapons/FireRifle/Models/FireRifle.fbx";
         const string EmissionPath = "Assets/_Game/Art/Weapons/FireRifle/Textures/T_FireRifle_Emission.png";
+        const string BaseColorPath = "Assets/_Game/Art/Weapons/FireRifle/Textures/T_FireRifle_BaseColor.png";
+        const string NormalPath = "Assets/_Game/Art/Weapons/FireRifle/Textures/T_FireRifle_Normal.png";
         const string MaterialPath = "Assets/_Game/Art/Weapons/FireRifle/Materials/M_FireRifle_Toon.mat";
         const string ViewModelMaterialPath = "Assets/_Game/Art/Weapons/FireRifle/Materials/M_FireRifle_Toon_FP.mat";
         const string PrefabPath = "Assets/_Game/Prefabs/Weapons/PF_Weapon_FireRifle.prefab";
@@ -84,7 +86,8 @@ namespace CoopDeck.Tests
         public void Mesh_FitsTheBudget_AndCarriesOutlineNormals()
         {
             Mesh mesh = Spawn(PrefabPath).GetComponentInChildren<MeshFilter>().sharedMesh;
-            Assert.That(mesh.triangles.Length / 3, Is.LessThanOrEqualTo(10000));
+            // rebuilt from Meshy's 437k-triangle sculpt (refine_prop.py); Meshy's own 7.7k remesh was faceted
+            Assert.That(mesh.triangles.Length / 3, Is.InRange(20000, 40000));
             Assert.That(mesh.subMeshCount, Is.EqualTo(1));
 
             var outline = new List<Vector3>();
@@ -110,7 +113,15 @@ namespace CoopDeck.Tests
                 Assert.That(m.GetTexture("_BaseMap"), Is.Not.Null, m.name);
                 Assert.That(m.GetTexture("_EmissionMap"), Is.Not.Null, m.name);
                 Assert.That(m.GetColor("_EmissionColor").maxColorComponent, Is.GreaterThan(1f), m.name + ": HDR so bloom (threshold 1) catches it");
+                Assert.That(m.IsKeywordEnabled("_NORMALMAP"), Is.True, m.name + ": the sculpt's detail as a normal map");
+                Assert.That(m.GetTexture("_BumpMap"), Is.EqualTo(Load<Texture2D>(NormalPath)), m.name);
             }
+
+            var baseImporter = (TextureImporter)AssetImporter.GetAtPath(BaseColorPath);
+            Assert.That(baseImporter.maxTextureSize, Is.EqualTo(4096));
+            Assert.That(baseImporter.textureCompression, Is.EqualTo(TextureImporterCompression.CompressedHQ));
+            Assert.That(((TextureImporter)AssetImporter.GetAtPath(NormalPath)).textureType, Is.EqualTo(TextureImporterType.NormalMap));
+            Assert.That(Load<Texture2D>(BaseColorPath).width, Is.EqualTo(4096));
 
             Assert.That(viewModel.GetFloat("_OutlineWidth"), Is.LessThan(world.GetFloat("_OutlineWidth") * 0.5f));
             Assert.That(Spawn(PrefabPath).GetComponentInChildren<MeshRenderer>().sharedMaterial, Is.EqualTo(world));

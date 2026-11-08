@@ -1,31 +1,51 @@
+using System;
 using UnityEngine;
 
 namespace CoopDeck.Animation
 {
     /// <summary>
-    /// The fox's own arms in the first-person view model (hand-modelled gloved hands on the body's forearms).
-    /// Every goal is read from the third-person body relative to its rifle and placed on the view-model rifle, so
-    /// first person shows the same authored motion everyone else sees:
+    /// The fox's own arms in the first-person view model: cut from the high-resolution sculpt with the body's bones
+    /// (the fox's own proportions) plus three joints per finger and thumb. Every hand goal is read from the third-person
+    /// body relative to its rifle and placed on the view-model rifle, so first person shows the same authored holds and
+    /// motion (reloads, casts) everyone else sees:
     ///   right hand - the body's right-hand goal (pistol grip)
-    ///   left hand  - FP_Grip_L (a handguard hold authored for first person) while the clips have the left hand on the
-    ///                rifle, blending to the body's left-hand goal for reloads and casts
+    ///   left hand  - the body's left-hand goal (its hold on the rifle, reloads, casts)
     ///   elbows     - fixed hints in this object's space (the body's elbow hints, when given, win)
-    /// The shoulders are not the body's: the view-model builder places each one below the screen so the forearms reach
-    /// in from the lower corners with the elbows out of view (the arms are separate pieces on Root).
-    /// A small analytic two-bone IK bends each arm after the view model has bobbed and swayed (LateUpdate, late
-    /// order), shares the wrist twist with the forearm (no candy-wrapper wrist), and the left hand opens (shape key
-    /// "Open") while casting.
+    /// The shoulders sit where the fox's shoulders are below its eyes, with the chest turned into a rifle stance (set by
+    /// the view-model builder). A small analytic two-bone IK bends each arm after the view model has bobbed and swayed
+    /// (LateUpdate, late order) and shares the wrist twist with the forearm (no candy-wrapper wrist). Then the fingers
+    /// curl toward the palm around the grip (per finger and joint); the left hand opens for casts and half-opens while it
+    /// works away from the rifle (reload).
     /// </summary>
     [DefaultExecutionOrder(200)]
     [DisallowMultipleComponent]
     public class FirstPersonArms : MonoBehaviour
     {
+        /// <summary>Curl of one digit toward the palm, degrees per joint (base, middle, tip).</summary>
+        [Serializable]
+        public struct DigitCurl
+        {
+            public float a, b, c;
+
+            public DigitCurl(float a, float b, float c)
+            {
+                this.a = a;
+                this.b = b;
+                this.c = c;
+            }
+
+            public static DigitCurl Lerp(DigitCurl x, DigitCurl y, float t) =>
+                new DigitCurl(Mathf.Lerp(x.a, y.a, t), Mathf.Lerp(x.b, y.b, t), Mathf.Lerp(x.c, y.c, t));
+        }
+
+        public static readonly string[] Digits = { "Thumb", "Index", "Middle", "Ring", "Pinky" };
+
         [Header("Third-person source")]
         [Tooltip("The body's rifle (HeldRifle on the Weapon bone).")]
         [SerializeField] Transform bodyRifle;
         [SerializeField] Transform bodyGoalLeft;
         [SerializeField] Transform bodyGoalRight;
-        [Tooltip("FP_Grip_L: the first-person left-hand hold on the handguard, riding the body's rifle.")]
+        [Tooltip("Optional first-person left-hand hold riding the body's rifle; empty = the body's own left-hand goal.")]
         [SerializeField] Transform bodyGripLeft;
         [SerializeField] Transform bodyElbowLeft;
         [SerializeField] Transform bodyElbowRight;
@@ -41,22 +61,58 @@ namespace CoopDeck.Animation
         [SerializeField] Transform rightForeArm;
         [SerializeField] Transform rightHand;
         [Tooltip("Elbow directions in this object's space (when the body has no elbow hints).")]
-        [SerializeField] Vector3 leftElbow = new Vector3(-0.46f, 0.86f, -0.2f);
-        [SerializeField] Vector3 rightElbow = new Vector3(0.14f, 0.83f, -0.55f);
+        [SerializeField] Vector3 leftElbow = new Vector3(-0.6f, -0.8f, -0.1f);
+        [SerializeField] Vector3 rightElbow = new Vector3(0.9f, -0.35f, -0.25f);
         [Tooltip("Share of the wrist twist the forearm takes (the rest stays in the wrist).")]
         [SerializeField, Range(0f, 1f)] float forearmTwist = 0.6f;
+        [Tooltip("Most a wrist bends off its forearm (degrees); past it the hand turns back toward the forearm's line.")]
+        [SerializeField, Range(10f, 90f)] float maxWristBend = 38f;
+        [Tooltip("How far (metres) the left hand may slide back along the rifle when its hold is out of the arm's reach.")]
+        [SerializeField, Min(0f)] float maxLeftSlide = 0.12f;
 
-        [Header("Left hand shape")]
-        [SerializeField] SkinnedMeshRenderer skin;
-        [SerializeField] string openShape = "Open";
+        [Header("Shoulders (the fox's own, below its eyes)")]
+        [Tooltip("The player camera: the fox's eyes.")]
+        [SerializeField] Transform eye;
+        [Tooltip("Shoulder joints relative to the eyes with the chest square (body bind pose; x right, y up, z forward).")]
+        [SerializeField] Vector3 leftShoulderFromEye = new Vector3(-0.15f, -0.22f, 0.03f);
+        [SerializeField] Vector3 rightShoulderFromEye = new Vector3(0.15f, -0.22f, 0.03f);
+        [Tooltip("Chest turned right into a rifle stance (degrees): the left shoulder comes forward toward the handguard.")]
+        [SerializeField, Range(0f, 60f)] float torsoYaw = 40f;
+        [Tooltip("Chest leaning forward into the stock (degrees): both shoulders come forward and up under the eyes.")]
+        [SerializeField, Range(0f, 45f)] float torsoLean = 33f;
+
+        [Header("Fingers: thumb, index, middle, ring, pinky (degrees toward the palm per joint)")]
+        [SerializeField] DigitCurl[] rightGrip =
+        {
+            new DigitCurl(25f, 30f, 20f), new DigitCurl(35f, 45f, 25f), new DigitCurl(70f, 75f, 45f),
+            new DigitCurl(75f, 75f, 45f), new DigitCurl(80f, 70f, 40f),
+        };
+        [SerializeField] DigitCurl[] leftGrip =
+        {
+            new DigitCurl(20f, 25f, 15f), new DigitCurl(55f, 60f, 35f), new DigitCurl(60f, 60f, 35f),
+            new DigitCurl(65f, 60f, 35f), new DigitCurl(70f, 55f, 30f),
+        };
+        [SerializeField] DigitCurl[] openHand =
+        {
+            new DigitCurl(5f, 5f, 5f), new DigitCurl(5f, 5f, 0f), new DigitCurl(5f, 5f, 0f),
+            new DigitCurl(8f, 5f, 0f), new DigitCurl(10f, 5f, 0f),
+        };
         [SerializeField, Min(0.1f)] float openSpeed = 12f;
 
         Quaternion[] rest;
         Transform[] chain;
         Quaternion restHandInForearmL;
         Quaternion restHandInForearmR;
-        int openIndex = -1;
+        Joint[][] fingersL;
+        Joint[][] fingersR;
         float open;
+
+        struct Joint
+        {
+            public Transform bone;
+            public Quaternion rest;
+            public Vector3 axis; // bend toward the palm, in the bone's rest frame
+        }
 
         public float OpenAmount => open;
 
@@ -76,15 +132,48 @@ namespace CoopDeck.Animation
             rest = null;
         }
 
-        public void ConfigureExtras(Transform gripLeft, Transform elbowLeft, Transform elbowRight, SkinnedMeshRenderer mesh)
+        public void ConfigureExtras(Transform gripLeft, Transform elbowLeft, Transform elbowRight)
         {
             bodyGripLeft = gripLeft;
             bodyElbowLeft = elbowLeft;
             bodyElbowRight = elbowRight;
-            skin = mesh;
         }
 
         public void SetDriver(CharacterAnimatorDriver owner) => driver = owner;
+
+        /// <summary>The eyes (player camera) and the shoulder joints relative to them, chest square.</summary>
+        public void SetShoulders(Transform eyes, Vector3 leftFromEye, Vector3 rightFromEye, float chestYaw, float chestLean)
+        {
+            eye = eyes;
+            leftShoulderFromEye = leftFromEye;
+            rightShoulderFromEye = rightFromEye;
+            torsoYaw = chestYaw;
+            torsoLean = chestLean;
+        }
+
+        public float TorsoLean
+        {
+            get => torsoLean;
+            set => torsoLean = value;
+        }
+
+        public float TorsoYaw
+        {
+            get => torsoYaw;
+            set => torsoYaw = value;
+        }
+
+        /// <summary>
+        /// Shoulder joints relative to the eyes in a body's bind pose (x right, y up, z forward of the body). The eyes
+        /// sit <paramref name="eyeAboveHead"/> above and <paramref name="eyeForward"/> in front of the Head bone.
+        /// </summary>
+        public static void ShoulderOffsets(Transform bodyRoot, Transform head, Transform leftUpperArm, Transform rightUpperArm,
+            float eyeAboveHead, float eyeForward, out Vector3 left, out Vector3 right)
+        {
+            Vector3 eyes = bodyRoot.InverseTransformPoint(head.position) + new Vector3(0f, eyeAboveHead, eyeForward);
+            left = bodyRoot.InverseTransformPoint(leftUpperArm.position) - eyes;
+            right = bodyRoot.InverseTransformPoint(rightUpperArm.position) - eyes;
+        }
 
         /// <summary>Elbow directions in this object's space, used when the body gives no elbow hints.</summary>
         public void SetElbowHints(Vector3 left, Vector3 right)
@@ -108,9 +197,73 @@ namespace CoopDeck.Animation
             {
                 restHandInForearmL = Quaternion.Inverse(leftForeArm.rotation) * leftHand.rotation;
                 restHandInForearmR = Quaternion.Inverse(rightForeArm.rotation) * rightHand.rotation;
+                fingersL = CaptureDigits(leftHand, "Left");
+                fingersR = CaptureDigits(rightHand, "Right");
+            }
+        }
+
+        /// <summary>
+        /// The digit joints under a hand ("LeftIndex1".."LeftIndex3" ...) in the rest pose, each with the axis that bends
+        /// it toward the palm: perpendicular to the digit and to the palm normal (Palm -> PalmOut markers), signed so a
+        /// positive angle moves the digit toward the palm side.
+        /// </summary>
+        static Joint[][] CaptureDigits(Transform hand, string side)
+        {
+            Transform palm = Find(hand, side + "Palm");
+            Transform palmOut = Find(hand, side + "PalmOut");
+            if (palm == null || palmOut == null)
+            {
+                return null;
             }
 
-            openIndex = skin != null && skin.sharedMesh != null ? skin.sharedMesh.GetBlendShapeIndex(openShape) : -1;
+            Vector3 normal = (palmOut.position - palm.position).normalized;
+            var digits = new Joint[Digits.Length][];
+            for (int d = 0; d < Digits.Length; d++)
+            {
+                var bones = new Transform[3];
+                for (int j = 0; j < 3; j++)
+                {
+                    bones[j] = Find(hand, side + Digits[d] + (j + 1));
+                }
+
+                if (Array.IndexOf(bones, null) >= 0)
+                {
+                    return null;
+                }
+
+                digits[d] = new Joint[3];
+                for (int j = 0; j < 3; j++)
+                {
+                    Vector3 along = j < 2 ? bones[j + 1].position - bones[j].position : bones[2].position - bones[1].position;
+                    Vector3 axis = Vector3.Cross(along, normal).normalized;
+                    if (Vector3.Dot(Quaternion.AngleAxis(10f, axis) * along, normal) < Vector3.Dot(along, normal))
+                    {
+                        axis = -axis;
+                    }
+
+                    digits[d][j] = new Joint
+                    {
+                        bone = bones[j],
+                        rest = bones[j].localRotation,
+                        axis = Quaternion.Inverse(bones[j].rotation) * axis,
+                    };
+                }
+            }
+
+            return digits;
+        }
+
+        static Transform Find(Transform root, string name)
+        {
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == name)
+                {
+                    return t;
+                }
+            }
+
+            return null;
         }
 
         void LateUpdate()
@@ -130,28 +283,69 @@ namespace CoopDeck.Animation
                 chain[i].localRotation = rest[i]; // no Animator here: start from the rest pose every frame
             }
 
+            if (eye != null)
+            {
+                Quaternion chest = Quaternion.Euler(-torsoLean, torsoYaw, 0f); // lean pitches the shoulders forward, then the turn
+                leftArm.position = eye.TransformPoint(chest * leftShoulderFromEye);
+                rightArm.position = eye.TransformPoint(chest * rightShoulderFromEye);
+            }
+
             float onRifle = driver != null ? driver.LeftHandOnRifle : 1f;
             float cast = driver != null ? driver.CastHand : 0f;
 
             Goal(bodyGoalRight, out Vector3 rightPos, out Quaternion rightRot);
             Solve(rightArm, rightForeArm, rightHand, rightPos, rightRot, ElbowDirection(bodyElbowRight, rightArm, rightElbow), restHandInForearmR);
 
-            Goal(bodyGoalLeft, out Vector3 leftPos, out Quaternion leftRot);
-            if (bodyGripLeft != null && onRifle > 0f)
-            {
-                Goal(bodyGripLeft, out Vector3 gripPos, out Quaternion gripRot);
-                leftPos = Vector3.Lerp(leftPos, gripPos, onRifle);
-                leftRot = Quaternion.Slerp(leftRot, gripRot, onRifle);
-            }
-
+            LeftGoal(onRifle, out Vector3 leftPos, out Quaternion leftRot);
             Solve(leftArm, leftForeArm, leftHand, leftPos, leftRot, ElbowDirection(bodyElbowLeft, leftArm, leftElbow), restHandInForearmL);
 
             // the left hand opens for a cast and half-opens while it works away from the rifle (reload)
             float target = Mathf.Max(cast, (1f - onRifle) * 0.45f);
             open = Mathf.MoveTowards(open, target, openSpeed * Time.deltaTime);
-            if (openIndex >= 0)
+            Curl(fingersR, rightGrip, null, 0f);
+            Curl(fingersL, leftGrip, openHand, open);
+        }
+
+        void Curl(Joint[][] digits, DigitCurl[] grip, DigitCurl[] opened, float openness)
+        {
+            if (digits == null || grip == null || grip.Length < digits.Length)
             {
-                skin.SetBlendShapeWeight(openIndex, open * 100f);
+                return;
+            }
+
+            for (int d = 0; d < digits.Length; d++)
+            {
+                DigitCurl c = opened != null && opened.Length > d ? DigitCurl.Lerp(grip[d], opened[d], openness) : grip[d];
+                Joint[] joints = digits[d];
+                joints[0].bone.localRotation = joints[0].rest * Quaternion.AngleAxis(c.a, joints[0].axis);
+                joints[1].bone.localRotation = joints[1].rest * Quaternion.AngleAxis(c.b, joints[1].axis);
+                joints[2].bone.localRotation = joints[2].rest * Quaternion.AngleAxis(c.c, joints[2].axis);
+            }
+        }
+
+        void LeftGoal(float onRifle, out Vector3 position, out Quaternion rotation)
+        {
+            Goal(bodyGoalLeft, out position, out rotation);
+            if (bodyGripLeft != null && onRifle > 0f)
+            {
+                Goal(bodyGripLeft, out Vector3 gripPos, out Quaternion gripRot);
+                position = Vector3.Lerp(position, gripPos, onRifle);
+                rotation = Quaternion.Slerp(rotation, gripRot, onRifle);
+            }
+
+            // Past the arm's reach, the hand slides back along the rifle (toward the grip) until it can hold it,
+            // instead of hanging short of the rifle in the air.
+            float reach = (Vector3.Distance(leftArm.position, leftForeArm.position) +
+                           Vector3.Distance(leftForeArm.position, leftHand.position)) * 0.985f;
+            Vector3 d = position - leftArm.position;
+            Vector3 back = -viewRifle.forward;
+            float c = d.sqrMagnitude - reach * reach;
+            if (c > 0f && onRifle > 0f)
+            {
+                float b = Vector3.Dot(d, back);
+                float disc = b * b - c;
+                float t = disc >= 0f ? -b - Mathf.Sqrt(disc) : -b;
+                position += back * (Mathf.Clamp(t, 0f, maxLeftSlide) * onRifle);
             }
         }
 
@@ -179,6 +373,15 @@ namespace CoopDeck.Animation
         {
             TwoBoneIK.Solve(upper, lower, hand, target, targetRot, elbowDir);
             TwoBoneIK.ShareTwist(lower, hand, targetRot, restHandInForearm, forearmTwist);
+            // the goals come from the body's arms; these shoulders reach them from another angle, so a wrist could
+            // fold further than a wrist can: keep the hand within maxWristBend of its forearm
+            Quaternion following = lower.rotation * restHandInForearm;
+            Vector3 axis = (hand.position - lower.position).normalized;
+            float bend = Vector3.Angle(axis, hand.rotation * Quaternion.Inverse(following) * axis);
+            if (bend > maxWristBend)
+            {
+                hand.rotation = Quaternion.Slerp(following, hand.rotation, maxWristBend / bend);
+            }
         }
 
         /// <summary>World position the first-person left/right hand aims for this frame (for tests and debugging).</summary>
@@ -190,20 +393,32 @@ namespace CoopDeck.Animation
                 return p;
             }
 
-            Goal(bodyGoalLeft, out Vector3 leftPos, out _);
             float onRifle = driver != null ? driver.LeftHandOnRifle : 1f;
-            if (bodyGripLeft != null && onRifle > 0f)
-            {
-                Goal(bodyGripLeft, out Vector3 gripPos, out _);
-                leftPos = Vector3.Lerp(leftPos, gripPos, onRifle);
-            }
-
+            LeftGoal(onRifle, out Vector3 leftPos, out _);
             return leftPos;
         }
 
         public Transform Hand(bool left) => left ? leftHand : rightHand;
 
         public Transform ForeArm(bool left) => left ? leftForeArm : rightForeArm;
+
+        /// <summary>The digit joints of a hand (thumb, index, middle, ring, pinky; three each), or null.</summary>
+        public Transform[][] DigitJoints(bool left)
+        {
+            Joint[][] digits = left ? fingersL : fingersR;
+            if (digits == null)
+            {
+                return null;
+            }
+
+            var result = new Transform[digits.Length][];
+            for (int d = 0; d < digits.Length; d++)
+            {
+                result[d] = new[] { digits[d][0].bone, digits[d][1].bone, digits[d][2].bone };
+            }
+
+            return result;
+        }
 
         /// <summary>Bind-pose rotation of the hand relative to its forearm (what "no wrist twist" means).</summary>
         public Quaternion RestHandInForearm(bool left) => left ? restHandInForearmL : restHandInForearmR;

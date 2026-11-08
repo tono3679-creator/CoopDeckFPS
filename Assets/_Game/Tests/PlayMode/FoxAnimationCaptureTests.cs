@@ -412,26 +412,40 @@ namespace CoopDeck.Tests
         {
             Camera world = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "PlayerCamera");
             Camera viewModel = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "ViewModelCamera");
-            world.targetTexture = wide;
-            world.Render();
-            world.targetTexture = null;
-            // a manual Render() does not draw the URP stack: draw the view-model camera over it as its own base camera
+            // A render request draws one camera, not the stack: the world, then the view-model camera on a clear
+            // background into its own texture, laid over the world by its alpha (what the overlay does in the game).
+            RenderPipeline.SubmitRenderRequest(world, new RenderPipeline.StandardRequest { destination = wide });
+            var overlay = new RenderTexture(wide.width, wide.height, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
             var data = viewModel.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
             UnityEngine.Rendering.Universal.CameraRenderType type = data.renderType;
             CameraClearFlags flags = viewModel.clearFlags;
+            Color background = viewModel.backgroundColor;
             data.renderType = UnityEngine.Rendering.Universal.CameraRenderType.Base;
-            viewModel.clearFlags = CameraClearFlags.Depth;
-            viewModel.targetTexture = wide;
-            viewModel.Render();
-            viewModel.targetTexture = null;
+            viewModel.clearFlags = CameraClearFlags.SolidColor;
+            viewModel.backgroundColor = new Color(0f, 0f, 0f, 0f);
+            RenderPipeline.SubmitRenderRequest(viewModel, new RenderPipeline.StandardRequest { destination = overlay });
+            viewModel.backgroundColor = background;
             viewModel.clearFlags = flags;
             data.renderType = type;
             RenderTexture previous = RenderTexture.active;
             RenderTexture.active = wide;
             var image = new Texture2D(wide.width, wide.height, TextureFormat.RGB24, false);
             image.ReadPixels(new Rect(0, 0, wide.width, wide.height), 0, 0);
-            image.Apply();
+            RenderTexture.active = overlay;
+            var top = new Texture2D(wide.width, wide.height, TextureFormat.RGBA32, false);
+            top.ReadPixels(new Rect(0, 0, wide.width, wide.height), 0, 0);
             RenderTexture.active = previous;
+            Color[] under = image.GetPixels(), over = top.GetPixels();
+            for (int i = 0; i < under.Length; i++)
+            {
+                under[i] = Color.Lerp(under[i], over[i], over[i].a);
+            }
+
+            image.SetPixels(under);
+            image.Apply();
+            Object.Destroy(top);
+            overlay.Release();
+            Object.Destroy(overlay);
             shots.Add((label, image));
             LogFirstPersonHands(label);
         }
@@ -474,6 +488,88 @@ namespace CoopDeck.Tests
             FirstPerson("FP cast");
             yield return Frames(60);
             Save("FoxAnim_FirstPerson", 3);
+        }
+
+        // ------------------------------------------------------------------ first-person fox layout (fox_fp_arms.py arms)
+
+        [System.Serializable]
+        public class FoxFpVariant
+        {
+            public string label = "default";
+            public Vector3 grip = new Vector3(0.15f, -0.20f, 0.39f); // pistol grip in the player camera's space
+            public float yaw = -6f;
+            public float pitch = 1f;
+            public float roll;
+            public float torsoYaw = 40f;
+            public float lean = 33f;
+            public float fov = 70f;
+            public Vector3 leftElbow;   // zero: keep the built hints
+            public Vector3 rightElbow;
+        }
+
+        [System.Serializable]
+        public class FoxFpVariantList
+        {
+            public FoxFpVariant[] variants;
+        }
+
+        /// <summary>
+        /// Explicit: the in-game first-person view (world + view-model overlay, 1280x720, 4x MSAA) for rifle placements,
+        /// chest turns and view-model FOVs read from FP_FOX or Logs/fp_fox.json, with the hand-goal error, wrist bend and
+        /// elbow screen positions logged ("[FoxFP]"). Writes Screenshots/FoxFP_Tune.png.
+        /// </summary>
+        [UnityTest, Explicit]
+        public IEnumerator Tune_FirstPersonFox()
+        {
+            string path = System.Environment.GetEnvironmentVariable("FP_FOX");
+            if (string.IsNullOrEmpty(path))
+            {
+                path = "Logs/fp_fox.json";
+            }
+
+            FoxFpVariantList list = File.Exists(path)
+                ? JsonUtility.FromJson<FoxFpVariantList>(File.ReadAllText(path))
+                : new FoxFpVariantList { variants = new[] { new FoxFpVariant() } };
+            var commands = new ScriptedCommands();
+            yield return Spawn(commands);
+            wide = new RenderTexture(1280, 720, 24) { antiAliasing = 4 };
+            spawned.Add(wide);
+            foreach (Renderer r in player.transform.Find("BodyVisual").GetComponentsInChildren<Renderer>(true))
+            {
+                r.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+            }
+
+            Camera worldCam = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "PlayerCamera");
+            Camera viewCam = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "ViewModelCamera");
+            var arms = player.GetComponentInChildren<FirstPersonArms>(true);
+            Transform rifle = arms.transform.parent.Find("Rifle");
+            yield return Frames(30);
+            foreach (FoxFpVariant v in list.variants)
+            {
+                rifle.SetPositionAndRotation(worldCam.transform.TransformPoint(v.grip),
+                    worldCam.transform.rotation * Quaternion.Euler(v.pitch, v.yaw, v.roll));
+                arms.TorsoYaw = v.torsoYaw;
+                arms.TorsoLean = v.lean;
+                if (v.leftElbow != Vector3.zero || v.rightElbow != Vector3.zero)
+                {
+                    arms.SetElbowHints(v.leftElbow, v.rightElbow);
+                }
+                viewCam.fieldOfView = v.fov;
+                yield return Frames(3);
+                FirstPerson(v.label);
+                foreach (bool left in new[] { true, false })
+                {
+                    Transform hand = arms.Hand(left), fore = arms.ForeArm(left);
+                    Vector3 axis = (hand.position - fore.position).normalized;
+                    Quaternion off = hand.rotation * Quaternion.Inverse(fore.rotation * arms.RestHandInForearm(left));
+                    Transform elbow = fore;
+                    Debug.Log($"[FoxFP] {v.label} {(left ? "L" : "R")}: goal error {Vector3.Distance(hand.position, arms.GoalPosition(left)) * 100f:0.0} cm, " +
+                              $"wrist bend {Vector3.Angle(axis, off * axis):0} deg, elbow viewport {viewCam.WorldToViewportPoint(elbow.position)}, " +
+                              $"hand viewport {viewCam.WorldToViewportPoint(hand.position)}");
+                }
+            }
+
+            Save("FoxFP_Tune", 2);
         }
 
         // ------------------------------------------------------------------ first-person layout tuning

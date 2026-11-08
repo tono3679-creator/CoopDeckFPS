@@ -12,7 +12,7 @@
 |---|---|---|
 | 1. ボーン追加・ウェイト | `ArtSource/Tools/fox_anim/fox_rig.py` | `ArtSource/FoxGunner/Animation/FoxGunner_AnimRig.blend`、`Assets/.../Models/FoxGunner.fbx`（42 ボーン） |
 | 2. 全クリップ生成 | `fox_anim/build_clips.py`（`fox_clips.py` / `fox_gait.py` / `fox_motion.py` / `fox_stance.py`） | `Assets/_Game/Animations/FoxGunner/A_FoxGunner_Set.fbx`（47 テイク）、`A_FoxGunner_Clips.json` |
-| 3. 一人称の腕 | `fox_anim/fox_fp_arms.py`（前腕＝Meshy の高解像度メッシュ、手＝`fox_fp_hands.py` で造形） | `Assets/.../Models/FoxGunner_FPArms.fbx` |
+| 3. 一人称の腕 | `fox_anim/fox_fp_arms.py`（Meshy の高精細スカルプトから腕・手・指をそのまま切り出し、4 万三角形・4K の色/法線/質感マスクを焼く） | `Assets/.../Models/FoxGunner_FPArms.fbx`、`Textures/T_FoxGunner_FPArms_*.png` |
 | 4. 確認用レンダー | `fox_anim/check_stance.py`、`check_clip.py`、`debug_segment.py` | コンタクトシート（作業用、保存しない） |
 | 5. Unity 取り込み | `FoxGunnerAnimationFactory`（`FoxGunnerAssetFactory.EnsureAll` とブートストラップから） | マスク、`AC_FoxGunner_TP`、体の IK・視線・尻尾/耳、一人称の腕 |
 
@@ -20,7 +20,7 @@
 $b = 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe'
 & $b -b --factory-startup -P ArtSource\Tools\fox_anim\fox_rig.py                                   # ボーン追加とモデル FBX
 & $b -b ArtSource\FoxGunner\Animation\FoxGunner_AnimRig.blend -P ArtSource\Tools\fox_anim\build_clips.py   # 全クリップ（約 10 秒）
-& $b -b ArtSource\FoxGunner\Animation\FoxGunner_AnimRig.blend -P ArtSource\Tools\fox_anim\fox_fp_arms.py  # 一人称の腕（約 20 秒）
+& $b -b ArtSource\FoxGunner\Animation\FoxGunner_AnimRig.blend -P ArtSource\Tools\fox_anim\fox_fp_arms.py  # 一人称の腕（焼き込み込みで数分）
 & $b -b ArtSource\FoxGunner\Animation\FoxGunner_AnimRig.blend -P ArtSource\Tools\fox_anim\check_clip.py -- <出力先> Run_Forward,Sprint frames=8 view=right+front
 ```
 その後 `ProjectBootstrap.RunBatch`（または `CoopDeck > Setup > Run Phase 1 Bootstrap`）。Unity での確認画像：
@@ -38,7 +38,7 @@ $b = 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe'
 | `Weapon` | Spine（UpperChest） | ライフルのグリップ位置（Y＝銃口、Z＝上）。クリップが動かし、`HeldRifle` がここに付く |
 | `IK_Hand_L` / `_R` | Weapon | 手の IK 目標。クリップが作者の手の位置にキーを打つ |
 | `IK_Elbow_L` / `_R` | Spine | 肘のヒント |
-| `FP_Grip_L` | Weapon | 一人称の左手の握り（ハンドガードの左下を下から包み、指先は前・右上へ＝前腕の延長）。キーは打たず、銃に対する相対位置として Unity が読む |
+| `FP_Grip_L` | Weapon | 旧：一人称の左手の握り。2026-11-08 の作り直しで一人称の左手も体の `IK_Hand_L` を写すようになり、今は使っていない（旧 `Tune_FirstPersonLayout` のためだけに残っている） |
 
 - 元の 24 ボーンと T ポーズは変更なし（Humanoid のボーン対応はそのまま）。メッシュ・UV・頂点順も同じ。
 - 尻尾・耳・指の頂点はテクスチャの色・元のウェイト・位置から自動で選ぶ（`fox_segment.py`）。尻尾は「太ももに付いていた毛色の頂点を、尻尾の先から塗りつぶし」で、マフラーの垂れ（頭に付いている）と赤い布を除外。
@@ -119,8 +119,9 @@ $b = 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe'
 | 手の IK（Animation Rigging） | `TwoBoneIKConstraint` ×2。目標は `IK_Hand_L/R`（クリップが作者の手にキーを打つ）、ヒントは `IK_Elbow_*`。Humanoid 変換の誤差やクリップのブレンド中でも、手と銃のずれは 0.0 cm（PlayMode で計測） |
 | 視線（`FoxBodyAnimator`） | Humanoid の Look At（Base の IK パス）で背骨と頭をエイム方向へ。視線は頭を向けるので、両手で普通に構えている間だけ銃口の誤差を見て目標を少しずつ補正：水平 0.0°、上 35° で 0.2°。ダウン・死亡中は 0、スプリント中は 20% |
 | 尻尾・耳（`FoxSecondaryMotion`） | 減衰ばね（`AngleSpring`）。尻尾：待機のゆっくりした揺れ、旋回の遅れ、速度で揺れ幅・周期、落下で上がる、着地で揺れる、ダウンで垂れる、Ultimate で扇状、骨盤の前傾ぶんを打ち消して垂れ下がりを保つ。耳：ぴくっと動く、走ると後ろへ、被弾で伏せる、詠唱で立つ、ダウンで垂れる。画面外では止まる（自分の体＝影のための常時更新は除く） |
-| 一人称の腕（`FirstPersonArms`） | 前腕は Meshy の高解像度メッシュ（234 万面）から切り出し約 1.4 万面。ウェイトは体の腕から、UV は体全体から写す（`body_uvs`：各面は最寄りの体の三角形から UV が連続する半径 3 cm の範囲だけに写し、継ぎ目をまたぐ面やアトラスの隙間を横切る面は 1 枚の三角形に収める。単純な頂点ごとの転写だと継ぎ目で面が引き伸ばされ、黒い三角形が出ていた）。手は Blender で新規造形（`fox_fp_hands.py`：メタボールで手のひら・手首・指 4 本×3 関節・親指を作り、平滑化＋細分化して片手約 9,000 面、指なし手袋・甲のオレンジのプレート、色は体のテクスチャ上の均一な点を参照）。右手はピストルグリップを握る形、左手はハンドガードを握る形を焼き込み、左手に詠唱用のシェイプキー「Open」。毎フレーム、体の手の目標（右）と `FP_Grip_L`（左、銃を握っている間）を体の銃に対する相対位置としてビューモデルの銃へ写し、解析的 2 ボーン IK で腕を合わせる（`ViewModelAnimator` の揺れの後）。手首のねじれは 6 割を前腕へ分散（ねじれた細い手首を防ぐ）。リロード・詠唱の左手の道筋は三人称と同じで、詠唱中は手を開く |
-| 一人称の構図 | ビューモデルの銃はキツネ自身の目と銃の距離より遠くに置いてある（画面の右下に収めるため）ので、体と同じ肩・腕の長さでは届かない。そこで①腕を長くする（`fox_fp_arms.lengthen_arms`：前腕 1.3 倍・上腕 1.1 倍。伸ばすのは肘と籠手の間・上腕の中ほどの素肌だけで、籠手・肘・手の形は保つ）②左右の肩を別々に画面の下へ置く（`FoxGunnerAnimationFactory.FirstPersonLeftShoulder/RightShoulder`、肘のヒントも固定）。左前腕は左下から斜めに入り、肘は画面の下端のすぐ外。右前腕は右手の向きに沿って右下から入る。③左手の握り `FP_Grip_L` は前腕の延長の向き（手首の曲がり 5〜9°）。以前の握りは指先が下を向いたまま前腕が下から来ていたため、手首が 125° 折れて手が籠手の上に折り返し、「腕から黒い塊が生えている」ように見えていた。④銃を 3.5 cm 上げて 5° 前傾（`CharacterPrefabBuilder.ViewModelRootPosition` / `ViewModelRiflePitch`）し、右手の指がグリップにかかるのを画面下端に見せる。配置は `FoxAnimationCaptureTests.Tune_FirstPersonLayout`（手動実行）で決めた：JSON で候補を並べ、画面上の肘の位置と上腕の向きから肩と肘のヒントを解き、一人称の画面と手首の拡大を撮って手首の曲がりを記録する |
+| 一人称の腕（`FirstPersonArms`、2026-11-08 作り直し） | 三人称と同じキツネの高精細スカルプト（Meshy の 234 万面）から、上腕の途中より先の腕・手・5 本の指をそのまま切り出して 4 万三角形に減らす（`fox_fp_arms.py`、39,999 三角形・41 ボーン）。造形し直した手や仮の手は使わない。UV は 4K で開き直し、色は 8K に拡大した体のアトラス（`ArtSource/FoxGunner/Export/FoxGunner_atlas_x4.png`）から、法線は高精細メッシュから、質感マスク（SoftToon の毛・布・金属の区別）は体のマスクから焼く。マテリアル `M_FoxGunner_SoftToon_FirstPerson` は体の SoftToon と同じ数値で、テクスチャだけ一人称用（`FoxGunnerLookFactory.EnsureFirstPersonMaterial`）。ウェイトは体の腕から写し、骨の長さは体と同じ（差 2 mm 以内を EditMode で検査）。指はメッシュのつながりで 5 本に切り分け（右手は指が触れているので、4 つにしか分かれないときは一番幅の広い塊を 2 つに割る）、各指に 3 関節（指の長さの 0・45・75%、親指は 0・40・70%）。手のひら（`Palm`→`PalmOut` の目印）から各関節の曲げ軸を求め、Unity で指ごと・関節ごとに握りの角度をかける（右＝ピストルグリップ、左＝ハンドガード、詠唱で開く、リロードで半開き）。毎フレーム、体の左右の手の目標（クリップが打つ `IK_Hand_L/R`）を体の銃に対する相対位置としてビューモデルの銃へ写し、解析的 2 ボーン IK で腕を合わせる（`ViewModelAnimator` の揺れの後）。手首のねじれは 6 割を前腕へ分散し、手首の曲がりは 38° まで（越えた分は前腕の向きへ戻す）。左手が届かないときは銃に沿って最大 12 cm 手前へずらして握る |
+| 一人称の構図 | 肩はキツネ自身の肩の位置（体の Head と両肩のボーンから求めた目からの相対位置、`FirstPersonArms.ShoulderOffsets`）に置き、胸を構えの向きへ右に 40° ひねり 33° 前傾させる（`FoxGunnerAnimationFactory.FirstPersonTorsoYaw/Lean`）。腕は伸ばさず体と同じ長さ。銃のグリップは目から右 15 cm・下 20 cm・前 39 cm、銃口を画面中央へ 6°、下へ 1°（`CharacterPrefabBuilder.ViewModelGripInCamera` / `ViewModelRifleYaw` / `ViewModelRiflePitch`）。ビューモデルのカメラは縦 70°（世界のカメラは 68°）。左手はハンドガードを横から握り、ゲーム画面の下中央のカード欄より上に見える（これより銃を遠くすると、体と同じ腕の長さでは手が届かない：グリップ前 44 cm で 5 cm 足りない）。両肘は画面の外。手と目標のずれ 0.0 cm、手首の曲がりは左 21°・右 38°。配置は `FoxAnimationCaptureTests.Tune_FirstPersonFox`（手動実行。候補を `Logs/fp_fox.json` か環境変数 `FP_FOX` に並べると、2 列のシートと、各手の目標とのずれ・手首の曲がり・肘と手の画面位置を出す）で決めた。旧 `Tune_FirstPersonLayout` は旧構成（伸ばした腕・固定の肩・`FP_Grip_L`）用 |
+| 旧構成の問題（2026-11-08 に調査） | ①手が元のキツネではなかった（メタボールで造形し直した約 9,000 面の手袋、`fox_fp_hands.py`）②腕を前腕 1.3 倍・上腕 1.1 倍に伸ばしていた（銃を目から遠くに置いたため）③肩を左右別々に画面の下へ固定していた ④指の握りは焼き込みの固定形とシェイプキー 1 つだけ ⑤左手は体とは別の握り（`FP_Grip_L`）。この組み合わせで腕・指・銃の位置関係が体とずれて不自然に見えていた。今の構成は体と同じメッシュ・質感・骨の長さ・手の目標を使う |
 
 ---
 
@@ -147,9 +148,10 @@ $b = 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe'
 - 手続き生成なので動きは「破綻しない」水準。重心移動・タメ・フォロースルーの作り込みは手付けやモーキャプに劣る。特に Death（倒れ方）、Knockback、Slide、Revived の起き上がりは硬い。
 - 走り（6.4 m/s）・スプリントは脚が短いので回転が速く、接地時間が非常に短い（数フレーム）。カートゥーン調としては成立するが、実在の走りではない。
 - 横走りは脚が大きく開く場面がある。ADS・拾う・インタラクト・エモート・スライディング・吹き飛ばしはゲームに操作がないため、受け口だけ（ゲームで実際に使ったときに再調整が要る）。
-- 三人称の指は 4 本まとめて曲がる 1 本骨（体のメッシュの限界）。一人称の手は新規造形で指ごとに曲げてあるが、握り形は固定（右＝グリップ、左＝ハンドガード、左の詠唱＝Open シェイプ）で、指を個別に動かすアニメーションはない。
-- 一人称の右手は指がグリップにかかるところだけが画面下端に見える（手の甲や前腕は画面外）が、ゲーム画面では右下の弾数欄に隠れる。左前腕の下側もカード欄に隠れる。左手は籠手が大きいので、手は籠手の先に一部だけ見える。
-- 一人称の肩・肘のヒントは待機の構えに合わせた固定値。リロード・詠唱で左手が銃を離れると肘の向きは固定のまま（大きく崩れはしないが、手付けほど自然ではない）。銃の位置や腕の長さを変えたら `Tune_FirstPersonLayout` で解き直す。
+- 三人称の指は 4 本まとめて曲がる 1 本骨（体のメッシュの限界）。一人称の手は元のスカルプトの指に 3 関節ずつのボーンがあるが、握りの角度は指ごとの固定値（右＝グリップ、左＝ハンドガード、詠唱で開く）で、引き金を引くなど指を個別に動かすアニメーションはない。
+- 一人称の右手は太い銃本体の陰でほとんど見えない（目の位置からはグリップの右側が見えない）。見えるのは銃と、ハンドガードを握る左手（甲・前腕の毛並み・指先）。リロード中は銃が下がり、左手は画面の下へ出る。
+- 一人称の肘のヒントと胸のひねりは待機の構えに合わせた固定値。リロード・詠唱で左手が銃を離れても肘の向きは固定のまま（大きく崩れはしないが、手付けほど自然ではない）。銃の位置や胸のひねりを変えたら `Tune_FirstPersonFox` で確かめ直す。
+- 旧構成の手の造形スクリプト（`fox_fp_hands.py` / `test_hands.py`）は 2026-11-08 に削除した（Git の履歴に残っている）。
 - 尻尾は脚との衝突判定をしていない（角度の制限と骨盤の前傾補正のみ）。
 - NPC（ヴォルト）は仮リグのまま（同じドライバーとイベントで動くので、Humanoid の体に差し替えればこの Controller を使える）。
 - 改善の優先度：①Death・Knockback・Revived の手付け（または Meshy の既製モーションのリターゲット、有料・要承認）②走りの接地時間を伸ばす（周期を 0.5〜0.55 秒に）③横走りの脚の交差④ADS など未接続モーションのゲーム側実装⑤尻尾と脚の簡易衝突。

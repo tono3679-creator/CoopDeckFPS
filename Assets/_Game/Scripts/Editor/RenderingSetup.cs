@@ -29,7 +29,8 @@ namespace CoopDeck.EditorTools
             UniversalRendererData highRenderer = CopyIfMissing<UniversalRendererData>(TemplatePcRenderer, GamePaths.Rendering + "/URP_High_Renderer.asset");
             UniversalRendererData handheldRenderer = CopyIfMissing<UniversalRendererData>(TemplatePcRenderer, GamePaths.Rendering + "/URP_Handheld_Renderer.asset");
 
-            ConfigureAsset(high, highRenderer, renderScale: 1f, upscaling: UpscalingFilterSelection.Auto, msaa: 2,
+            // desktop (RTX 4070 class): 4x MSAA keeps the first-person arms, rifle and outlines clean in the camera stack
+            ConfigureAsset(high, highRenderer, renderScale: 1f, upscaling: UpscalingFilterSelection.Auto, msaa: 4,
                 shadowDistance: 70f, shadowResolution: 2048, cascades: 4, softShadows: true);
             ConfigureAsset(handheld, handheldRenderer, renderScale: 0.833f, upscaling: UpscalingFilterSelection.FSR, msaa: 1,
                 shadowDistance: 35f, shadowResolution: 1024, cascades: 2, softShadows: false);

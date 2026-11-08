@@ -570,6 +570,75 @@ def fill_within(rgb, valid, covered, passes=64):
     return rgb, valid
 
 
+def bake_surface_image(source, uv_name, image_path, target, size, cage, ray, colorspace="sRGB", alpha=False):
+    """Bakes `source`'s image, seen through its UV map `uv_name`, onto `target`'s active UVs (selected to active), with a
+    wider second search where the first rays missed. alpha=True bakes the image's alpha as grey. Returns
+    (rgb HxWx3, hit HxW bool); texels no ray reached are not hits. The source's materials are restored afterwards."""
+    sc = bpy.context.scene
+    sc.render.engine = "CYCLES"
+    sc.cycles.device = "CPU"
+    sc.cycles.samples = 16
+    sc.cycles.use_denoising = False
+    sc.render.bake.margin = 0
+    sc.view_settings.view_transform = "Standard"
+    src = bpy.data.materials.new("BakeSource")
+    src.use_nodes = True
+    nt = src.node_tree
+    nt.nodes.clear()
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = bpy.data.images.load(image_path, check_existing=True)
+    tex.image.colorspace_settings.name = colorspace
+    tex.interpolation = "Cubic" if colorspace == "sRGB" else "Linear"
+    uvn = nt.nodes.new("ShaderNodeUVMap")
+    uvn.uv_map = uv_name
+    emit = nt.nodes.new("ShaderNodeEmission")
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    nt.links.new(uvn.outputs["UV"], tex.inputs["Vector"])
+    nt.links.new(tex.outputs["Alpha" if alpha else "Color"], emit.inputs["Color"])
+    nt.links.new(emit.outputs["Emission"], out.inputs["Surface"])
+    originals = [s.material for s in source.material_slots]
+    for s in source.material_slots:
+        s.material = src
+
+    dst = bpy.data.materials.new("BakeTarget")
+    dst.use_nodes = True
+    tnode = dst.node_tree.nodes.new("ShaderNodeTexImage")
+    dst.node_tree.nodes.active = tnode
+    target_originals = list(target.data.materials)
+    target.data.materials.clear()
+    target.data.materials.append(dst)
+    sentinel = np.array((1.0, 0.0, 1.0))
+
+    def one(c, r):
+        img = bpy.data.images.new("BakedSurface", size, size, alpha=False, float_buffer=False)
+        img.colorspace_settings.name = colorspace
+        px = np.ones((size, size, 4), dtype=np.float32)
+        px[..., :3] = sentinel
+        img.pixels.foreach_set(px.ravel())
+        tnode.image = img
+        bpy.ops.object.select_all(action="DESELECT")
+        source.select_set(True)
+        target.select_set(True)
+        bpy.context.view_layer.objects.active = target
+        bpy.ops.object.bake(type="EMIT", use_selected_to_active=True, cage_extrusion=c, max_ray_distance=r, use_clear=False)
+        a = image_array(img)[..., :3]
+        bpy.data.images.remove(img)
+        return a, np.abs(a - sentinel).sum(2) > 0.01
+
+    rgb, hit = one(cage, ray)
+    if not hit.all():
+        wide, wide_hit = one(cage * 3, ray * 4)
+        take = ~hit & wide_hit
+        rgb[take] = wide[take]
+        hit |= wide_hit
+    for s, m in zip(source.material_slots, originals):
+        s.material = m
+    target.data.materials.clear()
+    for m in target_originals:
+        target.data.materials.append(m)
+    return rgb, hit
+
+
 def rebuild(args):
     """A new body decimated from Meshy's high-res mesh (--faces triangles): the silhouette of the sculpt instead of
     Meshy's lumpy 15k remesh. Same armature; skin weights from the prepared body; even UVs; colour baked from the

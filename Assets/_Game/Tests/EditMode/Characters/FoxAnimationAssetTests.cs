@@ -298,25 +298,43 @@ namespace CoopDeck.Tests
         }
 
         [Test]
-        public void FirstPersonArms_AreHandModelledHands_WithAnOpenShape_AndFollowTheBody()
+        public void FirstPersonArms_AreTheSculptsArms_WithJointedFingers_AndTheBodysProportions()
         {
             var model = Load<GameObject>("Assets/_Game/Art/Characters/FoxGunner/Models/FoxGunner_FPArms.fbx");
             SkinnedMeshRenderer skinned = model.GetComponentInChildren<SkinnedMeshRenderer>();
             Mesh mesh = skinned.sharedMesh;
-            Assert.That(mesh.triangles.Length / 3, Is.InRange(20000, 50000), "detailed hands and forearms, within budget");
-            Assert.That(mesh.subMeshCount, Is.EqualTo(1), "one material (the body's)");
-            Assert.That(mesh.GetBlendShapeIndex("Open"), Is.GreaterThanOrEqualTo(0), "the left hand opens for casts");
-            Assert.That(skinned.bones.Select(b => b.name), Is.SupersetOf(new[] { "LeftArm", "LeftForeArm", "LeftHand", "RightArm", "RightForeArm", "RightHand" }));
-            Assert.That(skinned.bones.Length, Is.LessThanOrEqualTo(7), "fingers are modelled into the pose, no finger bones");
+            Assert.That(mesh.triangles.Length / 3, Is.InRange(30000, 50000), "the sculpt's arms, gloves and fingers (fox_fp_arms.py)");
+            Assert.That(mesh.subMeshCount, Is.EqualTo(1), "one material");
+            string[] names = skinned.bones.Select(b => b.name).ToArray();
+            Assert.That(names, Is.SupersetOf(new[] { "LeftArm", "LeftForeArm", "LeftHand", "RightArm", "RightForeArm", "RightHand" }));
+            foreach (string side in new[] { "Left", "Right" })
+            {
+                foreach (string digit in FirstPersonArms.Digits)
+                {
+                    for (int j = 1; j <= 3; j++)
+                    {
+                        Assert.That(names, Does.Contain(side + digit + j), "three joints per finger and thumb");
+                    }
+                }
+            }
+
+            // the body's own arm lengths (no first-person stretching)
+            var body = Load<GameObject>("Assets/_Game/Art/Characters/FoxGunner/Models/FoxGunner.fbx");
+            Transform B(GameObject root, string n) => root.GetComponentsInChildren<Transform>(true).First(t => t.name == n);
+            foreach (string side in new[] { "Left", "Right" })
+            {
+                float Length(GameObject root, string a, string b) => Vector3.Distance(B(root, side + a).position, B(root, side + b).position);
+                Assert.That(Length(model, "Arm", "ForeArm"), Is.EqualTo(Length(body, "Arm", "ForeArm")).Within(0.002f), side + " upper arm");
+                Assert.That(Length(model, "ForeArm", "Hand"), Is.EqualTo(Length(body, "ForeArm", "Hand")).Within(0.002f), side + " forearm");
+            }
 
             var player = Load<GameObject>("Assets/_Game/Prefabs/Characters/PF_Player.prefab");
             var arms = player.GetComponentInChildren<FirstPersonArms>(true);
             Assert.That(arms, Is.Not.Null, "FPArms in the view model");
             var so = new SerializedObject(arms);
-            Assert.That(so.FindProperty("bodyGripLeft").objectReferenceValue.name, Is.EqualTo("FP_Grip_L"));
-            Assert.That(((Transform)so.FindProperty("bodyGripLeft").objectReferenceValue).parent.name, Is.EqualTo("Weapon"));
+            Assert.That(so.FindProperty("bodyGripLeft").objectReferenceValue, Is.Null, "the left hand keeps the body's own hold");
             Assert.That(so.FindProperty("bodyElbowLeft").objectReferenceValue, Is.Null, "first person keeps its own elbow directions");
-            Assert.That(so.FindProperty("skin").objectReferenceValue, Is.Not.Null);
+            Assert.That(so.FindProperty("eye").objectReferenceValue, Is.Not.Null, "shoulders placed below the eyes");
             Assert.That(arms.gameObject.layer, Is.EqualTo(CoopDeck.Core.GameLayers.ViewModelIndex));
         }
 

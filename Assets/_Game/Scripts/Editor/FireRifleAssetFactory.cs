@@ -30,6 +30,7 @@ namespace CoopDeck.EditorTools
         public const string ModelPath = ArtFolder + "/Models/FireRifle.fbx";
         public const string TexturePath = ArtFolder + "/Textures/T_FireRifle_BaseColor.png";
         public const string EmissionPath = ArtFolder + "/Textures/T_FireRifle_Emission.png";
+        public const string NormalPath = ArtFolder + "/Textures/T_FireRifle_Normal.png"; // ArtSource/Tools/refine_prop.py
         public const string MaterialPath = ArtFolder + "/Materials/M_FireRifle_Toon.mat";
         public const string ViewModelMaterialPath = ArtFolder + "/Materials/M_FireRifle_Toon_FP.mat";
         public const string PrefabFolder = GamePaths.Root + "/Prefabs/Weapons";
@@ -67,7 +68,8 @@ namespace CoopDeck.EditorTools
 
         public static FireRifleAssets EnsureAll()
         {
-            ConfigureTexture(TexturePath, 2048);
+            ConfigureTexture(TexturePath, 4096);
+            ConfigureNormalMap();
             EnsureEmissionMap();
             ConfigureModel();
             Material world = EnsureMaterial(MaterialPath, WorldOutlineWidth);
@@ -92,8 +94,22 @@ namespace CoopDeck.EditorTools
             importer.alphaSource = TextureImporterAlphaSource.None;
             importer.mipmapEnabled = true;
             importer.maxTextureSize = maxSize;
-            importer.textureCompression = TextureImporterCompression.Compressed;
-            importer.anisoLevel = 2;
+            importer.textureCompression = TextureImporterCompression.CompressedHQ; // BC7: clean painted gradients
+            importer.filterMode = FilterMode.Trilinear;
+            importer.anisoLevel = 8;
+            importer.SaveAndReimport();
+        }
+
+        /// <summary>Tangent-space detail baked from Meshy's 437k-triangle sculpt (refine_prop.py).</summary>
+        static void ConfigureNormalMap()
+        {
+            var importer = GetImporter<TextureImporter>(NormalPath);
+            importer.textureType = TextureImporterType.NormalMap;
+            importer.mipmapEnabled = true;
+            importer.maxTextureSize = 4096;
+            importer.textureCompression = TextureImporterCompression.CompressedHQ; // BC5
+            importer.filterMode = FilterMode.Trilinear;
+            importer.anisoLevel = 8;
             importer.SaveAndReimport();
         }
 
@@ -126,7 +142,7 @@ namespace CoopDeck.EditorTools
                 AssetDatabase.ImportAsset(EmissionPath, ImportAssetOptions.ForceUpdate);
             }
 
-            ConfigureTexture(EmissionPath, 1024);
+            ConfigureTexture(EmissionPath, 2048);
         }
 
         public static bool IsGlowing(Color32 pixel)
@@ -149,7 +165,7 @@ namespace CoopDeck.EditorTools
             importer.importLights = false;
             importer.materialImportMode = ModelImporterMaterialImportMode.None;
             importer.importNormals = ModelImporterNormals.Import; // hard edges above 40° from Blender
-            importer.importTangents = ModelImporterTangents.None;
+            importer.importTangents = ModelImporterTangents.CalculateMikk; // as Blender baked the normal map
             importer.meshCompression = ModelImporterMeshCompression.Off;
             importer.isReadable = false;
             importer.weldVertices = true;
@@ -163,7 +179,7 @@ namespace CoopDeck.EditorTools
                 return importer;
             }
 
-            throw new FileNotFoundException(path + " is missing: run ArtSource/Tools/prepare_prop_for_unity.py (Docs/CHARACTER_PIPELINE.md)");
+            throw new FileNotFoundException(path + " is missing: run ArtSource/Tools/refine_prop.py (Docs/CHARACTER_PIPELINE.md)");
         }
 
         // ---------------------------------------------------------------- generated assets
@@ -189,6 +205,10 @@ namespace CoopDeck.EditorTools
             material.EnableKeyword("_EMISSION");
             material.SetFloat("_OutlineUV3Normals", 1f);
             material.EnableKeyword("_OUTLINE_UV3_NORMALS");
+            material.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(NormalPath));
+            material.SetFloat("_BumpScale", 1f);
+            material.SetFloat("_UseNormalMap", 1f);
+            material.EnableKeyword("_NORMALMAP");
             material.enableInstancing = true;
             EditorUtility.SetDirty(material);
             return material;

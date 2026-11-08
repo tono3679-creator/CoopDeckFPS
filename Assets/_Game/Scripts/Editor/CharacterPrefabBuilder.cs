@@ -131,7 +131,7 @@ namespace CoopDeck.EditorTools
             var viewModelCamera = viewModelCameraGo.AddComponent<Camera>();
             viewModelCamera.nearClipPlane = 0.01f;
             viewModelCamera.farClipPlane = 10f;
-            viewModelCamera.fieldOfView = 55f;
+            viewModelCamera.fieldOfView = ViewModelFieldOfView;
             viewModelCamera.cullingMask = 1 << GameLayers.ViewModelIndex;
             UniversalAdditionalCameraData viewModelData = viewModelCamera.GetUniversalAdditionalCameraData();
             viewModelData.renderType = CameraRenderType.Overlay;
@@ -180,22 +180,22 @@ namespace CoopDeck.EditorTools
         {
             viewModelRoot = new GameObject("ViewModel");
             viewModelRoot.transform.SetParent(cameraTransform, false);
-            // At the overlay camera's 55° FOV this sits in the lower-right quarter of the screen, high enough that the
-            // right hand's fingers on the pistol grip show at the bottom edge.
+            // the pivot of bob, sway and kick (ViewModelAnimator), a little above and behind the grip
             viewModelRoot.transform.localPosition = ViewModelRootPosition;
 
             var rifle = new GameObject("Rifle");
             rifle.transform.SetParent(viewModelRoot.transform, false);
-            // The Fire Rifle is bulkier than the old placeholder: further out keeps the stock off the lens; turning the
-            // muzzle a little toward the crosshair shows the rifle's side (flame emblem, energy cell), and tipping it
-            // down a little lifts the grip end into view. The fox's arms follow it.
-            rifle.transform.SetLocalPositionAndRotation(ViewModelRifleOffset, Quaternion.Euler(ViewModelRiflePitch, ViewModelRifleYaw, 0f));
+            // The rifle sits where the fox's own arms hold it from its shoulders (FirstPersonArms): the grip within the
+            // right arm's reach, the body's left-hand hold within the left arm's; the muzzle turned a little toward
+            // the crosshair shows the rifle's side, and tipping it down a little lifts the grip end into view.
+            rifle.transform.SetLocalPositionAndRotation(ViewModelGripInCamera - ViewModelRootPosition,
+                Quaternion.Euler(ViewModelRiflePitch, ViewModelRifleYaw, 0f));
             Transform r = rifle.transform;
 
             // The model's origin is its pistol grip: put it in the right hand. Its LeftHandGrip socket lands on the left hand.
             var model = (GameObject)PrefabUtility.InstantiatePrefab(rifleVisual.Prefab, r);
             model.name = "FireRifle";
-            model.transform.SetLocalPositionAndRotation(ViewModelGripPosition, Quaternion.identity);
+            model.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
             foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>(true))
             {
                 renderer.sharedMaterial = rifleVisual.ViewModelMaterial;
@@ -208,20 +208,20 @@ namespace CoopDeck.EditorTools
             return model.transform.Find(FireRifleAssetFactory.MuzzleSocket);
         }
 
-        /// <summary>Where the first-person rifle's grip sits inside ViewModel/Rifle (the right-hand glove).</summary>
-        public static readonly Vector3 ViewModelGripPosition = new Vector3(0f, -0.11f, -0.12f);
+        /// <summary>The first-person rifle's pistol grip (the right hand) in the player camera's (the eyes') space.</summary>
+        public static readonly Vector3 ViewModelGripInCamera = new Vector3(0.15f, -0.20f, 0.39f);
 
-        /// <summary>ViewModel/Rifle (rifle and gloves together) relative to the view-model root.</summary>
-        public static readonly Vector3 ViewModelRifleOffset = new Vector3(0.01f, -0.035f, 0.11f);
-
-        /// <summary>The view-model root in the player camera's space.</summary>
-        public static readonly Vector3 ViewModelRootPosition = new Vector3(0.13f, -0.10f, 0.42f);
+        /// <summary>The view-model root (the pivot of bob, sway and kick) in the player camera's space.</summary>
+        public static readonly Vector3 ViewModelRootPosition = new Vector3(0.11f, -0.17f, 0.30f);
 
         /// <summary>Muzzle turned this many degrees toward the screen centre.</summary>
-        public const float ViewModelRifleYaw = -7f;
+        public const float ViewModelRifleYaw = -6f;
 
         /// <summary>Muzzle tipped down this many degrees (the grip end rises).</summary>
-        public const float ViewModelRiflePitch = 5f;
+        public const float ViewModelRiflePitch = 1f;
+
+        /// <summary>The view-model overlay camera's vertical field of view.</summary>
+        public const float ViewModelFieldOfView = 70f;
 
         public static GameObject BuildTargetDummy(MaterialSet m, FxPrefabSet fx)
         {

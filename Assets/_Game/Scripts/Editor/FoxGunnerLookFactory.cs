@@ -32,6 +32,10 @@ namespace CoopDeck.EditorTools
         public const string OutlineMaterialPath = MaterialFolder + "/M_FoxGunner_Outline.mat";
         public const string FirstPersonMaterialPath = MaterialFolder + "/M_FoxGunner_SoftToon_FirstPerson.mat";
         public const string NormalMapPath = TextureFolder + "/T_FoxGunner_Normal.png"; // refine_character.py normalmap
+        // first-person arms (fox_fp_arms.py): their own UVs, so their own textures
+        public const string FirstPersonBaseColorPath = TextureFolder + "/T_FoxGunner_FPArms_BaseColor.png";
+        public const string FirstPersonNormalPath = TextureFolder + "/T_FoxGunner_FPArms_Normal.png";
+        public const string FirstPersonMaskPath = TextureFolder + "/T_FoxGunner_FPArms_SurfaceMask.png";
         public const string SoftToonShaderPath = GamePaths.Root + "/Art/Characters/Shaders/SG_Character_SoftToon.shadergraph";
         public const string OutlineShaderPath = GamePaths.Root + "/Art/Characters/Shaders/CH_Outline.shader";
         const int MaskSize = 2048; // half the 4096 base colour: crisp region edges
@@ -107,6 +111,7 @@ namespace CoopDeck.EditorTools
             ConfigureDataTexture(SurfaceMaskPath);
             ConfigureDataTexture(MetallicSmoothnessPath);
             ConfigureNormalMap();
+            ConfigureFirstPersonTextures();
             var look = new Look
             {
                 Original = original,
@@ -553,21 +558,42 @@ namespace CoopDeck.EditorTools
         }
 
         /// <summary>
-        /// The soft toon look without the body's normal map, for the first-person arms: their mesh (high-res forearms,
-        /// modelled hands) only borrows the body's UVs for colour, so the body's baked normals would not fit it.
+        /// The body's soft toon look for the first-person arms (cut from the sculpt by fox_fp_arms.py): the same shader
+        /// and settings with the arms' own colour, normal map and surface regions, baked from the same sources as the
+        /// body's, at a higher density for the close view.
         /// </summary>
         static Material EnsureFirstPersonMaterial(Material softToon)
         {
             Material m = EnsureMaterial(FirstPersonMaterialPath, softToon.shader);
             m.CopyPropertiesFromMaterial(softToon);
-            m.SetTexture("_NormalMap", null);
-            m.SetFloat("_NormalStrength", 0f);
+            m.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(FirstPersonBaseColorPath));
+            m.SetTexture("_NormalMap", AssetDatabase.LoadAssetAtPath<Texture2D>(FirstPersonNormalPath));
+            m.SetTexture("_SurfaceMask", AssetDatabase.LoadAssetAtPath<Texture2D>(FirstPersonMaskPath));
+            m.SetFloat("_NormalStrength", 1f);
             return m;
         }
 
-        static void ConfigureNormalMap()
+        static void ConfigureFirstPersonTextures()
         {
-            var importer = (TextureImporter)AssetImporter.GetAtPath(NormalMapPath);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(FirstPersonBaseColorPath);
+            importer.textureType = TextureImporterType.Default;
+            importer.sRGBTexture = true;
+            importer.alphaSource = TextureImporterAlphaSource.None;
+            importer.mipmapEnabled = true;
+            importer.maxTextureSize = 4096;
+            importer.textureCompression = TextureImporterCompression.CompressedHQ;
+            importer.filterMode = FilterMode.Trilinear;
+            importer.anisoLevel = 8;
+            importer.SaveAndReimport();
+            ConfigureNormalMap(FirstPersonNormalPath);
+            ConfigureDataTexture(FirstPersonMaskPath);
+        }
+
+        static void ConfigureNormalMap() => ConfigureNormalMap(NormalMapPath);
+
+        static void ConfigureNormalMap(string path)
+        {
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
             importer.textureType = TextureImporterType.NormalMap;
             importer.mipmapEnabled = true;
             importer.maxTextureSize = 4096;
