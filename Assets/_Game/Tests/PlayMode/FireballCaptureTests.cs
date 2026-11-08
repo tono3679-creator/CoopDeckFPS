@@ -267,6 +267,268 @@ namespace CoopDeck.Tests
 
         Transform Projectile() => Object.FindObjectsByType<FireballProjectileFx>().FirstOrDefault(p => !p.IsEnding)?.transform;
 
+        // ------------------------------------------------------------------ video
+
+        const int VideoWidth = 1280;
+        const int VideoHeight = 720;
+        const int VideoFps = 30;
+        RenderTexture videoTarget;
+        Texture2D videoFrame;
+        UnityEditor.Media.MediaEncoder encoder;
+        int videoFrames;
+
+        /// <summary>Renders the player's own view (world camera + view-model overlay) and appends it to the video.</summary>
+        void RecordFirstPerson()
+        {
+            Camera world = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "PlayerCamera");
+            Camera viewModel = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "ViewModelCamera");
+            viewModel.enabled = true;
+            RenderPipeline.SubmitRenderRequest(world, new RenderPipeline.StandardRequest { destination = videoTarget });
+            viewModel.enabled = false;
+            AppendFrame();
+        }
+
+        void RecordView(Vector3 eye, Vector3 at, float fov)
+        {
+            review.transform.position = eye;
+            review.transform.LookAt(at);
+            review.fieldOfView = fov;
+            review.targetTexture = videoTarget;
+            review.Render();
+            review.targetTexture = null;
+            AppendFrame();
+        }
+
+        void AppendFrame()
+        {
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture.active = videoTarget;
+            videoFrame.ReadPixels(new Rect(0, 0, VideoWidth, VideoHeight), 0, 0);
+            videoFrame.Apply();
+            RenderTexture.active = previous;
+            encoder.AddFrame(videoFrame);
+            videoFrames++;
+        }
+
+        /// <summary>
+        /// A short video of the fireball (run on demand): Screenshots/Fireball.mp4, 1280x720 at 30 fps, every frame one
+        /// game step. First person (charge, launch, the hit at range), a camera riding beside the shot, the blast on the
+        /// enemy in slow motion, a wall and a floor hit, and the enemy left burning.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Capture_FireballVideo()
+        {
+            yield return Stage();
+            PerformanceSettings.SetVfxQuality(VfxQuality.High);
+            Health dummy = Dummy(new Vector3(0f, 0f, 16f));
+            Vector3 chest = dummy.transform.position + Vector3.up * 1.15f;
+            const float Step = 1f / VideoFps;
+            Time.captureDeltaTime = Step;
+
+            videoTarget = Track(new RenderTexture(VideoWidth, VideoHeight, 24) { antiAliasing = 4 });
+            videoFrame = Track(new Texture2D(VideoWidth, VideoHeight, TextureFormat.RGBA32, false));
+            Directory.CreateDirectory("Screenshots");
+            string path = Path.GetFullPath(Path.Combine("Screenshots", "Fireball.mp4"));
+            var attributes = new UnityEditor.Media.VideoTrackAttributes
+            {
+                frameRate = new UnityEditor.Media.MediaRational(VideoFps),
+                width = VideoWidth,
+                height = VideoHeight,
+                includeAlpha = false,
+                bitRateMode = UnityEditor.VideoBitrateMode.High,
+            };
+
+            encoder = new UnityEditor.Media.MediaEncoder(path, attributes);
+            try
+            {
+                // ---- 1. first person: the charge in the left palm, the launch, the hit at 15 m, the burn
+                AimAt(chest);
+                yield return Frames(3);
+                for (int i = 0; i < 12; i++)
+                {
+                    RecordFirstPerson();
+                    yield return null;
+                }
+
+                Cast();
+                for (int i = 0; i < 150 && landed.Count == 0; i++)
+                {
+                    RecordFirstPerson();
+                    yield return null;
+                }
+
+                for (int i = 0; i < 48; i++)
+                {
+                    RecordFirstPerson();
+                    yield return null;
+                }
+
+                yield return Frames(150);
+
+                // ---- 2. riding beside the shot, then holding on the blast
+                AimAt(chest);
+                Cast();
+                Vector3 eye = player.transform.position + new Vector3(2.2f, 1.9f, -1.2f);
+                Vector3 look = player.transform.position + new Vector3(0f, 1.4f, 3f);
+                for (int i = 0; i < 150 && landed.Count == 0; i++)
+                {
+                    Transform shot = Projectile();
+                    if (shot != null)
+                    {
+                        eye = Vector3.Lerp(eye, shot.position + new Vector3(2.4f, 0.5f, -2.2f), 0.5f);
+                        look = Vector3.Lerp(look, shot.position + shot.forward * 1.2f, 0.6f);
+                    }
+
+                    RecordView(eye, look, 44f);
+                    yield return null;
+                }
+
+                for (int i = 0; i < 40; i++)
+                {
+                    RecordView(eye, Vector3.Lerp(look, chest, 0.15f), 44f);
+                    yield return null;
+                }
+
+                yield return Frames(150);
+
+                // ---- 3. the blast on the enemy in slow motion (one third speed)
+                AimAt(chest);
+                Cast();
+                Transform flying = null;
+                for (int i = 0; i < 150; i++)
+                {
+                    flying = Projectile();
+                    if (flying != null && Vector3.Distance(flying.position, chest) < 6f)
+                    {
+                        break;
+                    }
+
+                    yield return null;
+                }
+
+                Time.captureDeltaTime = Step / 3f;
+                Vector3 slowEye = dummy.transform.position + new Vector3(4.6f, 1.6f, -4.2f);
+                for (int i = 0; i < 132; i++)
+                {
+                    RecordView(slowEye, chest + Vector3.up * 0.2f, 42f);
+                    yield return null;
+                }
+
+                Time.captureDeltaTime = Step;
+                for (int i = 0; i < 30; i++)
+                {
+                    RecordView(slowEye, chest + Vector3.up * 0.2f, 42f);
+                    yield return null;
+                }
+
+                yield return Frames(150);
+
+                // ---- 4. a wall hit and a floor hit
+                Vector3 wallPoint = new Vector3(-4f, 2.2f, 23.5f);
+                AimAt(wallPoint);
+                Cast();
+                for (int i = 0; i < 70; i++)
+                {
+                    RecordView(wallPoint + new Vector3(5.5f, 0.3f, -6f), wallPoint + Vector3.back * 0.5f, 46f);
+                    yield return null;
+                }
+
+                yield return Frames(120);
+                Vector3 floorPoint = new Vector3(3f, 0f, 9f);
+                AimAt(floorPoint);
+                Cast();
+                for (int i = 0; i < 70; i++)
+                {
+                    RecordView(floorPoint + new Vector3(-4.8f, 2.2f, -4.2f), floorPoint + Vector3.up * 0.6f, 46f);
+                    yield return null;
+                }
+
+                // ---- 5. the enemy keeps burning
+                AimAt(chest);
+                Cast();
+                yield return UntilLanded();
+                for (int i = 0; i < 60; i++)
+                {
+                    RecordView(dummy.transform.position + new Vector3(2.4f, 1.5f, -2.8f), dummy.transform.position + Vector3.up * 1.1f, 44f);
+                    yield return null;
+                }
+            }
+            finally
+            {
+                encoder.Dispose();
+                Time.captureDeltaTime = Dt;
+            }
+
+            Debug.Log($"[Fireball] {path}: {videoFrames} frames ({videoFrames / (float)VideoFps:0.0} s)");
+            Assert.That(videoFrames, Is.GreaterThan(200));
+        }
+
+        /// <summary>
+        /// The quick cast's palm strike frame by frame (run on demand): the player's own view every second game step
+        /// from the press until the hand is back on the rifle, then the body from the front left at the chamber, the
+        /// strike, the recoil and the hold. Screenshots/Fireball_QuickCast.png; logs ("[QuickCast]") the first-person
+        /// left wrist in the eyes' space, how far the shoulder followed the cast and the camera kick.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Capture_QuickCastStrike()
+        {
+            yield return Stage();
+            PerformanceSettings.SetVfxQuality(VfxQuality.High);
+            Health dummy = Dummy(new Vector3(0f, 0f, 16f));
+            AimAt(dummy.transform.position + Vector3.up * 1.15f);
+            yield return Frames(5);
+            var arms = player.GetComponentInChildren<FirstPersonArms>(true);
+            var shaker = player.GetComponentsInChildren<CameraShaker>(true).First();
+            Transform eyes = look.PitchPivot;
+            Camera viewModel = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "ViewModelCamera");
+            Transform elbow = arms.ForeArm(true);
+            Transform shoulder = elbow.parent;
+            float halfHeight = Mathf.Tan(viewModel.fieldOfView * 0.5f * Mathf.Deg2Rad);
+
+            // screen position in units of the half height (-1 = lower edge; |x| < 16/9 is inside a 16:9 view)
+            string Screen(Vector3 world)
+            {
+                Vector3 p = viewModel.transform.InverseTransformPoint(world);
+                return p.z <= 0f ? "behind" : $"({p.x / p.z / halfHeight:0.00}, {p.y / p.z / halfHeight:0.00})";
+            }
+
+            Cast();
+            for (int f = 1; f <= 30; f++)
+            {
+                yield return null;
+                Vector3 wrist = eyes.InverseTransformPoint(arms.Hand(true).position);
+                // the arm mesh starts a quarter of the way down the upper arm (fox_fp_arms.py UPPER_ARM_CUT)
+                Vector3 cut = Vector3.Lerp(shoulder.position, elbow.position, 0.25f);
+                Debug.Log($"[QuickCast] {f * Dt:0.000} s: wrist {wrist.ToString("0.000")} ({wrist.magnitude:0.000} m), " +
+                          $"shoulder reach {arms.CastReach * 100f:0.0} cm, on rifle {driver.LeftHandOnRifle:0.00}, kick {shaker.KickAmount:0.00}, " +
+                          $"screen: elbow {Screen(elbow.position)} arm cut {Screen(cut)}");
+                if (f % 2 == 0 && f <= 24)
+                {
+                    FirstPerson($"FP {f * Dt:0.000} s");
+                }
+            }
+
+            Save("Fireball_QuickCast", 4);
+            yield return Frames(90);
+
+            // the body (only a shadow for its own player): the chest turning into the strike
+            foreach (Renderer r in player.transform.Find("BodyVisual").GetComponentsInChildren<Renderer>(true))
+            {
+                r.shadowCastingMode = ShadowCastingMode.On;
+            }
+
+            Vector3 side = player.transform.TransformPoint(new Vector3(-2.2f, 1.25f, 1.6f));
+            Vector3 chest = player.transform.TransformPoint(new Vector3(-0.1f, 1.0f, 0.25f));
+            Cast();
+            foreach ((int frames, string label) in new[] { (4, "chamber 0.067 s"), (3, "strike 0.117 s"), (3, "recoil 0.167 s"), (6, "hold 0.267 s") })
+            {
+                yield return Frames(frames);
+                Shoot("body: " + label, side, chest, 30f);
+            }
+
+            Save("Fireball_QuickCast_Body", 4);
+        }
+
         [UnityTest]
         public IEnumerator Capture_Fireball()
         {

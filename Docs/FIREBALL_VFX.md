@@ -17,8 +17,9 @@
 DeckController.UseSlot（Q/E/F・LB/RB/Y）
   └ SkillCaster.CastCard(火球) ─ projectile.IsProjectile
        ├ 0.00 s  castFx を左手のひらに出す（一人称の手＝ViewModel レイヤー、手に追従）
-       ├ クイック詠唱モーション（SkillMotionRules → QuickCast：0.15 s で手のひらが前に出る）
+       ├ クイック詠唱モーション（SkillMotionRules → QuickCast：0.055 s で手を脇へ引き、0.12 s で手のひらを前へ突き出す）
        ├ 0.12 s  発射：照準の線上を 45 m/s の球（半径 0.2 m）で毎フレーム SphereCastNonAlloc
+       │          同時に自分のカメラだけが小さく跳ねる（SkillCaster.launchKick* → CameraShaker.Kick。照準の線は動かない）
        │          見た目（projectileFx）は手のひらから出て 6 m で照準の線に合流（ConvergeDistance）
        │          一人称の手は画角の違う ViewModel カメラが描くので、ワールドカメラの同じ画面位置に変換して出す
        ├ 命中（敵・地形）→ Resolve：直撃 45・半径 2.5 m に 20・炎上 毎秒 6×3 秒・属性ヒット（→ コンボ）

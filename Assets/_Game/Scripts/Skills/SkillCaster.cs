@@ -68,6 +68,14 @@ namespace CoopDeck.Skills
 
         [SerializeField] Camera worldCamera;
 
+        [Header("Caster's view")]
+        [Tooltip("The caster's own camera jolts as a projectile leaves the hand (CameraShaker.Kick): degrees, x < 0 tips the view up. " +
+                 "Only the local player's caster has a world camera; other players see nothing.")]
+        [SerializeField] Vector3 launchKickEuler = new Vector3(-0.9f, 0f, -0.6f);
+        [Tooltip("The same jolt as an offset in the camera's space (metres; z < 0 = back toward the caster).")]
+        [SerializeField] Vector3 launchKickOffset = new Vector3(0f, -0.004f, -0.018f);
+
+        CameraShaker casterView;
         ICombatActor owner;
         IAimProvider aim;
         int rayMask = Physics.DefaultRaycastLayers;
@@ -338,7 +346,27 @@ namespace CoopDeck.Skills
             }
 
             flights.Add(flight);
+            KickCasterView();
             ProjectileLaunched?.Invoke(card, visualStart);
+        }
+
+        /// <summary>The shot's recoil in the caster's own view (the strike's palm comes forward as it leaves).</summary>
+        void KickCasterView()
+        {
+            if (worldCamera == null)
+            {
+                return;
+            }
+
+            if (casterView == null)
+            {
+                casterView = worldCamera.GetComponent<CameraShaker>();
+            }
+
+            if (casterView != null)
+            {
+                casterView.Kick(launchKickEuler, launchKickOffset);
+            }
         }
 
         /// <summary>Moves every projectile by <paramref name="deltaTime"/> (public so a fixed network tick or a test can drive it).</summary>

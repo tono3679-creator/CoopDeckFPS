@@ -5,6 +5,7 @@ using System.Linq;
 using CoopDeck.Animation;
 using CoopDeck.Combat;
 using CoopDeck.Core;
+using CoopDeck.Effects;
 using CoopDeck.Player;
 using CoopDeck.Skills;
 using NUnit.Framework;
@@ -265,6 +266,68 @@ namespace CoopDeck.Tests
             }
 
             Assert.That(peak, Is.GreaterThan(0.6f), "the left hand opens to cast");
+        }
+
+        /// <summary>
+        /// The quick cast is a palm strike, not a sideways wave: the hand is pulled back first, then driven well past
+        /// its hold on the handguard in the body and in first person (the shoulder follows it out there), the shot
+        /// kicks the caster's own view, and everything is back in place afterwards.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator QuickCast_StrikesThePalmOut_InBothViews_AndKicksTheCastersView()
+        {
+            yield return Spawn();
+            var arms = player.GetComponentInChildren<FirstPersonArms>(true);
+            Transform eyes = player.GetComponent<FpsLook>().PitchPivot;
+            Transform leftGoal = body.GetComponentsInChildren<Transform>(true).First(t => t.name == "IK_Hand_L");
+            var shaker = player.GetComponentInChildren<CameraShaker>(true);
+            var card = AssetDatabase.LoadAssetAtPath<CoopDeck.Cards.CardDefinition>("Assets/_Game/ScriptableObjects/Cards/CD_Fireball.asset");
+            Assert.That(card, Is.Not.Null, "run the bootstrap");
+            Assert.That(SkillMotionRules.For(card), Is.EqualTo(SkillMotion.QuickCast));
+
+            float BodyForward() => body.transform.InverseTransformPoint(leftGoal.position).z;
+            float ViewForward() => eyes.InverseTransformPoint(arms.Hand(true).position).z;
+            float bodyHold = BodyForward(), viewHold = ViewForward();
+            Vector3 cameraRest = shaker.transform.localPosition;
+
+            player.GetComponent<FpsCharacter>().BodyAnimator.Skill(SkillMotion.QuickCast);
+            player.GetComponent<SkillCaster>().CastCard(card);
+            float bodyMax = float.MinValue, viewMax = float.MinValue, viewMin = float.MaxValue, kick = 0f, reach = 0f;
+            int viewMinFrame = 0, viewMaxFrame = 0;
+            for (int i = 1; i <= 30; i++)
+            {
+                yield return null;
+                bodyMax = Mathf.Max(bodyMax, BodyForward());
+                float view = ViewForward();
+                if (view < viewMin)
+                {
+                    viewMin = view;
+                    viewMinFrame = i;
+                }
+
+                if (view > viewMax)
+                {
+                    viewMax = view;
+                    viewMaxFrame = i;
+                }
+
+                kick = Mathf.Max(kick, shaker.KickAmount);
+                reach = Mathf.Max(reach, arms.CastReach);
+            }
+
+            Debug.Log($"[FoxBody] quick cast: body palm {bodyHold:0.000} -> {bodyMax:0.000} m forward; first-person wrist {viewHold:0.000} -> " +
+                      $"{viewMin:0.000} (frame {viewMinFrame}) -> {viewMax:0.000} (frame {viewMaxFrame}); shoulder reach {reach * 100f:0.0} cm; kick {kick:0.00}");
+            Assert.That(bodyMax - bodyHold, Is.GreaterThan(0.12f), "the body's palm strikes well past its hold on the handguard");
+            Assert.That(viewMin, Is.LessThan(viewHold - 0.08f), "first person: the hand is pulled back before the strike");
+            Assert.That(viewMinFrame, Is.LessThan(viewMaxFrame));
+            Assert.That(viewMax - viewHold, Is.GreaterThan(0.12f), "first person: the palm is driven out past the handguard");
+            Assert.That(reach, Is.GreaterThan(0.02f), "the first-person shoulder follows the strike out");
+            Assert.That(kick, Is.GreaterThan(0.9f), "the shot kicks the caster's own view");
+
+            yield return Frames(40);
+            Assert.That(arms.CastReach, Is.EqualTo(0f), "the shoulder is back under the eyes");
+            Assert.That(Vector3.Distance(shaker.transform.localPosition, cameraRest), Is.LessThan(1e-4f), "the view is back in place");
+            Assert.That(Mathf.Abs(ViewForward() - viewHold), Is.LessThan(0.02f), "the hand is back on the handguard");
         }
 
         [UnityTest]

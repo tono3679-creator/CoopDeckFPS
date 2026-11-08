@@ -69,6 +69,9 @@ namespace CoopDeck.Animation
         [SerializeField, Range(10f, 90f)] float maxWristBend = 38f;
         [Tooltip("How far (metres) the left hand may slide back along the rifle when its hold is out of the arm's reach.")]
         [SerializeField, Min(0f)] float maxLeftSlide = 0.12f;
+        [Tooltip("While the left hand casts, how far (metres) the left shoulder may follow it out when the cast reaches past " +
+                 "the arm (the chest turning into the strike, as the body's does).")]
+        [SerializeField, Min(0f)] float maxCastReach = 0.12f;
 
         [Header("Shoulders (the fox's own, below its eyes)")]
         [Tooltip("The player camera: the fox's eyes.")]
@@ -115,6 +118,9 @@ namespace CoopDeck.Animation
         }
 
         public float OpenAmount => open;
+
+        /// <summary>How far (metres) the left shoulder followed a cast out this frame (0 while the hand holds the rifle).</summary>
+        public float CastReach { get; private set; }
 
         public void Configure(Transform rifleOnBody, Transform goalLeft, Transform goalRight, Transform rifleInView,
             Transform[] leftChain, Transform[] rightChain)
@@ -297,6 +303,7 @@ namespace CoopDeck.Animation
             Solve(rightArm, rightForeArm, rightHand, rightPos, rightRot, ElbowDirection(bodyElbowRight, rightArm, rightElbow), restHandInForearmR);
 
             LeftGoal(onRifle, out Vector3 leftPos, out Quaternion leftRot);
+            ReachIntoCast(1f - onRifle, leftPos);
             Solve(leftArm, leftForeArm, leftHand, leftPos, leftRot, ElbowDirection(bodyElbowLeft, leftArm, leftElbow), restHandInForearmL);
 
             // the left hand opens for a cast and half-opens while it works away from the rifle (reload)
@@ -346,6 +353,30 @@ namespace CoopDeck.Animation
                 float disc = b * b - c;
                 float t = disc >= 0f ? -b - Mathf.Sqrt(disc) : -b;
                 position += back * (Mathf.Clamp(t, 0f, maxLeftSlide) * onRifle);
+            }
+        }
+
+        /// <summary>
+        /// These shoulders stay under the eyes, but a cast drives the body's left shoulder forward (chest turned into the
+        /// strike). While the left hand is off the rifle, a goal past the arm's reach pulls the shoulder after it (up to
+        /// maxCastReach), leaving the arm a little bent instead of locked straight and short of the goal.
+        /// </summary>
+        void ReachIntoCast(float free, Vector3 goal)
+        {
+            CastReach = 0f;
+            if (free <= 0f || maxCastReach <= 0f)
+            {
+                return;
+            }
+
+            float reach = (Vector3.Distance(leftArm.position, leftForeArm.position) +
+                           Vector3.Distance(leftForeArm.position, leftHand.position)) * 0.97f;
+            Vector3 d = goal - leftArm.position;
+            float excess = d.magnitude - reach;
+            if (excess > 0f)
+            {
+                CastReach = Mathf.Min(excess, maxCastReach) * free;
+                leftArm.position += d.normalized * CastReach;
             }
         }
 

@@ -27,6 +27,9 @@ namespace CoopDeck.Effects
         [Tooltip("Seconds of a field-of-view punch (co-op combos): quick widen, ease back.")]
         [SerializeField, Min(0.05f)] float punchDuration = 0.32f;
 
+        [Tooltip("Seconds of a kick (this camera's own jolt, e.g. a cast leaving the hand): snaps in, eases back.")]
+        [SerializeField, Min(0.05f)] float kickDuration = 0.22f;
+
         Vector3 basePosition;
         Quaternion baseRotation;
         float trauma;
@@ -36,11 +39,36 @@ namespace CoopDeck.Effects
         float punchAge = float.PositiveInfinity;
         float lastWrittenFov = -1f;
         float lastPunchOffset;
+        Vector3 kickEuler;
+        Vector3 kickOffset;
+        float kickAge = float.PositiveInfinity;
+        bool posed;
 
         public float Trauma => trauma;
 
         /// <summary>Current field-of-view offset from a punch, degrees (0 when idle).</summary>
         public float PunchOffset { get; private set; }
+
+        /// <summary>Current share (0..1) of the last kick being applied (0 when idle).</summary>
+        public float KickAmount { get; private set; }
+
+        /// <summary>
+        /// A short directional jolt of this camera only (the caster's own view as a cast leaves the hand), unlike
+        /// <see cref="Shake"/> which reaches every camera near an impact. Euler in degrees (x &lt; 0 tips the view up),
+        /// offset in metres in the camera's space. Scaled like the shake; the aim ray is unaffected.
+        /// </summary>
+        public void Kick(Vector3 eulerDegrees, Vector3 localOffset)
+        {
+            float scale = PerformanceSettings.ScreenShakeScale * PerformanceSettings.ShakeFor(PerformanceSettings.Vfx);
+            if (scale <= 0f)
+            {
+                return;
+            }
+
+            kickEuler = eulerDegrees * scale;
+            kickOffset = localOffset * scale;
+            kickAge = 0f;
+        }
 
         /// <summary>
         /// A short field-of-view kick for a big moment (co-op combo), falling off with distance and
@@ -100,6 +128,9 @@ namespace CoopDeck.Effects
         {
             Active.Remove(this);
             trauma = 0f;
+            kickAge = float.PositiveInfinity;
+            KickAmount = 0f;
+            posed = false;
             transform.localPosition = basePosition;
             transform.localRotation = baseRotation;
         }
@@ -114,26 +145,51 @@ namespace CoopDeck.Effects
         void LateUpdate()
         {
             ApplyPunch();
-            if (trauma <= 0f)
+            float kick = KickShape();
+            if (trauma <= 0f && kick <= 0f)
             {
+                if (posed)
+                {
+                    transform.localPosition = basePosition;
+                    transform.localRotation = baseRotation;
+                    posed = false;
+                }
+
                 return;
             }
 
-            trauma = Mathf.Max(0f, trauma - decay * Time.deltaTime);
-            float amount = trauma * trauma; // squared: small impacts barely move the view
-            float t = Time.time * frequency;
-            float pitch = (Mathf.PerlinNoise(seed, t) * 2f - 1f) * maxAngle * amount;
-            float yaw = (Mathf.PerlinNoise(seed + 10f, t) * 2f - 1f) * maxAngle * amount;
-            float roll = (Mathf.PerlinNoise(seed + 20f, t) * 2f - 1f) * maxAngle * 0.5f * amount;
-            Vector3 offset = new Vector3(Mathf.PerlinNoise(seed + 30f, t) * 2f - 1f, Mathf.PerlinNoise(seed + 40f, t) * 2f - 1f, 0f) * (maxOffset * amount);
-
-            transform.localPosition = basePosition + offset;
-            transform.localRotation = baseRotation * Quaternion.Euler(pitch, yaw, roll);
-            if (trauma <= 0f)
+            Vector3 offset = Vector3.zero;
+            Quaternion shake = Quaternion.identity;
+            if (trauma > 0f)
             {
-                transform.localPosition = basePosition;
-                transform.localRotation = baseRotation;
+                trauma = Mathf.Max(0f, trauma - decay * Time.deltaTime);
+                float amount = trauma * trauma; // squared: small impacts barely move the view
+                float t = Time.time * frequency;
+                float pitch = (Mathf.PerlinNoise(seed, t) * 2f - 1f) * maxAngle * amount;
+                float yaw = (Mathf.PerlinNoise(seed + 10f, t) * 2f - 1f) * maxAngle * amount;
+                float roll = (Mathf.PerlinNoise(seed + 20f, t) * 2f - 1f) * maxAngle * 0.5f * amount;
+                offset = new Vector3(Mathf.PerlinNoise(seed + 30f, t) * 2f - 1f, Mathf.PerlinNoise(seed + 40f, t) * 2f - 1f, 0f) * (maxOffset * amount);
+                shake = Quaternion.Euler(pitch, yaw, roll);
             }
+
+            transform.localPosition = basePosition + offset + kickOffset * kick;
+            transform.localRotation = baseRotation * shake * Quaternion.Euler(kickEuler * kick);
+            posed = true;
+        }
+
+        /// <summary>Share of the kick this frame: in within the first 15 % of its time, then eased back to 0.</summary>
+        float KickShape()
+        {
+            KickAmount = 0f;
+            if (kickAge >= kickDuration)
+            {
+                return 0f;
+            }
+
+            kickAge += Time.deltaTime;
+            float t = Mathf.Clamp01(kickAge / kickDuration);
+            KickAmount = t < 0.15f ? Mathf.SmoothStep(0f, 1f, t / 0.15f) : 1f - Mathf.SmoothStep(0f, 1f, (t - 0.15f) / 0.85f);
+            return KickAmount;
         }
 
         void ApplyPunch()

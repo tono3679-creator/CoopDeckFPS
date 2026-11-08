@@ -487,23 +487,45 @@ def palm_forward(palm):
     return lambda w: hand_c(palm, PALM_FWD["along"], PALM_FWD["thumb"], PALM_FWD["elbow"])
 
 
+def palm_strike(palm, along=(0.0, 0.55, 0.85)):
+    """Left palm pushed out flat at the target: fingers up and forward, thumb in, elbow down."""
+    return lambda w: hand_c(palm, along, (1.0, 0.0, 0.0), (-0.5, -0.1, -0.85))
+
+
+# Quick cast: chamber, strike, recoil. The palm is pulled back to the left ribs (fingers cupped, palm turned in),
+# then driven straight out at shoulder height by the chest twisting right, leaning in and the left shoulder
+# reaching forward: it ends 17 cm further out than the hand on the handguard (the old thrust only moved sideways).
+# Full reach at 0.12 s is when the projectile leaves the palm (CardDefinition.projectile.launchDelay); the shot
+# kicks the hand back and the wrist up, it settles, holds and returns to the rifle.
+QUICK_STRIKE = 0.12
 QUICK = LeftTrack([
     (0.00, "rifle", None),
-    (0.08, lambda w: hand_c((-0.07, 0.16, 1.02), (0.2, 0.3, 0.95), (1.0, 0.0, 0.0), (-0.7, -0.3, -0.6)), 0.3),
-    (0.15, palm_forward((-0.17, 0.39, 0.98)), 0.0),
-    (0.24, palm_forward((-0.17, 0.37, 0.98)), 0.05),
-    (0.44, "rifle", None),
+    (0.055, lambda w: hand_c((-0.19, 0.13, 0.93), (0.2, 0.9, 0.4), (0.0, 0.0, 1.0), (-0.6, -0.6, -0.5)), 0.55),
+    (QUICK_STRIKE, palm_strike((-0.13, 0.54, 1.00)), -0.08),
+    (0.155, palm_strike((-0.13, 0.50, 1.025), along=(0.0, 0.4, 0.92)), 0.0),
+    (0.21, palm_strike((-0.13, 0.525, 1.005)), 0.06),
+    (0.30, palm_strike((-0.13, 0.515, 1.0)), 0.12),
+    (0.45, "rifle", None),
     (0.50, "rifle", None),
 ])
 
 
-@clip("Skill_QuickCast", 0.5, layer="UpperBody", notes="left palm thrust; fireball / ice lance / thunderbolt")
+def quick_drive(t):
+    """Body drive of the quick cast: -0.3 at the chamber, 1 at full reach, a dip as the shot kicks, 0 at the end."""
+    return track(t, [(0.0, 0.0), (0.05, -0.3), (QUICK_STRIKE, 1.0), (0.16, 0.82), (0.22, 0.92), (0.30, 0.88),
+                     (0.46, 0.0), (0.50, 0.0)])
+
+
+@clip("Skill_QuickCast", 0.5, layer="UpperBody", notes="left palm strike; fireball / ice lance / thunderbolt")
 def skill_quick(t, u):
-    a = eased(t, [(0.0, 0.0), (0.08, 1.0), (0.3, 1.0), (0.46, 0.0)])
-    thrust = bump(t, 0.06, 0.15, 0.22, 0.4)
-    w = cast_rifle(a)
-    ctl = upper_from_idle(t, w, spine=(2 * thrust, 14 * thrust, 0), head=(0, -4 * thrust))
-    ctl.clavicle["Left"] = rot(yaw=6 * thrust)
+    a = eased(t, [(0.0, 0.0), (0.06, 1.0), (0.32, 1.0), (0.46, 0.0)])
+    d = quick_drive(t)
+    # the rifle stays nearly where it is (the first-person hand is placed relative to it); the right hand only
+    # dips and cants it a little as the chest turns
+    w = weapon_at((0.01 * a, -0.015 * a - 0.01 * max(0.0, d), -0.015 * a), pitch=-3 * a, yaw=-2 * a, roll=4 * a + 2 * max(0.0, d))
+    ctl = upper_from_idle(t, w, spine=(12 * d, -20 * d, 0), head=(0, 0))
+    ctl.clavicle["Left"] = rot(yaw=-18 * d)
+    ctl.clavicle["Right"] = rot(roll=-3 * max(0.0, d))
     QUICK.apply(ctl, t, w)
     return ctl
 
