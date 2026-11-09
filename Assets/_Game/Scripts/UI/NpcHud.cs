@@ -40,19 +40,19 @@ namespace CoopDeck.UI
 
         RectTransform root;
         RectTransform panel;
+        Image portraitRing;
+        Image portraitIcon;
+        RectTransform tacticChip;
         Text titleText;
-        Image hpFill;
-        Image hpBack;
+        HudBar hpBar;
         Text hpText;
         Text tacticText;
         Text intentText;
         Text skillText;
         Text noticeText;
-        Image reviveBack;
-        Image reviveFill;
+        HudBar reviveBar;
         readonly Text[] cardTexts = new Text[2];
-        readonly Image[] cardFills = new Image[2];
-        readonly Image[] cardBacks = new Image[2];
+        readonly HudBar[] cardBars = new HudBar[2];
         RectTransform allyMarker;
         Text allyMarkerText;
         Image allyMarkerHp;
@@ -72,6 +72,12 @@ namespace CoopDeck.UI
         string lastSkillLine;
         readonly string[] lastCardLines = new string[2];
         NpcController subscribed;
+        Revivable subscribedRevivable;
+        InputScheme tacticScheme = (InputScheme)(-1);
+        int downKey = -1;
+
+        [Tooltip("Ally card slot (0 = just above the vitals panel; more allies stack upward).")]
+        [SerializeField, Min(0)] int squadSlot;
 
         public NpcController Npc => npc;
         public string IntentLine => intentText != null ? intentText.text : "";
@@ -134,6 +140,13 @@ namespace CoopDeck.UI
             npc.Notice += OnNotice;
             npc.SkillCast += OnSkillCast;
             subscribed = npc;
+            subscribedRevivable = npc.Revivable;
+            if (subscribedRevivable != null)
+            {
+                subscribedRevivable.Downed += OnAllyDowned;
+                subscribedRevivable.RevivedByAlly += OnAllyRevived;
+                subscribedRevivable.BledOut += OnAllyBledOut;
+            }
         }
 
         void Unsubscribe()
@@ -145,12 +158,34 @@ namespace CoopDeck.UI
 
             subscribed.Notice -= OnNotice;
             subscribed.SkillCast -= OnSkillCast;
+            if (subscribedRevivable != null)
+            {
+                subscribedRevivable.Downed -= OnAllyDowned;
+                subscribedRevivable.RevivedByAlly -= OnAllyRevived;
+                subscribedRevivable.BledOut -= OnAllyBledOut;
+                subscribedRevivable = null;
+            }
+
             subscribed = null;
         }
+
+        // Down / revive go to the combat feed (the card itself shows the live state).
+        void OnAllyDowned(Revivable revivable) =>
+            HudNotifications.Post(HudNoticeKind.Danger, $"{npc.DisplayName} がダウン — 近くに立って蘇生");
+
+        void OnAllyRevived(Revivable revivable, ICombatActor reviver)
+        {
+            bool byPlayer = reviver != null && ReferenceEquals(reviver, player);
+            HudNotifications.Post(HudNoticeKind.Revive, byPlayer ? $"{npc.DisplayName} を蘇生しました" : $"{npc.DisplayName} が復帰しました");
+        }
+
+        void OnAllyBledOut(Revivable revivable) =>
+            HudNotifications.Post(HudNoticeKind.Warning, $"{npc.DisplayName} が後退 — まもなく合流");
 
         void OnNotice(NpcController source, string message)
         {
             noticeText.text = message;
+            HudNotifications.Post(HudNoticeKind.Info, $"{source.DisplayName}：{message}");
             noticeAge = 0f;
             noticeText.gameObject.SetActive(true);
         }
@@ -165,53 +200,68 @@ namespace CoopDeck.UI
 
         void Build()
         {
-            root = HudKit.CreateCanvas(transform, "NPC HUD Canvas", 11);
+            // World markers use the full canvas; the ally card sits in the 16:9 safe frame.
+            root = HudKit.CreateCanvas(transform, "NPC HUD Canvas", 11, false);
+            RectTransform frame = HudKit.CreateSafeFrame(root);
 
-            // Left-middle panel: away from the crosshair, the cards (bottom centre) and the player HP (bottom left).
-            Image back = HudKit.CreateImage("NpcPanel", root, HudKit.PanelColor, new Vector2(0f, 0.5f), new Vector2(200f, -10f), new Vector2(360f, 232f));
-            panel = back.rectTransform;
-            Vector2 topLeft = new Vector2(0f, 1f);
-            titleText = HudKit.CreateText("Name", panel, 22, TextAnchor.MiddleLeft, topLeft, new Vector2(180f, -18f), new Vector2(340f, 28f));
-            HudKit.AddOutline(titleText, 0.5f);
-            hpBack = HudKit.CreateImage("HpBack", panel, new Color(1f, 1f, 1f, 0.12f), topLeft, new Vector2(130f, -44f), new Vector2(240f, 14f));
-            hpFill = HudKit.CreateImage("HpFill", hpBack.rectTransform, new Color(0.45f, 1f, 0.6f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(240f, 14f));
-            hpFill.rectTransform.pivot = new Vector2(0f, 0.5f);
-            hpText = HudKit.CreateText("HpText", panel, 16, TextAnchor.MiddleLeft, topLeft, new Vector2(310f, -44f), new Vector2(100f, 20f));
-            reviveBack = HudKit.CreateImage("ReviveBack", panel, new Color(1f, 1f, 1f, 0.12f), topLeft, new Vector2(130f, -58f), new Vector2(240f, 5f));
-            reviveFill = HudKit.CreateImage("ReviveFill", reviveBack.rectTransform, new Color(0.4f, 0.9f, 1f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(240f, 5f));
-            reviveFill.rectTransform.pivot = new Vector2(0f, 0.5f);
-            tacticText = HudKit.CreateText("Tactic", panel, 18, TextAnchor.MiddleLeft, topLeft, new Vector2(180f, -76f), new Vector2(340f, 24f));
-            intentText = HudKit.CreateText("Intent", panel, 17, TextAnchor.MiddleLeft, topLeft, new Vector2(180f, -100f), new Vector2(340f, 24f));
-            skillText = HudKit.CreateText("Skill", panel, 17, TextAnchor.MiddleLeft, topLeft, new Vector2(180f, -124f), new Vector2(340f, 24f));
+            // Ally row (compact): element mark, name, tactic (or down / revive state) and a thin HP bar.
+            Rect layout = HudLayout.Squad;
+            layout.y += squadSlot * HudLayout.SquadStep;
+            panel = HudKit.CreateRect("AllyRow", frame, Vector2.zero, Vector2.zero, Vector2.zero, layout.size);
+            HudLayout.Place(panel, layout);
+            var topLeft = new Vector2(0f, 1f);
+            portraitRing = UiWidgets.Icon("Scrim", panel, UiSprites.Glow, UiTokens.WithAlpha(UiTokens.Background, 0.4f), new Vector2(0.5f, 0.5f), Vector2.zero, 1f);
+            portraitRing.preserveAspect = false;
+            portraitRing.rectTransform.sizeDelta = new Vector2(layout.width + 120f, layout.height + 50f);
+            portraitIcon = UiWidgets.Icon("Element", panel, UiSprites.ElementIcon(Element.None), UiTokens.Neutral, topLeft, new Vector2(9f, -12f), 16f);
+            HudKit.AddOutline(portraitIcon, 0.6f);
+            titleText = UiWidgets.Label("Name", panel, UiTokens.Body, UiTokens.TextMain, TextAnchor.MiddleLeft, topLeft, new Vector2(92f, -12f),
+                new Vector2(140f, 22f), true, false);
+            HudKit.AddOutline(titleText, 0.85f);
+            tacticChip = HudKit.CreateRect("Tactic", panel, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(0f, -1f), new Vector2(150f, 22f));
+            tacticText = UiWidgets.Label("Value", tacticChip, UiTokens.Caption, UiTokens.TextSub, TextAnchor.MiddleRight, new Vector2(0.5f, 0.5f),
+                Vector2.zero, new Vector2(150f, 22f), true, false);
+            HudKit.AddOutline(tacticText, 0.85f);
+            tacticText.supportRichText = true;
+
+            hpBar = UiWidgets.Bar("Hp", panel, topLeft, new Vector2(0f, 0.5f), new Vector2(0f, -30f), new Vector2(layout.width, 8f), UiTokens.Health);
+            reviveBar = UiWidgets.Bar("Revive", panel, topLeft, new Vector2(0f, 0.5f), new Vector2(0f, -39f), new Vector2(layout.width, 3f), UiTokens.Energy);
+
+            // Kept for the API (IntentLine, SkillLine …) but not shown: the row stays simple.
+            RectTransform hidden = HudKit.CreateRect("Details", panel, topLeft, Vector2.zero, Vector2.zero);
+            hidden.gameObject.SetActive(false);
+            hpText = UiWidgets.Label("HpText", hidden, UiTokens.Caption, UiTokens.TextSub, TextAnchor.MiddleRight, topLeft, Vector2.zero, new Vector2(90f, 22f));
+            intentText = UiWidgets.Label("Intent", hidden, UiTokens.Caption, UiTokens.TextMain, TextAnchor.MiddleLeft, topLeft, Vector2.zero, new Vector2(384f, 24f));
+            skillText = UiWidgets.Label("Skill", hidden, UiTokens.Caption, UiTokens.TextSub, TextAnchor.MiddleLeft, topLeft, Vector2.zero, new Vector2(384f, 24f));
             for (int i = 0; i < cardTexts.Length; i++)
             {
-                float y = -152f - i * 26f;
-                cardBacks[i] = HudKit.CreateImage($"Card{i}Back", panel, new Color(1f, 1f, 1f, 0.1f), topLeft, new Vector2(250f, y - 8f), new Vector2(200f, 5f));
-                cardFills[i] = HudKit.CreateImage($"Card{i}Fill", cardBacks[i].rectTransform, Color.white, new Vector2(0f, 0.5f), Vector2.zero, new Vector2(200f, 5f));
-                cardFills[i].rectTransform.pivot = new Vector2(0f, 0.5f);
-                cardTexts[i] = HudKit.CreateText($"Card{i}", panel, 16, TextAnchor.MiddleLeft, topLeft, new Vector2(180f, y), new Vector2(340f, 20f));
+                cardTexts[i] = UiWidgets.Label($"Card{i}", hidden, UiTokens.Caption, UiTokens.TextMain, TextAnchor.MiddleLeft, topLeft, Vector2.zero, new Vector2(184f, 22f));
+                cardBars[i] = UiWidgets.Bar($"Card{i}Gauge", hidden, topLeft, new Vector2(0f, 0.5f), Vector2.zero, new Vector2(180f, 5f), Color.white);
             }
 
-            noticeText = HudKit.CreateText("Notice", panel, 16, TextAnchor.MiddleLeft, topLeft, new Vector2(180f, -216f), new Vector2(340f, 22f));
-            noticeText.color = new Color(1f, 0.9f, 0.55f);
-            HudKit.AddOutline(noticeText, 0.6f);
+            noticeText = UiWidgets.Label("Notice", hidden, UiTokens.Caption, UiTokens.Accent, TextAnchor.MiddleLeft, topLeft, Vector2.zero, new Vector2(384f, 22f), true);
             noticeText.gameObject.SetActive(false);
 
             // World markers.
-            allyMarker = HudKit.CreateRect("AllyMarker", root, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(200f, 40f));
-            allyMarkerText = HudKit.CreateText("Label", allyMarker, 16, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 8f), new Vector2(200f, 22f));
-            HudKit.AddOutline(allyMarkerText, 0.7f);
-            Image allyHpBack = HudKit.CreateImage("HpBack", allyMarker, new Color(0f, 0f, 0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -8f), new Vector2(64f, 5f));
-            allyMarkerHp = HudKit.CreateImage("Hp", allyHpBack.rectTransform, new Color(0.45f, 1f, 0.6f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(64f, 5f));
+            allyMarker = HudKit.CreateRect("AllyMarker", root, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(240f, 44f));
+            allyMarkerText = HudKit.CreateText("Label", allyMarker, UiTokens.Caption, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 9f),
+                new Vector2(240f, 24f));
+            allyMarkerText.fontStyle = FontStyle.Bold;
+            HudKit.AddOutline(allyMarkerText, 0.8f);
+            Image allyHpBack = HudKit.CreateImage("HpBack", allyMarker, UiTokens.WithAlpha(UiTokens.FrameDark, 0.75f), new Vector2(0.5f, 0.5f), new Vector2(0f, -9f),
+                new Vector2(68f, 6f));
+            allyMarkerHp = HudKit.CreateImage("Hp", allyHpBack.rectTransform, UiTokens.Health, new Vector2(0f, 0.5f), Vector2.zero, new Vector2(68f, 6f));
             allyMarkerHp.rectTransform.pivot = new Vector2(0f, 0.5f);
             allyMarker.gameObject.SetActive(false);
 
             for (int i = 0; i < markers.Length; i++)
             {
-                RectTransform rect = HudKit.CreateRect("EnemyMarker", root, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(240f, 44f));
-                Text label = HudKit.CreateText("Label", rect, 15, TextAnchor.LowerCenter, new Vector2(0.5f, 0f), new Vector2(0f, 20f), new Vector2(240f, 40f));
+                RectTransform rect = HudKit.CreateRect("EnemyMarker", root, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(260f, 48f));
+                Text label = HudKit.CreateText("Label", rect, UiTokens.Caption - 2, TextAnchor.LowerCenter, new Vector2(0.5f, 0f), new Vector2(0f, 22f),
+                    new Vector2(260f, 44f));
+                label.fontStyle = FontStyle.Bold;
                 label.supportRichText = true;
-                HudKit.AddOutline(label, 0.75f);
+                HudKit.AddOutline(label, 0.8f);
                 rect.gameObject.SetActive(false);
                 markers[i] = new Marker { Rect = rect, Label = label };
             }
@@ -264,12 +314,13 @@ namespace CoopDeck.UI
         void UpdatePanelText()
         {
             NpcProfile profile = npc.Profile;
-            Color color = profile != null ? profile.color : Color.white;
             if (string.IsNullOrEmpty(titleText.text))
             {
-                string element = profile != null ? ElementStyle.DisplayName(profile.favoredElement) : "";
-                titleText.text = $"◆ {npc.DisplayName}（{element}属性）  NPC";
-                titleText.color = Color.Lerp(color, Color.white, 0.2f);
+                Element element = profile != null ? profile.favoredElement : Element.None;
+                titleText.supportRichText = true;
+                titleText.text = $"{npc.DisplayName} <size={UiTokens.Caption - 2}><color=#{ColorUtility.ToHtmlStringRGB(UiTokens.TextSub)}>NPC</color></size>";
+                portraitIcon.sprite = UiSprites.ElementIcon(element);
+                portraitIcon.color = UiTokens.ElementColor(element);
             }
 
             Health health = npc.Character.Health;
@@ -280,11 +331,11 @@ namespace CoopDeck.UI
                 hpText.text = health != null ? $"{Mathf.CeilToInt(health.Current)} / {Mathf.CeilToInt(health.Max)}" : "";
             }
 
-            if (lastTacticValue != (int)npc.Tactic)
+            if ((lastTacticValue != (int)npc.Tactic || tacticScheme != InputGlyphs.Active) && downKey < 0)
             {
                 lastTacticValue = (int)npc.Tactic;
-                tacticText.supportRichText = true;
-                tacticText.text = $"方針：{NpcLabels.Tactic(npc.Tactic)}　<size=14>（V / R3 切替・中クリック / X / LT で集中）</size>";
+                tacticScheme = InputGlyphs.Active;
+                tacticText.text = $"{NpcLabels.Tactic(npc.Tactic)} <color=#{ColorUtility.ToHtmlStringRGB(UiTokens.Accent)}>{InputGlyphs.Label(HudAction.Tactic)}</color>";
             }
 
             // The intent text only changes with the mode, the action, its card or its combo.
@@ -359,10 +410,10 @@ namespace CoopDeck.UI
                     lastCardLines[i] = line;
                 }
 
-                cardBacks[i].gameObject.SetActive(card != null);
+                cardBars[i].Root.gameObject.SetActive(card != null);
                 if (card != null)
                 {
-                    cardFills[i].color = ElementStyle.ColorOf(card.Definition.element);
+                    cardBars[i].FillColor = UiTokens.ElementColor(card.Definition.element);
                 }
             }
         }
@@ -371,29 +422,56 @@ namespace CoopDeck.UI
         {
             Health health = npc.Character.Health;
             float hp = health != null ? health.Normalized : 1f;
-            hpFill.rectTransform.sizeDelta = new Vector2(240f * hp, 14f);
-            hpFill.color = hp < 0.35f ? new Color(1f, 0.4f, 0.35f) : new Color(0.45f, 1f, 0.6f);
+            hpBar.FillColor = hp < 0.35f ? UiTokens.Danger : UiTokens.Health;
+            hpBar.Set(hp);
+            hpBar.Tick(dt);
 
             Revivable revive = npc.Revivable;
             bool downed = revive != null && revive.IsDowned;
-            reviveBack.gameObject.SetActive(downed);
+            reviveBar.Root.gameObject.SetActive(downed);
             if (downed)
             {
-                reviveFill.rectTransform.sizeDelta = new Vector2(240f * revive.Progress01, 5f);
+                reviveBar.Set(revive.Progress01, true);
             }
 
+            UpdateDownState(revive, downed);
+            hpText.color = downed ? UiTokens.DangerText : UiTokens.TextSub;
+
             DeckState deck = npc.Deck != null ? npc.Deck.Deck : null;
-            for (int i = 0; i < cardFills.Length; i++)
+            for (int i = 0; i < cardBars.Length; i++)
             {
                 CardRuntime card = deck != null && i < deck.HandSize ? deck.GetHandCard(i) : null;
                 if (card != null)
                 {
-                    cardFills[i].rectTransform.sizeDelta = new Vector2(200f * card.GaugeNormalized, 5f);
+                    cardBars[i].Set(card.GaugeNormalized);
                 }
+
+                cardBars[i].Tick(dt);
             }
 
             skillFlash = Mathf.Max(0f, skillFlash - dt * 2f);
-            skillText.color = Color.Lerp(new Color(1f, 1f, 1f, 0.9f), new Color(1f, 0.9f, 0.4f), skillFlash);
+            skillText.color = Color.Lerp(UiTokens.TextSub, UiTokens.Accent, skillFlash);
+        }
+
+        /// <summary>While downed the tactic text becomes the down / revive state (5 % steps).</summary>
+        void UpdateDownState(Revivable revive, bool downed)
+        {
+            int key = !downed ? -1 : revive.CurrentReviver != null ? 1000 + Mathf.FloorToInt(revive.Progress01 * 20f) : Mathf.CeilToInt(revive.BleedOutRemaining);
+            if (key == downKey)
+            {
+                return;
+            }
+
+            downKey = key;
+            if (!downed)
+            {
+                lastTacticValue = -1; // rebuild the tactic text next refresh
+                tacticText.color = UiTokens.TextSub;
+                return;
+            }
+
+            tacticText.text = revive.CurrentReviver != null ? $"蘇生中 {revive.Progress01 * 100f:0}%" : $"ダウン {revive.BleedOutRemaining:0}s";
+            tacticText.color = revive.CurrentReviver != null ? UiTokens.Energy : UiTokens.DangerText;
         }
 
         // ---------------------------------------------------------------- world markers
@@ -549,7 +627,7 @@ namespace CoopDeck.UI
             builder.Clear();
             if (isFocus)
             {
-                builder.Append("<color=#FF6060>◎ 集中</color>\n");
+                builder.Append("<color=#FF5A4A>◎ 集中</color>\n");
             }
 
             if (canFollow)
@@ -569,7 +647,7 @@ namespace CoopDeck.UI
                         continue;
                     }
 
-                    builder.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(ElementStyle.ColorOf(element))).Append(">◆")
+                    builder.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(UiTokens.ElementColor(element))).Append(">◆")
                         .Append(ElementStyle.DisplayName(element)).Append("</color>");
                 }
 
@@ -587,7 +665,7 @@ namespace CoopDeck.UI
                         var element = (Element)e;
                         if (!first) builder.Append('/');
                         first = false;
-                        builder.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(ElementStyle.ColorOf(element))).Append('>')
+                        builder.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(UiTokens.ElementColor(element))).Append('>')
                             .Append(ElementStyle.DisplayName(element)).Append("</color>");
                     }
 

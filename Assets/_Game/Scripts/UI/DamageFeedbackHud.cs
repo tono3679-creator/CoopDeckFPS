@@ -41,7 +41,7 @@ namespace CoopDeck.UI
 
         void Awake()
         {
-            root = HudKit.CreateCanvas(transform, "Damage Feedback Canvas", 9);
+            root = HudKit.CreateCanvas(transform, "Damage Feedback Canvas", 9, false); // the vignette covers the whole screen
 
             vignette = HudKit.CreateImage("Vignette", root, new Color(1f, 0f, 0f, 0f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             RectTransform v = vignette.rectTransform;
@@ -58,9 +58,10 @@ namespace CoopDeck.UI
                 indicators[i] = new Indicator { Pivot = pivot, Arc = arc };
             }
 
-            downText = HudKit.CreateText("Down", root, 46, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(1200f, 70f));
+            downText = HudKit.CreateText("Down", root, UiTokens.Display, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(1200f, 70f));
+            downText.fontStyle = FontStyle.Bold;
             downText.text = "ダウン！ まもなく復活します";
-            downText.color = new Color(1f, 0.4f, 0.4f, 1f);
+            downText.color = UiTokens.DangerText;
             HudKit.AddOutline(downText, 0.8f);
             downText.gameObject.SetActive(false);
         }

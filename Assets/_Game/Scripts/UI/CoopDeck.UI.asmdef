@@ -13,6 +13,7 @@
         "CoopDeck.Enemies",
         "CoopDeck.Combos",
         "CoopDeck.NPC",
+        "CoopDeck.Characters",
         "Unity.InputSystem",
         "UnityEngine.UI"
     ],

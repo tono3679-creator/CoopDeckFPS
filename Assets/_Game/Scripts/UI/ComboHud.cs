@@ -29,6 +29,8 @@ namespace CoopDeck.UI
         Text coopTagText;
         Text participantsText;
         Image coopGlow;
+
+        readonly Image[] elementIcons = new Image[2];
         bool coopBanner;
         Text noticeText;
         float bannerAge = float.PositiveInfinity;
@@ -64,23 +66,33 @@ namespace CoopDeck.UI
         void Awake()
         {
             root = HudKit.CreateCanvas(transform, "Combo HUD Canvas", 12);
-            banner = HudKit.CreateRect("Banner", root, new Vector2(0.5f, 0.5f), new Vector2(0f, 205f), new Vector2(900f, 90f));
-            nameText = HudKit.CreateText("ComboName", banner, 44, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 14f), new Vector2(900f, 56f));
-            HudKit.AddOutline(nameText, 0.8f);
-            detailText = HudKit.CreateText("ComboDetail", banner, 22, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -26f), new Vector2(900f, 30f));
-            HudKit.AddOutline(detailText, 0.6f);
-            // Co-op extras: a gold tag above the name, who set it up and who finished it below.
-            coopGlow = HudKit.CreateImage("CoopGlow", banner, new Color(1f, 0.78f, 0.25f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0f, 2f), new Vector2(540f, 96f));
+            Rect layout = HudLayout.ComboBanner;
+            banner = HudKit.CreateRect("Banner", root, new Vector2(0.5f, 0.5f), new Vector2(0f, layout.center.y - HudLayout.Height * 0.5f), layout.size);
+            coopGlow = HudKit.CreateImage("CoopGlow", banner, UiTokens.WithAlpha(UiTokens.Coop, 0f), new Vector2(0.5f, 0.5f), new Vector2(0f, 2f), new Vector2(640f, 120f));
+            coopGlow.sprite = UiSprites.Glow;
             coopGlow.transform.SetAsFirstSibling();
-            coopTagText = HudKit.CreateText("CoopTag", banner, 24, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 54f), new Vector2(900f, 30f));
-            coopTagText.color = new Color(1f, 0.85f, 0.35f);
-            HudKit.AddOutline(coopTagText, 0.8f);
-            participantsText = HudKit.CreateText("Participants", banner, 20, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -54f), new Vector2(900f, 28f));
-            HudKit.AddOutline(participantsText, 0.7f);
+            for (int i = 0; i < elementIcons.Length; i++)
+            {
+                elementIcons[i] = UiWidgets.ElementIcon($"Element{i}", banner, Element.None, new Vector2(0.5f, 0.5f), new Vector2(i == 0 ? -230f : 230f, 4f), 32f);
+                HudKit.AddOutline(elementIcons[i], 0.6f);
+            }
+
+            nameText = HudKit.CreateText("ComboName", banner, UiTokens.Display, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 12f), new Vector2(900f, 56f));
+            nameText.fontStyle = FontStyle.Bold;
+            HudKit.AddOutline(nameText, 0.85f);
+            detailText = HudKit.CreateText("ComboDetail", banner, UiTokens.Body, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(900f, 30f));
+            HudKit.AddOutline(detailText, 0.7f);
+            // Co-op extras: a gold tag above the name, who set it up and who finished it below.
+            coopTagText = HudKit.CreateText("CoopTag", banner, UiTokens.Label, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 42f), new Vector2(900f, 30f));
+            coopTagText.color = UiTokens.Coop;
+            coopTagText.fontStyle = FontStyle.Bold;
+            HudKit.AddOutline(coopTagText, 0.85f);
+            participantsText = HudKit.CreateText("Participants", banner, UiTokens.Caption, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -42f), new Vector2(900f, 28f));
+            HudKit.AddOutline(participantsText, 0.75f);
             coopTagText.gameObject.SetActive(false);
             participantsText.gameObject.SetActive(false);
-            noticeText = HudKit.CreateText("DebugNotice", root, 22, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 140f), new Vector2(1000f, 30f));
-            HudKit.AddOutline(noticeText, 0.6f);
+            noticeText = HudKit.CreateText("DebugNotice", root, UiTokens.Body, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, -200f), new Vector2(1000f, 30f));
+            HudKit.AddOutline(noticeText, 0.7f);
             banner.gameObject.SetActive(false);
             noticeText.gameObject.SetActive(false);
         }
@@ -137,7 +149,9 @@ namespace CoopDeck.UI
 
             coopTagText.gameObject.SetActive(report.IsCoop);
             participantsText.gameObject.SetActive(true);
-            participantsText.color = report.IsCoop ? new Color(1f, 0.92f, 0.65f) : new Color(1f, 1f, 1f, 0.85f);
+            participantsText.color = report.IsCoop ? Color.Lerp(UiTokens.Coop, UiTokens.TextMain, 0.5f) : UiTokens.TextMain;
+            SetElementIcon(elementIcons[0], report.Trigger.PartnerElement);
+            SetElementIcon(elementIcons[1], report.Trigger.IncomingElement);
             LastParticipants = participantsText.text;
             detailText.text = detail;
             banner.gameObject.SetActive(true);
@@ -191,8 +205,19 @@ namespace CoopDeck.UI
                 SetAlpha(detailText, alpha * 0.9f);
                 SetAlpha(coopTagText, alpha);
                 SetAlpha(participantsText, alpha * 0.9f);
+
+                // The two element icons resonate: they pulse together and drift toward the name.
+                float resonance = bannerAge < 0.5f ? Mathf.Sin(bannerAge / 0.5f * Mathf.PI * 3f) * (1f - bannerAge / 0.5f) : 0f;
+                float converge = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(bannerAge / 0.25f));
+                for (int i = 0; i < elementIcons.Length; i++)
+                {
+                    Image icon = elementIcons[i];
+                    icon.rectTransform.anchoredPosition = new Vector2((i == 0 ? -1f : 1f) * Mathf.Lerp(250f, 230f, converge), 4f);
+                    icon.rectTransform.localScale = Vector3.one * (1f + 0.25f * resonance);
+                    SetAlpha(icon, alpha);
+                }
                 // Soft gold glow behind a co-op banner (very low alpha so it never hides enemies).
-                float glow = coopBanner ? alpha * (0.07f + 0.04f * Mathf.Sin(bannerAge * 18f)) : 0f;
+                float glow = coopBanner ? alpha * (0.22f + 0.08f * Mathf.Sin(bannerAge * 18f)) : 0f;
                 SetAlpha(coopGlow, glow);
                 if (alpha <= 0f)
                 {
@@ -210,6 +235,12 @@ namespace CoopDeck.UI
                     noticeText.gameObject.SetActive(false);
                 }
             }
+        }
+
+        static void SetElementIcon(Image icon, Element element)
+        {
+            icon.sprite = UiSprites.ElementIcon(element);
+            icon.color = UiTokens.ElementColor(element);
         }
 
         static void SetAlpha(Graphic graphic, float alpha)

@@ -1,7 +1,6 @@
 using CoopDeck.Combat;
 using CoopDeck.Core;
 using CoopDeck.Player;
-using CoopDeck.Weapons;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -9,9 +8,10 @@ using UnityEngine.UI;
 namespace CoopDeck.UI
 {
     /// <summary>
-    /// Combat HUD built in code: dynamic crosshair, hit marker, damage numbers, ammo/reload,
-    /// HP with shield and attack-buff readout, dash charges, pause notice, controls hint and the
-    /// F3 performance overlay. The card hand lives in <see cref="DeckHud"/>.
+    /// Combat HUD built in code (Docs/UI_DESIGN.md §5): dynamic crosshair, hit marker, damage
+    /// numbers, the vitals panel (bottom left), the weapon panel (bottom right), the combat
+    /// notification feed (top centre), the F1 controls guide, the pause screen with the full
+    /// guide, and the F3 performance overlay. The card hand lives in <see cref="DeckHud"/>.
     /// </summary>
     public class HudController : MonoBehaviour
     {
@@ -21,15 +21,16 @@ namespace CoopDeck.UI
         [SerializeField] FrameTimeMonitor frameMonitor;
         [SerializeField] bool showPerformanceOverlay = true;
         [SerializeField] bool showControlsHint = true;
+        [Tooltip("Fallback element for the vitals mark when the player has no PlayerCharacterSwap (the character definition wins).")]
+        [SerializeField] Element characterElement = Element.Fire;
 
-        static readonly Color CrosshairColor = new Color(1f, 1f, 1f, 0.92f);
-        static readonly Color HitColor = new Color(1f, 1f, 1f, 1f);
-        static readonly Color HeadshotColor = new Color(1f, 0.85f, 0.2f, 1f);
-        static readonly Color KillColor = new Color(1f, 0.25f, 0.3f, 1f);
-        static readonly Color SkillHitColor = new Color(0.75f, 0.6f, 1f, 1f);
-        static readonly Color CriticalColor = new Color(1f, 0.55f, 0.15f, 1f);
-        static readonly Color ComboColor = new Color(1f, 0.5f, 0.95f, 1f);
-        static readonly Color ShieldColor = new Color(0.55f, 0.9f, 1f, 1f);
+        static readonly Color CrosshairColor = UiTokens.WithAlpha(UiTokens.TextMain, 0.92f);
+        static readonly Color HitColor = UiTokens.TextMain;
+        static readonly Color HeadshotColor = UiTokens.Accent;
+        static readonly Color KillColor = UiTokens.Danger;
+        static readonly Color SkillHitColor = Palette.Hex(0xC9B6FF);
+        static readonly Color CriticalColor = Palette.Hex(0xFF9A3C);
+        static readonly Color ComboColor = Palette.Hex(0xFF8FE0);
 
         RectTransform root;
         Camera viewCamera;
@@ -41,22 +42,22 @@ namespace CoopDeck.UI
         float hitMarkerScale = 1f;
         Color hitMarkerColor = Color.white;
 
-        Text ammoText;
-        Text ammoMaxText;
-        Text reloadLabel;
-        Image reloadFill;
-        Image hpFill;
-        Image shieldFill;
-        Text hpText;
-        Text statusText;
-        readonly Image[] dashPips = new Image[3];
+        VitalsPanel vitals;
+        WeaponPanel weapon;
+        NotificationFeedView feed;
+        GuidePanel compactGuide;
+        GuidePanel fullGuide;
+        RectTransform pauseOverlay;
+        Text guideChipText;
         Text perfText;
-        Text pausedText;
-        Text hintText;
+        RectTransform perfPanel;
+        InputScheme chipScheme = (InputScheme)(-1);
 
         DamageNumber[] damageNumbers;
         int nextDamageNumber;
-        bool hintCollapsed;
+        bool guideOpen;
+        Revivable playerRevivable;
+        RectTransform gallery;
 
         class DamageNumber
         {
@@ -67,6 +68,20 @@ namespace CoopDeck.UI
             public float Life;
             public float Rise;
             public bool Active;
+        }
+
+        /// <summary>Newest combat notice shown (tests, debugging).</summary>
+        public string NewestNotice => feed != null ? feed.Newest : "";
+
+        /// <summary>The element on the vitals mark (from the character in use).</summary>
+        public Element ShownElement { get; private set; }
+
+        /// <summary>The element of the character a player object uses, or <paramref name="fallback"/> without a character definition.</summary>
+        public static Element CharacterElement(GameObject playerObject, Element fallback)
+        {
+            CoopDeck.Characters.PlayerCharacterSwap swap = playerObject != null ? playerObject.GetComponent<CoopDeck.Characters.PlayerCharacterSwap>() : null;
+            CoopDeck.Characters.CharacterDefinition definition = swap != null ? swap.Current : null;
+            return definition != null ? definition.Element : fallback;
         }
 
         void Awake()
@@ -82,6 +97,15 @@ namespace CoopDeck.UI
         void OnDisable()
         {
             CombatEvents.DamageApplied -= OnDamageApplied;
+            if (playerRevivable != null)
+            {
+                playerRevivable.RevivedByAlly -= OnPlayerRevived;
+            }
+        }
+
+        void OnDestroy()
+        {
+            feed?.Dispose();
         }
 
         void Start()
@@ -95,6 +119,22 @@ namespace CoopDeck.UI
             {
                 frameMonitor = GetComponent<FrameTimeMonitor>();
             }
+
+            // The character in use (fox / rabbit) decides the element mark; it is chosen in Awake.
+            ShownElement = CharacterElement(player != null ? player.gameObject : null, characterElement);
+            vitals.SetElement(ShownElement);
+
+            playerRevivable = player != null ? player.GetComponent<Revivable>() : null;
+            if (playerRevivable != null)
+            {
+                playerRevivable.RevivedByAlly += OnPlayerRevived;
+            }
+        }
+
+        void OnPlayerRevived(Revivable revivable, ICombatActor reviver)
+        {
+            string name = reviver != null && !(reviver is Object o && o == null) ? reviver.DisplayName : "味方";
+            HudNotifications.Post(HudNoticeKind.Revive, $"{name} があなたを蘇生しました");
         }
 
         // ---------------------------------------------------------------- build
@@ -105,32 +145,20 @@ namespace CoopDeck.UI
 
             BuildCrosshair();
             BuildHitMarker();
-            BuildAmmo();
-            BuildHealth();
-
-            perfText = HudKit.CreateText("Perf", root, 20, TextAnchor.UpperLeft, new Vector2(0f, 1f), new Vector2(170f, -80f), new Vector2(320f, 130f));
-            perfText.gameObject.SetActive(showPerformanceOverlay);
-
-            pausedText = HudKit.CreateText("Paused", root, 40, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0f, 140f), new Vector2(1200f, 120f));
-            pausedText.text = "一時停止中\nクリック / Esc / Start で再開　（パッド Y：NPC デッキ編集）";
-            HudKit.AddOutline(pausedText);
-            pausedText.gameObject.SetActive(false);
-
-            hintText = HudKit.CreateText("Hint", root, 18, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0f, -52f), new Vector2(1700f, 110f));
-            hintText.text =
-                "WASD 移動 / Shift 走る / Ctrl 回避 / Space ジャンプ / 左クリック 射撃 / R リロード / Q・E・F スキル / 1・2・3 カード選択 / G アイテム使用 / T アイテム切替 / F1 ヒント / F3 性能\n" +
-                "パッド: RT 射撃 / LB・RB・Y スキル / 十字← → カード選択 / 十字↑ アイテム使用 / 十字↓ アイテム切替 / A ジャンプ / B 回避 / X リロード / L3 走る\n" +
-                "コンボ（4 秒以内）: 氷＋雷 / 火＋重力 / 火＋雷　F4 エフェクト品質 / F6 コンボ段階 / F7 練習デッキ\n" +
-                "NPC 指示: V / R3 方針切替（自動→集中→コンボ優先）　中クリック・X / LT 照準の敵を集中攻撃　Tab（パッドはポーズ中 Y）NPC デッキ編集　ダウンした味方の近くに立つと蘇生";
-            hintText.color = new Color(1f, 1f, 1f, 0.8f);
-            HudKit.AddOutline(hintText, 0.5f);
-            hintText.gameObject.SetActive(showControlsHint);
+            vitals = VitalsPanel.Create(root, characterElement, "あなた");
+            ShownElement = characterElement;
+            weapon = WeaponPanel.Create(root);
+            feed = NotificationFeedView.Create(root);
+            BuildPerf();
+            BuildGuide();
+            BuildPause();
 
             damageNumbers = new DamageNumber[DamageNumberPoolSize];
             for (int i = 0; i < damageNumbers.Length; i++)
             {
                 Text t = HudKit.CreateText("DamageNumber", root, 30, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(200f, 50f));
-                HudKit.AddOutline(t);
+                t.fontStyle = FontStyle.Bold;
+                HudKit.AddOutline(t, 0.75f);
                 t.gameObject.SetActive(false);
                 damageNumbers[i] = new DamageNumber { Text = t, Rect = t.rectTransform };
             }
@@ -138,7 +166,8 @@ namespace CoopDeck.UI
 
         void BuildCrosshair()
         {
-            HudKit.CreateImage("CrosshairDot", root, CrosshairColor, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(4f, 4f));
+            Image dot = HudKit.CreateImage("CrosshairDot", root, CrosshairColor, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(4f, 4f));
+            HudKit.AddOutline(dot, 0.45f);
             for (int i = 0; i < 4; i++)
             {
                 bool vertical = i % 2 == 0;
@@ -159,38 +188,51 @@ namespace CoopDeck.UI
             }
         }
 
-        void BuildAmmo()
+        void BuildPerf()
         {
-            Image panel = HudKit.CreateImage("AmmoPanel", root, HudKit.PanelColor, new Vector2(1f, 0f), new Vector2(-160f, 75f), new Vector2(260f, 110f));
-            // Count is right-aligned ending at x=+20, "/ 30" starts at x=+30: they can never overlap.
-            ammoText = HudKit.CreateText("Ammo", panel.rectTransform, 56, TextAnchor.MiddleRight, new Vector2(0.5f, 0.5f), new Vector2(-60f, 12f), new Vector2(160f, 70f));
-            ammoMaxText = HudKit.CreateText("AmmoMax", panel.rectTransform, 26, TextAnchor.MiddleLeft, new Vector2(0.5f, 0.5f), new Vector2(75f, 4f), new Vector2(90f, 40f));
-            reloadLabel = HudKit.CreateText("Reload", panel.rectTransform, 18, TextAnchor.MiddleCenter, new Vector2(0.5f, 0f), new Vector2(0f, 26f), new Vector2(240f, 24f));
-            Image reloadBack = HudKit.CreateImage("ReloadBack", panel.rectTransform, new Color(1f, 1f, 1f, 0.15f), new Vector2(0.5f, 0f), new Vector2(0f, 10f), new Vector2(220f, 6f));
-            reloadFill = HudKit.CreateImage("ReloadFill", reloadBack.rectTransform, new Color(0.45f, 0.95f, 1f, 1f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(220f, 6f));
-            reloadFill.rectTransform.pivot = new Vector2(0f, 0.5f);
+            Rect layout = HudLayout.Perf;
+            perfPanel = HudKit.CreateRect("Perf", root, Vector2.zero, Vector2.zero, Vector2.zero, layout.size);
+            HudLayout.Place(perfPanel, layout);
+            perfText = UiWidgets.Label("Text", perfPanel, 14, UiTokens.TextSub, TextAnchor.UpperLeft, new Vector2(0.5f, 0.5f), Vector2.zero, layout.size, false, false);
+            HudKit.AddOutline(perfText, 0.85f);
+            perfPanel.gameObject.SetActive(showPerformanceOverlay);
         }
 
-        void BuildHealth()
+        void BuildGuide()
         {
-            Image panel = HudKit.CreateImage("HealthPanel", root, HudKit.PanelColor, new Vector2(0f, 0f), new Vector2(200f, 80f), new Vector2(340f, 110f));
-            Image back = HudKit.CreateImage("HpBack", panel.rectTransform, new Color(1f, 1f, 1f, 0.12f), new Vector2(0.5f, 0.5f), new Vector2(0f, 14f), new Vector2(300f, 22f));
-            hpFill = HudKit.CreateImage("HpFill", back.rectTransform, new Color(0.35f, 1f, 0.55f, 1f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(300f, 22f));
-            hpFill.rectTransform.pivot = new Vector2(0f, 0.5f);
-            shieldFill = HudKit.CreateImage("ShieldFill", back.rectTransform, ShieldColor, new Vector2(0f, 1f), new Vector2(0f, 3f), new Vector2(300f, 6f));
-            shieldFill.rectTransform.pivot = new Vector2(0f, 0.5f);
-            hpText = HudKit.CreateText("HpText", panel.rectTransform, 20, TextAnchor.MiddleLeft, new Vector2(0f, 0.5f), new Vector2(170f, 14f), new Vector2(300f, 26f));
-            HudKit.AddOutline(hpText, 0.5f);
-            statusText = HudKit.CreateText("Status", panel.rectTransform, 17, TextAnchor.MiddleLeft, new Vector2(0f, 1f), new Vector2(170f, 14f), new Vector2(300f, 24f));
-            statusText.color = new Color(1f, 0.92f, 0.55f);
+            Rect layout = HudLayout.GuideChip;
+            RectTransform chip = HudKit.CreateRect("GuideChip", root, Vector2.zero, Vector2.zero, Vector2.zero, layout.size);
+            HudLayout.Place(chip, layout);
+            guideChipText = UiWidgets.Label("Text", chip, UiTokens.Caption, UiTokens.TextSub, TextAnchor.MiddleLeft, new Vector2(0.5f, 0.5f),
+                Vector2.zero, layout.size, false, false);
+            HudKit.AddOutline(guideChipText, 0.85f);
+            guideChipText.supportRichText = true;
+            chip.gameObject.SetActive(showControlsHint);
+            compactGuide = GuidePanel.CreateCompact(root);
+            compactGuide.Root.gameObject.SetActive(false);
+        }
 
-            for (int i = 0; i < dashPips.Length; i++)
-            {
-                dashPips[i] = HudKit.CreateImage("DashPip", panel.rectTransform, Color.white, new Vector2(0f, 0f), new Vector2(34f + i * 30f, 20f), new Vector2(24f, 8f));
-            }
+        void BuildPause()
+        {
+            // Own canvas above the hand / ally HUD (11–12), below the NPC deck editor (30) and the UI preview (40).
+            RectTransform full = HudKit.CreateCanvas(transform, "Pause Canvas", 25, false);
+            pauseOverlay = full;
+            Image dim = HudKit.CreateImage("Dim", full, UiTokens.WithAlpha(UiTokens.Background, 0.72f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            HudKit.Stretch(dim.rectTransform);
 
-            Text dashLabel = HudKit.CreateText("DashLabel", panel.rectTransform, 15, TextAnchor.MiddleLeft, new Vector2(0f, 0f), new Vector2(165f, 20f), new Vector2(120f, 20f));
-            dashLabel.text = "回避";
+            RectTransform frame = HudKit.CreateSafeFrame(full);
+            var size = new Vector2(1060f, 600f);
+            fullGuide = GuidePanel.CreateFull(frame, size);
+            RectTransform title = HudKit.CreateRect("Title", frame, new Vector2(0.5f, 0.5f), new Vector2(0f, size.y * 0.5f + 20f), new Vector2(size.x, 90f));
+            LampView lamp = UiWidgets.Lamp("Lamp", title, new Vector2(0.5f, 0.5f), new Vector2(-170f, 22f), new Vector2(34f, 14f));
+            lamp.Set(true);
+            Text heading = UiWidgets.Label("Heading", title, UiTokens.Display, UiTokens.TextMain, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f),
+                new Vector2(20f, 22f), new Vector2(400f, 56f), true);
+            heading.text = "一時停止中";
+            Text resume = UiWidgets.Label("Resume", title, UiTokens.Body, UiTokens.TextSub, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f),
+                new Vector2(0f, -22f), new Vector2(size.x, 28f));
+            resume.text = "クリック / Esc / Start で再開　　パッド Y：NPC デッキ編集";
+            full.gameObject.SetActive(false);
         }
 
         // ---------------------------------------------------------------- events
@@ -207,11 +249,19 @@ namespace CoopDeck.UI
             bool critical = (e.Result.Flags & DamageFlags.Critical) != 0;
             bool combo = e.Info.Kind == DamageKind.Combo;
             bool skill = e.Info.Kind == DamageKind.Skill || e.Info.Kind == DamageKind.Status || combo;
+            if ((e.Info.Flags & DamageFlags.WeaponProc) != 0)
+            {
+                // A weapon ability's discharge (帯電連射): big number in its element colour, no hit marker.
+                SpawnDamageNumber(e.Info.Point, e.Result.Damage, true, killed, true, false, Color.Lerp(UiTokens.ElementColor(e.Info.Element), Color.white, 0.2f));
+                return;
+            }
+
             if (combo)
             {
                 SpawnDamageNumber(e.Info.Point, e.Result.Damage, true, killed, true, false, ComboColor);
                 return;
             }
+
             if (e.Info.Kind != DamageKind.Status)
             {
                 hitMarkerTimer = 0.14f;
@@ -239,7 +289,7 @@ namespace CoopDeck.UI
             n.Active = true;
             n.Text.text = Mathf.RoundToInt(amount).ToString();
             n.Text.fontSize = headshot || skill && !overTime ? 38 : overTime ? 24 : 30;
-            n.Text.color = killed ? KillColor : colorOverride ?? (headshot ? HeadshotColor : skill ? SkillHitColor : Color.white);
+            n.Text.color = killed ? KillColor : colorOverride ?? (headshot ? HeadshotColor : skill ? SkillHitColor : HitColor);
             n.Text.gameObject.SetActive(true);
         }
 
@@ -247,18 +297,49 @@ namespace CoopDeck.UI
 
         void Update()
         {
+            InputGlyphs.Poll();
             if (Keyboard.current != null && Keyboard.current.f3Key.wasPressedThisFrame ||
                 Gamepad.current != null && Gamepad.current.selectButton.wasPressedThisFrame)
             {
                 showPerformanceOverlay = !showPerformanceOverlay;
-                perfText.gameObject.SetActive(showPerformanceOverlay);
+                perfPanel.gameObject.SetActive(showPerformanceOverlay);
             }
 
-            if (Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame)
+            if (Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame && showControlsHint)
             {
-                hintCollapsed = !hintCollapsed;
-                hintText.gameObject.SetActive(showControlsHint && !hintCollapsed);
+                guideOpen = !guideOpen;
+                compactGuide.Root.gameObject.SetActive(guideOpen);
             }
+
+            if (Keyboard.current != null && Keyboard.current.f8Key.wasPressedThisFrame && UiStyleGallery.Available)
+            {
+                ToggleGallery();
+            }
+        }
+
+        /// <summary>F8: the read-only UI preview sheet (Editor / development builds).</summary>
+        public void ToggleGallery()
+        {
+            if (gallery == null)
+            {
+                var samples = new System.Collections.Generic.List<CoopDeck.Cards.CardDefinition>();
+                CoopDeck.Skills.DeckController deck = player != null ? player.GetComponent<CoopDeck.Skills.DeckController>() : null;
+                if (deck != null && deck.Deck != null)
+                {
+                    foreach (CoopDeck.Deck.CardRuntime card in deck.Deck.AllCards())
+                    {
+                        if (card.IsActive && !samples.Contains(card.Definition) && samples.Count < 5)
+                        {
+                            samples.Add(card.Definition);
+                        }
+                    }
+                }
+
+                gallery = UiStyleGallery.Build(transform, samples);
+                return;
+            }
+
+            gallery.gameObject.SetActive(!gallery.gameObject.activeSelf);
         }
 
         void LateUpdate()
@@ -276,15 +357,42 @@ namespace CoopDeck.UI
 
             UpdateCrosshair(dt);
             UpdateHitMarker(dt);
-            UpdateWeaponPanel();
-            UpdateHealthPanel();
+            vitals.Update(player, dt);
+            weapon.Update(player, dt);
+            feed.Tick(dt);
             UpdateDamageNumbers(dt);
+            UpdateGuide();
 
-            pausedText.gameObject.SetActive(Cursor.lockState != CursorLockMode.Locked);
+            bool paused = Cursor.lockState != CursorLockMode.Locked && !InputGate.IsBlocked;
+            if (pauseOverlay.gameObject.activeSelf != paused)
+            {
+                pauseOverlay.gameObject.SetActive(paused);
+            }
+
+            if (paused)
+            {
+                fullGuide.Refresh();
+            }
 
             if (showPerformanceOverlay)
             {
                 UpdatePerfText();
+            }
+        }
+
+        void UpdateGuide()
+        {
+            if (chipScheme != InputGlyphs.Active)
+            {
+                chipScheme = InputGlyphs.Active;
+                guideChipText.text = chipScheme == InputScheme.Gamepad
+                    ? "<b>Start</b>  操作ガイド（ポーズ）"
+                    : "<b>F1</b>  操作ガイド";
+            }
+
+            if (guideOpen)
+            {
+                compactGuide.Refresh();
             }
         }
 
@@ -318,84 +426,6 @@ namespace CoopDeck.UI
                 float distance = (14f + (1f - alpha) * 6f) * hitMarkerScale;
                 line.rectTransform.anchoredPosition = new Vector2(-Mathf.Sin(angle), Mathf.Cos(angle)) * distance;
                 line.rectTransform.sizeDelta = new Vector2(3f, 12f * hitMarkerScale);
-            }
-        }
-
-        void UpdateWeaponPanel()
-        {
-            HitscanWeapon weapon = player != null ? player.Weapon : null;
-            if (weapon == null || weapon.State == null)
-            {
-                ammoText.text = "--";
-                ammoMaxText.text = "";
-                reloadLabel.text = "";
-                reloadFill.rectTransform.localScale = new Vector3(0f, 1f, 1f);
-                return;
-            }
-
-            WeaponState state = weapon.State;
-            ammoText.text = state.Ammo.ToString();
-            ammoMaxText.text = "/ " + state.MagazineSize;
-            bool low = state.Ammo <= Mathf.CeilToInt(state.MagazineSize * 0.25f);
-            ammoText.color = low ? KillColor : Color.white;
-
-            if (state.IsReloading)
-            {
-                reloadLabel.text = "リロード中";
-                reloadFill.rectTransform.localScale = new Vector3(state.ReloadProgress, 1f, 1f);
-            }
-            else
-            {
-                reloadLabel.text = weapon.Definition != null ? weapon.Definition.displayName : "";
-                reloadFill.rectTransform.localScale = new Vector3(0f, 1f, 1f);
-            }
-        }
-
-        void UpdateHealthPanel()
-        {
-            Health health = player != null ? player.Health : null;
-            CombatStatus status = player != null ? player.Status : null;
-            float shield = status != null ? status.Model.Shield : 0f;
-
-            if (health != null)
-            {
-                hpFill.rectTransform.localScale = new Vector3(health.Normalized, 1f, 1f);
-                string shieldText = shield > 0f ? $"  +シールド {Mathf.CeilToInt(shield)}" : "";
-                hpText.text = health.IsAlive
-                    ? $"HP {Mathf.CeilToInt(health.Current)} / {Mathf.CeilToInt(health.Max)}{shieldText}"
-                    : "ダウン… まもなく復活";
-                shieldFill.rectTransform.localScale = new Vector3(Mathf.Clamp01(shield / health.Max), 1f, 1f);
-            }
-
-            string buffText = "";
-            if (status != null && status.Model.DamageBuff > 0f)
-            {
-                buffText = $"攻撃力 +{status.Model.DamageBuff * 100f:0}%  ({status.Model.DamageBuffTimeRemaining:0.0}s)";
-            }
-
-            if (status != null && shield > 0f)
-            {
-                buffText += (buffText.Length > 0 ? "   " : "") + $"シールド {status.Model.ShieldTimeRemaining:0.0}s";
-            }
-
-            statusText.text = buffText;
-
-            FpsMotor motor = player != null ? player.Motor : null;
-            int maxCharges = motor != null && motor.Profile != null ? motor.Profile.dashCharges : 0;
-            float charge = motor != null ? motor.DashCharge : 0f;
-            for (int i = 0; i < dashPips.Length; i++)
-            {
-                bool exists = i < maxCharges;
-                dashPips[i].gameObject.SetActive(exists);
-                if (!exists)
-                {
-                    continue;
-                }
-
-                float fill = Mathf.Clamp01(charge - i);
-                dashPips[i].color = fill >= 1f
-                    ? new Color(0.45f, 0.95f, 1f, 1f)
-                    : new Color(1f, 1f, 1f, 0.15f + 0.35f * fill);
             }
         }
 
@@ -447,7 +477,7 @@ namespace CoopDeck.UI
             perfText.text =
                 $"FPS {frameMonitor.AverageFps:0}  (1% low {frameMonitor.OnePercentLowFps:0})\n" +
                 $"{frameMonitor.AverageMs:0.0} ms  (worst {frameMonitor.WorstMs:0.0})\n" +
-                $"Tier {PerformanceSettings.Tier} / Quality {quality} / VFX {PerformanceSettings.Vfx}{(PerformanceBootstrap.Uncapped ? " / uncapped" : "")}\n" +
+                $"Tier {PerformanceSettings.Tier} / {quality} / VFX {PerformanceSettings.Vfx}{(PerformanceBootstrap.Uncapped ? " / uncapped" : "")}\n" +
                 $"{Screen.width}x{Screen.height}  vSync {QualitySettings.vSyncCount}";
         }
     }

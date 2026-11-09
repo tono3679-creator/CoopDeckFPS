@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "status": "proposal_requires_playtest",
+  "weaponId": "ignis27_blazetail",
+  "displayName": {
+    "ja": "IGNIS-27 ブレイズテイル",
+    "en": "IGNIS-27 Blazetail"
+  },
+  "ownerCharacterId": "fire_fox",
+  "weaponCategory": "assault_rifle",
+  "startingWeapon": true,
+  "description": {
+    "ja": "炎属性キツネ専用の中距離アサルトライフル。精密射撃で火種を蓄積し、連続命中で起爆する。",
+    "en": "A mid-range fire-element assault rifle. Consecutive hits build embers and trigger a localized ignition burst."
+  },
+  "visuals": {
+    "style": "stylized_cel_shaded_3d",
+    "primaryColors": ["#F2E7D8", "#BA4A37", "#292B32"],
+    "accentColors": ["#F5953D", "#FFD578"],
+    "distinctiveElements": [
+      "orange_glowing_energy_core",
+      "flame_emblem",
+      "angular_white_red_armor_panels",
+      "compact_amber_optic"
+    ],
+    "muzzleFlashStyle": "short_bright_yellow_orange_flame_burst",
+    "reloadVfxStyle": "brief_ember_glow_and_energy_cell_pulse",
+    "hitVfxStyle": "small_ember_spark",
+    "abilityProcVfxStyle": "compact_3d_fire_burst_with_glowing_fragments"
+  },
+  "baseStats": {
+    "fireMode": "full_auto",
+    "hitModel": "hitscan",
+    "baseDamagePerBullet": 18.0,
+    "fireRateRpm": 480,
+    "magazineSize": 28,
+    "startingReserveAmmo": 168,
+    "reloadSeconds": 2.10,
+    "equipSeconds": 0.40,
+    "weakPointDamageMultiplier": 1.65,
+    "rangeMeters": 85.0,
+    "damageFalloff": {
+      "startMeters": 24.0,
+      "endMeters": 60.0,
+      "minimumMultiplier": 0.70
+    },
+    "accuracy": {
+      "hipfireSpreadDegrees": 1.75,
+      "adsSpreadDegrees": 0.40,
+      "movingSpreadMultiplier": 1.40
+    },
+    "recoil": {
+      "verticalDegreesPerShot": 1.05,
+      "horizontalMaxDegreesPerShot": 0.35,
+      "recoverySeconds": 0.20
+    },
+    "handling": {
+      "adsEnterSeconds": 0.20,
+      "equippedMovementSpeedMultiplier": 0.97,
+      "adsMovementSpeedMultiplier": 0.75
+    }
+  },
+  "uniqueAbility": {
+    "abilityId": "ember_brand",
+    "displayNameJa": "火種刻印",
+    "trigger": "consecutive_hits_on_same_target",
+    "requiredStacks": 6,
+    "maxSecondsBetweenHits": 2.25,
+    "stacksPerDirectHit": 1,
+    "resetStacksOnTargetSwitch": true,
+    "onTrigger": {
+      "bonusDamageToPrimaryTarget": 22.0,
+      "splashRadiusMeters": 2.5,
+      "maxSplashTargets": 4,
+      "damagePerSplashTarget": 12.0,
+      "applyElementalStatus": "fire",
+      "statusDurationSeconds": 4.0,
+      "useExistingBurnStatusBehavior": true,
+      "cooldownPerTargetSeconds": 4.0
+    },
+    "rules": {
+      "normalGunshotsConsumeSkillGauge": false,
+      "abilityIgnitionConsumesSkillGauge": false,
+      "doesNotRecursivelyTriggerSelf": true,
+      "splashHitsDoNotAddStacks": true,
+      "canTriggerExistingElementalComboSystem": true,
+      "reuseExistingComboCooldownRules": true,
+      "damageProcessedByExistingCombatSystem": true,
+      "avoidDuplicateBurnDamageImplementation": true,
+      "multiplayerDamageAuthority": "reuse_existing_authoritative_damage_flow"
+    }
+  },
+  "audioCues": {
+    "shoot": "punchy_midrange_rifle_shot_with_short_ember_tail",
+    "reload": "mechanical_magazine_click_and_low_furnace_hum",
+    "abilityProc": "sharp_ignition_pop_with_warm_low_end"
+  },
+  "presentation": {
+    "uiCategoryLabelJa": "アサルトライフル",
+    "uiAttributeLabelJa": "炎",
+    "uiTraitLabelJa": "火種刻印",
+    "showChargeFeedbackOnWeapon": true,
+    "showChargeProgressOnHud": true
+  },
+  "balancingNotes": [
+    "Values are initial proposals, not an assertion of existing in-project fox rifle stats.",
+    "Compared to VOLT-9 Thunderhop (8 damage / 900 RPM), this rifle has slower firing, higher per-shot damage, and longer effective range.",
+    "Ignition is a weapon effect and must not spend skill-card gauge.",
+    "Fire status duration defaults to 4 seconds and must respect the existing elemental combo repeat cooldown (currently planned as 3 seconds).",
+    "Re-use the existing fire/burn status implementation; do not apply a second independent DoT.",
+    "Preserve existing weapon class, ScriptableObject schema, damage authority, and character prefab; adapt this JSON to the project rather than overwriting existing systems."
+  ]
+}
