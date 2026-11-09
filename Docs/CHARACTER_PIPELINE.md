@@ -152,6 +152,10 @@ blender -b --factory-startup -P ArtSource/Tools/refine_prop.py -- --name FireRif
     --texture-out Assets/_Game/Art/Weapons/FireRifle/Textures --glb-out ArtSource/FireRifle/Export [--check <dir>]
 ```
 
+### 6.2 一人称向けの作り直しと武器シェーダー（2026-11-09）
+
+30k は高精細の丸い角を折れ目に潰し、平らな面にムラが出ていた。`ArtSource/Tools/rebuild_weapon_hq.py` で 60k＋折れ目に 1.2 mm のベベル＋面積重み付き法線（LOD1 30k）に作り直し、表面マップ（凸の角・AO・溝）と材質マスクも焼いて、シェーダー `CoopDeck/Weapon/HardSurfaceToon` で塗装・樹脂・金属の質感とエッジハイライトを付けた。描画側（ポストプロセスの位置・SMAA・Handheld の解像度）も含めて `WEAPON_VISUAL_QUALITY.md`。
+
 ---
 
 ## 7. 質感の改善（フィギュアっぽさを減らす、2026-11-07）

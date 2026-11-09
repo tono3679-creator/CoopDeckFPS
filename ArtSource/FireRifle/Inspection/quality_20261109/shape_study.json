@@ -1,0 +1,92 @@
+{
+  "highres": {
+    "triangles": 437374,
+    "edges_over_40deg": 0.0308,
+    "edges_over_60deg": 0.0087,
+    "dihedral_p50_p90_p99": [
+      7.0,
+      23.6,
+      58.0
+    ],
+    "distance_to_sculpt_mm_mean_p99_max": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "current_30k": {
+    "triangles": 30000,
+    "edges_over_40deg": 0.1643,
+    "edges_over_60deg": 0.0723,
+    "dihedral_p50_p90_p99": [
+      13.5,
+      51.5,
+      119.6
+    ],
+    "distance_to_sculpt_mm_mean_p99_max": [
+      0.046,
+      0.17,
+      0.81
+    ]
+  },
+  "current_30k_wn": {
+    "triangles": 30000,
+    "edges_over_40deg": 0.1643,
+    "edges_over_60deg": 0.0723,
+    "dihedral_p50_p90_p99": [
+      13.5,
+      51.5,
+      119.6
+    ],
+    "distance_to_sculpt_mm_mean_p99_max": [
+      0.046,
+      0.17,
+      0.81
+    ]
+  },
+  "d60k_s40": {
+    "triangles": 60000,
+    "edges_over_40deg": 0.0981,
+    "edges_over_60deg": 0.0386,
+    "dihedral_p50_p90_p99": [
+      10.9,
+      39.6,
+      94.5
+    ],
+    "distance_to_sculpt_mm_mean_p99_max": [
+      0.029,
+      0.102,
+      0.75
+    ]
+  },
+  "d60k_s40_wn": {
+    "triangles": 60000,
+    "edges_over_40deg": 0.0981,
+    "edges_over_60deg": 0.0386,
+    "dihedral_p50_p90_p99": [
+      10.9,
+      39.6,
+      94.5
+    ],
+    "distance_to_sculpt_mm_mean_p99_max": [
+      0.029,
+      0.102,
+      0.75
+    ]
+  },
+  "d60k_s40_bevel1.2mm_wn": {
+    "triangles": 109436,
+    "edges_over_40deg": 0.0637,
+    "edges_over_60deg": 0.0186,
+    "dihedral_p50_p90_p99": [
+      11.5,
+      34.2,
+      89.6
+    ],
+    "distance_to_sculpt_mm_mean_p99_max": [
+      0.029,
+      0.102,
+      0.75
+    ]
+  }
+}

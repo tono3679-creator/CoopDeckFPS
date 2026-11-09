@@ -1,0 +1,52 @@
+﻿01:05:20 | INFO: Data are loaded, start creating Blender stuff
+01:05:20 | INFO: Blender create Mesh node FireRifle_Body
+01:05:20 | INFO: glTF import finished in 0.03s
+01:05:20 | INFO: Data are loaded, start creating Blender stuff
+01:05:20 | INFO: Blender create Mesh node 0
+01:05:21 | INFO: glTF import finished in 0.72s
+blender.exe : C:\dev\CoopDeckFPS\ArtSource\Tools\rebuild_weapon_hq.py:143: DeprecationWarning: 'Material.use_nodes' is 
+expected to be removed in Blender 6.0
+At line:1 char:442
++ ... xport\HQ2'; & $b -b --factory-startup -P ArtSource\Tools\rebuild_weap ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\dev\CoopDeck... in Blender 6.0:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  dst.use_nodes = True
+  sculpt fitted: scale 0.4455; distance to the prepared prop mean 0.20 mm, 95% 0.48 mm
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+  decimated 437374 -> 60000 triangles, 29996 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+  bevel 1.2 mm on creases over 50 deg: 60000 -> 109436 triangles
+  UVs: texel density 5/50/95% 3258/3697/3852 texels/m at 4096, 37.0% used
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+  colour: 2.361% of texels missed after a wider search, 4083 left after filling inside the islands
+Info: Baking map saved to internal image, save it externally or pack it
+  baked 4096x4096 tangent normals -> C:\dev\CoopDeckFPS\ArtSource\FireRifle\Export\HQ2\T_FireRifle_Normal.png; lean from the low mesh: median 2.1 deg, 90% 8.6 deg; 2.2% of texels over 75 deg reset to flat
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+  texel curvature (1/m) over the patches 50/90/99/99.9%: 6/103/300/496
+Info: Baking map saved to internal image, save it externally or pack it
+  surface: convex edge share 3.3%, concave 4.0%, AO mean 0.886 (5% 0.385)
+  surface map -> C:\dev\CoopDeckFPS\ArtSource\FireRifle\Export\HQ2\T_FireRifle_Surface.png
+  material classes: white paint 11.0%, red paint 25.3%, dark polymer 50.1%, bare metal 3.4%, accent 10.1%
+INFO Draco is available, use library at C:\Program Files\Blender Foundation\Blender 5.2\5.2\scripts\addons_core\io_scene_gltf2\bf_intern_draco_bridge.dll
+INFO MeshOptimizer is available, use library at C:\Program Files\Blender Foundation\Blender 5.2\5.2\scripts\addons_core\io_scene_gltf2\bf_intern_meshopt_bridge.dll
+01:10:02 | INFO: Starting glTF 2.0 export
+01:10:02 | INFO: Extracting primitive: FireRifle_Body.001
+01:10:02 | INFO: Primitives created: 1
+01:10:02 | INFO: Finished glTF 2.0 export in 0.4282345771789551 s
+
+
+FBX export starting... 'C:\\dev\\CoopDeckFPS\\ArtSource\\FireRifle\\Export\\HQ2\\FireRifle.fbx'
+export finished in 0.2936 sec.
+  FireRifle_Body_LOD0: 109436 triangles, 54714 vertices
+  FireRifle_Body_LOD1: 30000 triangles, 14996 vertices
+  wrote C:\dev\CoopDeckFPS\ArtSource\FireRifle\Export\HQ2\FireRifle.fbx
+REBUILD_WEAPON_DONE
+Blender 5.2.3 LTS (hash e13b728c6880 built 2026-10-22 01:37:16)
+
+Blender quit

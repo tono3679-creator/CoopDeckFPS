@@ -1,0 +1,242 @@
+{
+  "meshy_remesh": {
+    "file": "ArtSource\\FireRifle\\Meshy\\FireRifle_mesh.glb",
+    "meshes": [
+      {
+        "object": "Mesh_0",
+        "triangles": 7678,
+        "vertices_blender": 12656,
+        "unique_positions": 3840,
+        "uv_layers": [
+          "UVMap"
+        ],
+        "dimensions_m": [
+          1.9074,
+          0.2639,
+          0.7013
+        ],
+        "edges": 17946,
+        "boundary_edges": 12858,
+        "sharp_marked_edges": 0,
+        "split_normal_vertices": 0,
+        "dihedral_deg_p50_p90_p99": [
+          7.47,
+          24.13,
+          29.32
+        ],
+        "edges_over_deg": {
+          "10": 0.4098,
+          "20": 0.1737,
+          "30": 0.0002,
+          "40": 0.0,
+          "60": 0.0,
+          "80": 0.0
+        },
+        "edges_between_10_40_deg": 0.4098,
+        "sliver_tris_min_angle_lt_10deg": 0.2153,
+        "sliver_tris_min_angle_lt_5deg": 0.0819,
+        "median_edge_mm": 19.77,
+        "p95_edge_mm": 90.31,
+        "images": [
+          {
+            "name": "Image_0",
+            "size": [
+              2048,
+              2048
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "meshy_highres": {
+    "file": "ArtSource\\FireRifle\\Meshy\\FireRifle_highres.glb",
+    "meshes": [
+      {
+        "object": "Mesh_0",
+        "triangles": 437374,
+        "vertices_blender": 218683,
+        "unique_positions": 218683,
+        "uv_layers": [],
+        "dimensions_m": [
+          1.9079,
+          0.2649,
+          0.7021
+        ],
+        "edges": 656061,
+        "boundary_edges": 0,
+        "sharp_marked_edges": 0,
+        "split_normal_vertices": 0,
+        "dihedral_deg_p50_p90_p99": [
+          6.95,
+          23.58,
+          58.01
+        ],
+        "edges_over_deg": {
+          "10": 0.3629,
+          "20": 0.1367,
+          "30": 0.0599,
+          "40": 0.0308,
+          "60": 0.0087,
+          "80": 0.0016
+        },
+        "edges_between_10_40_deg": 0.3321,
+        "sliver_tris_min_angle_lt_10deg": 0.0482,
+        "sliver_tris_min_angle_lt_5deg": 0.0136,
+        "median_edge_mm": 1.477,
+        "p95_edge_mm": 7.944,
+        "images": []
+      }
+    ]
+  },
+  "prepared": {
+    "file": "ArtSource\\FireRifle\\Export\\FireRifle.glb",
+    "meshes": [
+      {
+        "object": "FireRifle_Body",
+        "triangles": 7678,
+        "vertices_blender": 10146,
+        "unique_positions": 3840,
+        "uv_layers": [
+          "UVMap"
+        ],
+        "dimensions_m": [
+          0.1176,
+          0.85,
+          0.3125
+        ],
+        "edges": 16521,
+        "boundary_edges": 10008,
+        "sharp_marked_edges": 0,
+        "split_normal_vertices": 0,
+        "dihedral_deg_p50_p90_p99": [
+          9.79,
+          32.87,
+          39.56
+        ],
+        "edges_over_deg": {
+          "10": 0.4933,
+          "20": 0.2874,
+          "30": 0.138,
+          "40": 0.0049,
+          "60": 0.0002,
+          "80": 0.0
+        },
+        "edges_between_10_40_deg": 0.4884,
+        "sliver_tris_min_angle_lt_10deg": 0.2153,
+        "sliver_tris_min_angle_lt_5deg": 0.0819,
+        "median_edge_mm": 8.848,
+        "p95_edge_mm": 40.656,
+        "images": [
+          {
+            "name": "T_FireRifle_BaseColor",
+            "size": [
+              2048,
+              2048
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "hq_glb": {
+    "file": "ArtSource\\FireRifle\\Export\\FireRifle_HQ.glb",
+    "meshes": [
+      {
+        "object": "FireRifle_Body",
+        "triangles": 30000,
+        "vertices_blender": 30563,
+        "unique_positions": 14996,
+        "uv_layers": [
+          "UVMap"
+        ],
+        "dimensions_m": [
+          0.1177,
+          0.85,
+          0.3127
+        ],
+        "edges": 58462,
+        "boundary_edges": 26924,
+        "sharp_marked_edges": 0,
+        "split_normal_vertices": 0,
+        "dihedral_deg_p50_p90_p99": [
+          7.03,
+          28.58,
+          39.2
+        ],
+        "edges_over_deg": {
+          "10": 0.4098,
+          "20": 0.2145,
+          "30": 0.0852,
+          "40": 0.0056,
+          "60": 0.0002,
+          "80": 0.0
+        },
+        "edges_between_10_40_deg": 0.4042,
+        "sliver_tris_min_angle_lt_10deg": 0.2562,
+        "sliver_tris_min_angle_lt_5deg": 0.1117,
+        "median_edge_mm": 3.252,
+        "p95_edge_mm": 19.468,
+        "images": [
+          {
+            "name": "T_FireRifle_BaseColor",
+            "size": [
+              4096,
+              4096
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "unity_fbx": {
+    "file": "Assets\\_Game\\Art\\Weapons\\FireRifle\\Models\\FireRifle.fbx",
+    "meshes": [
+      {
+        "object": "FireRifle_Body",
+        "triangles": 30000,
+        "vertices_blender": 14996,
+        "unique_positions": 14996,
+        "uv_layers": [
+          "UVMap"
+        ],
+        "dimensions_m": [
+          0.1177,
+          0.85,
+          0.3127
+        ],
+        "edges": 45000,
+        "boundary_edges": 0,
+        "sharp_marked_edges": 6883,
+        "split_normal_vertices": 5174,
+        "dihedral_deg_p50_p90_p99": [
+          13.47,
+          51.51,
+          119.63
+        ],
+        "edges_over_deg": {
+          "10": 0.5674,
+          "20": 0.3941,
+          "30": 0.2618,
+          "40": 0.1643,
+          "60": 0.0723,
+          "80": 0.0364
+        },
+        "edges_between_10_40_deg": 0.4032,
+        "sliver_tris_min_angle_lt_10deg": 0.2562,
+        "sliver_tris_min_angle_lt_5deg": 0.1117,
+        "median_edge_mm": 3.558,
+        "p95_edge_mm": 20.971,
+        "images": [
+          {
+            "name": "T_FireRifle_BaseColor.png.001",
+            "size": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

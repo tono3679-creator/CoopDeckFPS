@@ -2,6 +2,33 @@
 
 形式：日付ごとに「追加 / 変更 / 修正 / 検証」。検証していないものは「検証」に書かない。
 
+## 2026-11-09 — キツネの一人称の銃（Fire Rifle）の画質：ジャギー・平坦さ・安っぽさの原因と改善
+
+詳細は `WEAPON_VISUAL_QUALITY.md`。ユーザー依頼「輪郭のジャギー、平坦な装甲、安っぽさを、スタイライズドな造形のまま高品質な FPS 武器の見た目に。先に原因を特定すること」。元のモデル・Prefab は `ArtSource/FireRifle/Backup/20261109_before_quality/`。
+
+### 原因
+- この PC（Handheld）は内部 900p を FSR で拡大し、MSAA なし・FXAA だけ。一人称の輪郭線 0.7 mm は約 1 px で点線のように途切れた。
+- ポストプロセス（トーンマップ・ブルーム・SMAA）が本体カメラだけで、オーバーレイで描く銃・腕には掛かっていなかった（白飛び。SMAA にしても銃に効かない構成）。
+- `CH_Toon` は 2 階調だけで、塗装・樹脂・金属の質感が無い。30k への削減で高精細の丸い角が折れ目になり、平らな面にムラ。
+
+### 追加
+- `ArtSource/Tools/rebuild_weapon_hq.py`（Blender）：高精細から 60k＋折れ目に 1.2 mm ベベル＋面積重み付き法線、LOD1 30k、色・法線に加え表面マップ（凸の角・AO・溝）と材質マスク（白塗装・赤塗装・黒い樹脂・金属）を焼く。
+- シェーダー `CoopDeck/Weapon/HardSurfaceToon`（`Art/Weapons/Shaders/WPN_HardSurfaceToon.shader`）：トゥーンの 2 階調＋材質ごとのつや・金属反射・帯状ハイライト・エッジハイライト・AO、一人称用のカメラ基準ハイライト、最小・最大ピクセル幅の輪郭線。
+- PlayMode `WeaponLookCaptureTests`（Explicit）：サンドボックスの同じフレームを実際のカメラスタックで描画設定 9 通りに撮影し、描画時間を記録。
+- EditMode `FireRifleAssetTests`：LOD・新マテリアル・材質マスク・カメラスタック（最後のカメラでポストプロセス、SMAA High、Handheld 1.0）。
+
+### 変更
+- Fire Rifle：`FireRifle.fbx` を LOD0 109,436／LOD1 30,000 三角形に、基本色・法線を新しい UV で焼き直し（元の 8K 拡大アトラスから、配色・寸法・ソケットは同じ）、`T_FireRifle_Surface`・`T_FireRifle_MaterialMask` を追加。2 つのマテリアルを新シェーダーへ。`FireRifleAssetFactory` は LOD の切替（画面の 12%）とデータテクスチャの取り込み。
+- `CharacterPrefabBuilder`：PlayerCamera はポストプロセスなし＋SMAA High、ViewModelCamera がスタック全体のポストプロセス。
+- `RenderingSetup`：Handheld の Render Scale 0.833＋FSR → 1.0。
+- `ARCHITECTURE.md` §5・§6 を更新。
+
+### 検証
+- 撮影（`Screenshots/WeaponLook/Compare_*.png`）：一人称で縁の階段・輪郭の途切れ・白飛びが消え、装甲に階調・エッジの光・継ぎ目の AO。三人称（1.1 m・3.6 m）も同様。マズルフラッシュはゲームシステム制作セッションが確認済み（黄〜橙で炎らしい）。
+- テスト：EditMode 323/323、PlayMode 103/103、コンソールのエラー 0。`FoxBodyPlayModeTests`（手の持ち位置・銃口の画面位置）を含む。
+- Release ビルド（Ally X、1080p 全画面）：Handheld・射撃中 60fps 上限で平均 59.9／1% Low 59.9（前後同じ）、GPU 2.87 → 4.71 ms。静止・上限なしで GPU 3.40 → 4.12 ms。High は GPU 7.33 → 7.27 ms。
+- 未確認：人の手でのプレイ、RTX 4070 の PC での見た目と負荷、リロード中・スキル詠唱中の一人称の見え方（撮影は待機姿勢と射撃の静止画）。
+
 ## 2026-11-08 — クイックキャストを「前へ突き出す」モーションに作り直し
 
 ユーザー指示：クイックキャスト（火球など）のモーションが弱い。もっと前へ突き出して迫力を出す。詳細は `FOX_ANIMATION.md` §4・§6、`FIREBALL_VFX.md` §2。

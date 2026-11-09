@@ -9,9 +9,11 @@ namespace CoopDeck.EditorTools
 {
     /// <summary>
     /// Creates the two URP quality tiers and wires them to the quality levels:
-    ///   High     (main PC)   : native resolution, 2x MSAA, 70 m / 2048 shadows, 4 cascades.
-    ///   Handheld (ROG Ally X): render scale 0.833 + FSR (900p internal on a 1080p panel),
-    ///                          no MSAA, 35 m / 1024 hard shadows, 2 cascades, no SSAO.
+    ///   High     (main PC)   : native resolution, 4x MSAA, 70 m / 2048 shadows, 4 cascades.
+    ///   Handheld (ROG Ally X): native resolution (1080p; 0.833 + FSR made the first-person rifle and its one-pixel
+    ///                          outline stair-step, Docs/WEAPON_VISUAL_QUALITY.md), no MSAA, 35 m / 1024 hard shadows,
+    ///                          2 cascades, no SSAO.
+    /// Both tiers anti-alias with SMAA High on the player camera stack (CharacterPrefabBuilder).
     /// Values are written through SerializedObject and read back through the public API so the
     /// log shows what actually took effect.
     /// </summary>
@@ -32,7 +34,8 @@ namespace CoopDeck.EditorTools
             // desktop (RTX 4070 class): 4x MSAA keeps the first-person arms, rifle and outlines clean in the camera stack
             ConfigureAsset(high, highRenderer, renderScale: 1f, upscaling: UpscalingFilterSelection.Auto, msaa: 4,
                 shadowDistance: 70f, shadowResolution: 2048, cascades: 4, softShadows: true);
-            ConfigureAsset(handheld, handheldRenderer, renderScale: 0.833f, upscaling: UpscalingFilterSelection.FSR, msaa: 1,
+            // ROG Ally X: native 1080p (about +0.7 ms GPU against 0.833 + FSR, Docs/WEAPON_VISUAL_QUALITY.md §4); 2x MSAA cost about 3 ms
+            ConfigureAsset(handheld, handheldRenderer, renderScale: 1f, upscaling: UpscalingFilterSelection.Auto, msaa: 1,
                 shadowDistance: 35f, shadowResolution: 1024, cascades: 2, softShadows: false);
 
             DisableFeature(handheldRenderer, "ScreenSpaceAmbientOcclusion");

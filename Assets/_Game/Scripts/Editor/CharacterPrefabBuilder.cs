@@ -122,8 +122,12 @@ namespace CoopDeck.EditorTools
             cameraGo.AddComponent<AudioListener>();
             cameraGo.AddComponent<CameraShaker>(); // small, capped shake for combos (aim ray comes from the pivot)
             UniversalAdditionalCameraData cameraData = camera.GetUniversalAdditionalCameraData();
-            cameraData.renderPostProcessing = true;
-            cameraData.antialiasing = AntialiasingMode.FastApproximateAntialiasing;
+            // Post-processing runs once, on the stack's last camera (the view-model overlay below): URP applies
+            // tonemapping, bloom and SMAA inside the camera that post-processes, so on this camera they ran before the
+            // rifle and arms were drawn (Docs/WEAPON_VISUAL_QUALITY.md). The base camera's AA setting applies to the stack.
+            cameraData.renderPostProcessing = false;
+            cameraData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+            cameraData.antialiasingQuality = AntialiasingQuality.High;
 
             // View-model overlay camera: own FOV, never clips into walls.
             var viewModelCameraGo = new GameObject("ViewModelCamera");
@@ -136,6 +140,7 @@ namespace CoopDeck.EditorTools
             UniversalAdditionalCameraData viewModelData = viewModelCamera.GetUniversalAdditionalCameraData();
             viewModelData.renderType = CameraRenderType.Overlay;
             viewModelData.renderShadows = false;
+            viewModelData.renderPostProcessing = true; // the whole stack: world, rifle, arms, muzzle flash
             cameraData.cameraStack.Add(viewModelCamera);
 
             Transform muzzle = BuildRifleViewModel(cameraGo.transform, m, rifleVisual, out GameObject viewModelRoot);

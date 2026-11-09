@@ -19,10 +19,12 @@ namespace CoopDeck.EditorTools
     }
 
     /// <summary>
-    /// Unity side of the Fire Rifle (Meshy multi-image → Blender clean-up with
-    /// ArtSource/Tools/prepare_prop_for_unity.py, see Docs/CHARACTER_PIPELINE.md): import settings,
-    /// an emission map for the glowing parts, toon materials and the weapon prefab. The FBX origin is the
-    /// pistol grip (right hand); the "Muzzle" and "LeftHandGrip" sockets come from the FBX.
+    /// Unity side of the Fire Rifle (Meshy multi-image → Blender rebuild from the sculpt with
+    /// ArtSource/Tools/rebuild_weapon_hq.py, see Docs/WEAPON_VISUAL_QUALITY.md): import settings, an emission map for
+    /// the glowing parts, the hard-surface materials (CoopDeck/Weapon/HardSurfaceToon, third person and a
+    /// thin-outline first-person one) and the weapon prefab. The FBX holds FireRifle_Body_LOD0 (about 110k
+    /// triangles, always seen in first person) and _LOD1 (30k), so Unity builds a LOD group; its origin is the pistol
+    /// grip (right hand) and the "Muzzle" and "LeftHandGrip" sockets come from the FBX.
     /// </summary>
     public static class FireRifleAssetFactory
     {
@@ -30,17 +32,25 @@ namespace CoopDeck.EditorTools
         public const string ModelPath = ArtFolder + "/Models/FireRifle.fbx";
         public const string TexturePath = ArtFolder + "/Textures/T_FireRifle_BaseColor.png";
         public const string EmissionPath = ArtFolder + "/Textures/T_FireRifle_Emission.png";
-        public const string NormalPath = ArtFolder + "/Textures/T_FireRifle_Normal.png"; // ArtSource/Tools/refine_prop.py
+        public const string NormalPath = ArtFolder + "/Textures/T_FireRifle_Normal.png"; // rebuild_weapon_hq.py
+        /// <summary>R convex edges, G ambient occlusion, B concave creases (linear, from the sculpt).</summary>
+        public const string SurfacePath = ArtFolder + "/Textures/T_FireRifle_Surface.png";
+        /// <summary>R white paint, G red paint, B dark polymer, A bare metal; the rest is the gold accent (linear).</summary>
+        public const string MaterialMaskPath = ArtFolder + "/Textures/T_FireRifle_MaterialMask.png";
         public const string MaterialPath = ArtFolder + "/Materials/M_FireRifle_Toon.mat";
         public const string ViewModelMaterialPath = ArtFolder + "/Materials/M_FireRifle_Toon_FP.mat";
+        public const string WeaponShaderPath = HardSurfaceWeapon.ShaderPath;
         public const string PrefabFolder = GamePaths.Root + "/Prefabs/Weapons";
         public const string PrefabPath = PrefabFolder + "/PF_Weapon_FireRifle.prefab";
         public const string MuzzleSocket = "Muzzle";
         public const string LeftHandSocket = "LeftHandGrip";
 
-        const float WorldOutlineWidth = 0.003f;
-        const float ViewModelOutlineWidth = 0.0007f;
-        static readonly Color EmissionColor = new Color(2f, 2f, 2f, 1f); // above the bloom threshold (1)
+        // Fire Rifle: red paint and gold accents (the mask's default hue ranges); emission above the bloom threshold (1)
+        static readonly HardSurfaceWeapon.Look Look = new HardSurfaceWeapon.Look();
+        static HardSurfaceWeapon.Maps Maps => new HardSurfaceWeapon.Maps
+        {
+            BaseColor = TexturePath, Normal = NormalPath, Emission = EmissionPath, MaterialMask = MaterialMaskPath, Surface = SurfacePath,
+        };
 
         // Third-person hold: grip this far past the wrist along the hand, muzzle forward and pitched down (low ready).
         const float PalmOffset = 0.06f;
@@ -70,17 +80,20 @@ namespace CoopDeck.EditorTools
         {
             ConfigureTexture(TexturePath, 4096);
             ConfigureNormalMap();
+            HardSurfaceWeapon.ConfigureDataTexture(SurfacePath, 4096, false);
+            HardSurfaceWeapon.ConfigureDataTexture(MaterialMaskPath, 2048, true);
             EnsureEmissionMap();
             ConfigureModel();
-            Material world = EnsureMaterial(MaterialPath, WorldOutlineWidth);
-            Material viewModel = EnsureMaterial(ViewModelMaterialPath, ViewModelOutlineWidth);
+            Material world = HardSurfaceWeapon.EnsureMaterial(MaterialPath, Maps, Look, HardSurfaceWeapon.View.ThirdPerson);
+            Material viewModel = HardSurfaceWeapon.EnsureMaterial(ViewModelMaterialPath, Maps, Look, HardSurfaceWeapon.View.FirstPerson);
             GameObject prefab = BuildPrefab(world);
             AssetDatabase.SaveAssets();
 
-            Mesh mesh = prefab.GetComponentInChildren<MeshFilter>().sharedMesh;
-            Debug.Log($"[CoopDeck] Fire Rifle: {mesh.triangles.Length / 3} triangles, {mesh.vertexCount} vertices, " +
-                      $"mesh bounds {mesh.bounds.size}, muzzle at {prefab.transform.Find(MuzzleSocket).localPosition}, " +
-                      $"outline normals in UV3: {mesh.uv4.Length == mesh.vertexCount}");
+            MeshFilter[] filters = prefab.GetComponentsInChildren<MeshFilter>(true);
+            string lods = string.Join(", ", filters.Select(f => $"{f.name} {f.sharedMesh.triangles.Length / 3} triangles / {f.sharedMesh.vertexCount} vertices"));
+            Mesh mesh = filters[0].sharedMesh;
+            Debug.Log($"[CoopDeck] Fire Rifle: {lods}, mesh bounds {mesh.bounds.size}, muzzle at {prefab.transform.Find(MuzzleSocket).localPosition}, " +
+                      $"outline normals in UV3: {mesh.uv4.Length == mesh.vertexCount}, LOD group: {prefab.GetComponent<LODGroup>() != null}");
             return new FireRifleAssets { Prefab = prefab, Material = world, ViewModelMaterial = viewModel };
         }
 
@@ -100,7 +113,7 @@ namespace CoopDeck.EditorTools
             importer.SaveAndReimport();
         }
 
-        /// <summary>Tangent-space detail baked from Meshy's 437k-triangle sculpt (refine_prop.py).</summary>
+        /// <summary>Tangent-space detail baked from Meshy's 437k-triangle sculpt (rebuild_weapon_hq.py).</summary>
         static void ConfigureNormalMap()
         {
             var importer = GetImporter<TextureImporter>(NormalPath);
@@ -164,7 +177,7 @@ namespace CoopDeck.EditorTools
             importer.importCameras = false;
             importer.importLights = false;
             importer.materialImportMode = ModelImporterMaterialImportMode.None;
-            importer.importNormals = ModelImporterNormals.Import; // hard edges above 40° from Blender
+            importer.importNormals = ModelImporterNormals.Import; // weighted normals, hard edges above 40° (Blender)
             importer.importTangents = ModelImporterTangents.CalculateMikk; // as Blender baked the normal map
             importer.meshCompression = ModelImporterMeshCompression.Off;
             importer.isReadable = false;
@@ -184,37 +197,7 @@ namespace CoopDeck.EditorTools
 
         // ---------------------------------------------------------------- generated assets
 
-        static Material EnsureMaterial(string path, float outlineWidth)
-        {
-            var shader = AssetDatabase.LoadAssetAtPath<Shader>(FoxGunnerAssetFactory.ToonShaderPath);
-            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (material == null)
-            {
-                EditorUtil.EnsureFolder(Path.GetDirectoryName(path)?.Replace('\\', '/'));
-                material = new Material(shader) { name = Path.GetFileNameWithoutExtension(path) };
-                material.SetColor("_EmissionColor", EmissionColor);
-                material.SetFloat("_OutlineWidth", outlineWidth);
-                AssetDatabase.CreateAsset(material, path);
-            }
-
-            // Tuned colours and widths are kept on reruns; shader, textures and the two features are enforced.
-            material.shader = shader;
-            material.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(TexturePath));
-            material.SetTexture("_EmissionMap", AssetDatabase.LoadAssetAtPath<Texture2D>(EmissionPath));
-            material.SetFloat("_UseEmission", 1f);
-            material.EnableKeyword("_EMISSION");
-            material.SetFloat("_OutlineUV3Normals", 1f);
-            material.EnableKeyword("_OUTLINE_UV3_NORMALS");
-            material.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(NormalPath));
-            material.SetFloat("_BumpScale", 1f);
-            material.SetFloat("_UseNormalMap", 1f);
-            material.EnableKeyword("_NORMALMAP");
-            material.enableInstancing = true;
-            EditorUtility.SetDirty(material);
-            return material;
-        }
-
-        /// <summary>A prefab variant of the FBX with the toon material; the sockets face the rifle's +Z.</summary>
+        /// <summary>A prefab variant of the FBX with the weapon material on both LODs; the sockets face the rifle's +Z.</summary>
         static GameObject BuildPrefab(Material material)
         {
             var model = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath);
@@ -225,6 +208,8 @@ namespace CoopDeck.EditorTools
                 renderer.sharedMaterial = material;
                 renderer.shadowCastingMode = ShadowCastingMode.On;
             }
+
+            HardSurfaceWeapon.SetLodHeights(instance); // LOD0 above 12% of the screen height (first person always)
 
             foreach (string socket in new[] { MuzzleSocket, LeftHandSocket })
             {

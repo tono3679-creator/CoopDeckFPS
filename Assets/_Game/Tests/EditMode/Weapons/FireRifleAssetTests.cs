@@ -20,6 +20,8 @@ namespace CoopDeck.Tests
         const string EmissionPath = "Assets/_Game/Art/Weapons/FireRifle/Textures/T_FireRifle_Emission.png";
         const string BaseColorPath = "Assets/_Game/Art/Weapons/FireRifle/Textures/T_FireRifle_BaseColor.png";
         const string NormalPath = "Assets/_Game/Art/Weapons/FireRifle/Textures/T_FireRifle_Normal.png";
+        const string SurfacePath = "Assets/_Game/Art/Weapons/FireRifle/Textures/T_FireRifle_Surface.png";
+        const string MaterialMaskPath = "Assets/_Game/Art/Weapons/FireRifle/Textures/T_FireRifle_MaterialMask.png";
         const string MaterialPath = "Assets/_Game/Art/Weapons/FireRifle/Materials/M_FireRifle_Toon.mat";
         const string ViewModelMaterialPath = "Assets/_Game/Art/Weapons/FireRifle/Materials/M_FireRifle_Toon_FP.mat";
         const string PrefabPath = "Assets/_Game/Prefabs/Weapons/PF_Weapon_FireRifle.prefab";
@@ -83,31 +85,44 @@ namespace CoopDeck.Tests
         }
 
         [Test]
-        public void Mesh_FitsTheBudget_AndCarriesOutlineNormals()
+        public void Mesh_HasACloseUpLodAndAFarLod_AndCarriesOutlineNormals()
         {
-            Mesh mesh = Spawn(PrefabPath).GetComponentInChildren<MeshFilter>().sharedMesh;
-            // rebuilt from Meshy's 437k-triangle sculpt (refine_prop.py); Meshy's own 7.7k remesh was faceted
-            Assert.That(mesh.triangles.Length / 3, Is.InRange(20000, 40000));
-            Assert.That(mesh.subMeshCount, Is.EqualTo(1));
+            GameObject rifle = Spawn(PrefabPath);
+            var lodGroup = rifle.GetComponent<LODGroup>();
+            Assert.That(lodGroup, Is.Not.Null, "FireRifle_Body_LOD0 / _LOD1 in the FBX make a LOD group");
+            LOD[] lods = lodGroup.GetLODs();
+            Assert.That(lods.Length, Is.EqualTo(2));
+            Mesh near = ((MeshRenderer)lods[0].renderers.Single()).GetComponent<MeshFilter>().sharedMesh;
+            Mesh far = ((MeshRenderer)lods[1].renderers.Single()).GetComponent<MeshFilter>().sharedMesh;
+            // rebuilt from Meshy's 437k-triangle sculpt (rebuild_weapon_hq.py): 60k with small bevels on the creases for
+            // first person; the far LOD for other players' rifles. Meshy's own 7.7k remesh was faceted, 30k folded the
+            // sculpt's rounded edges into creases.
+            Assert.That(near.triangles.Length / 3, Is.InRange(80000, 140000));
+            Assert.That(far.triangles.Length / 3, Is.InRange(20000, 40000));
+            Assert.That(lods[0].screenRelativeTransitionHeight, Is.InRange(0.05f, 0.3f), "first person (over 100% of the screen) is always LOD0");
 
-            var outline = new List<Vector3>();
-            mesh.GetUVs(3, outline);
-            Assert.That(outline.Count, Is.EqualTo(mesh.vertexCount), "UV3 = averaged normals for the outline pass");
-            Assert.That(outline.All(n => Mathf.Abs(n.magnitude - 1f) < 0.01f), Is.True, "unit normals");
-            // Hard edges were kept: some vertices' own normals differ from the averaged ones.
-            Vector3[] normals = mesh.normals;
-            int split = Enumerable.Range(0, normals.Length).Count(i => Vector3.Dot(normals[i], outline[i]) < 0.95f);
-            Assert.That(split, Is.GreaterThan(mesh.vertexCount / 20), "hard-surface edges are kept");
+            foreach (Mesh mesh in new[] { near, far })
+            {
+                Assert.That(mesh.subMeshCount, Is.EqualTo(1));
+                var outline = new List<Vector3>();
+                mesh.GetUVs(3, outline);
+                Assert.That(outline.Count, Is.EqualTo(mesh.vertexCount), "UV3 = averaged normals for the outline pass");
+                Assert.That(outline.All(n => Mathf.Abs(n.magnitude - 1f) < 0.01f), Is.True, "unit normals");
+                // Hard edges were kept: some vertices' own normals differ from the averaged ones.
+                Vector3[] normals = mesh.normals;
+                int split = Enumerable.Range(0, normals.Length).Count(i => Vector3.Dot(normals[i], outline[i]) < 0.95f);
+                Assert.That(split, Is.GreaterThan(mesh.vertexCount / 20), mesh.name + ": hard-surface edges are kept");
+            }
         }
 
         [Test]
-        public void Materials_AreToon_WithEmission_AndAThinnerFirstPersonOutline()
+        public void Materials_AreHardSurface_WithMaskEdgesEmission_AndAThinnerFirstPersonOutline()
         {
             var world = Load<Material>(MaterialPath);
             var viewModel = Load<Material>(ViewModelMaterialPath);
             foreach (Material m in new[] { world, viewModel })
             {
-                Assert.That(m.shader.name, Is.EqualTo("CoopDeck/Character/Toon"), m.name);
+                Assert.That(m.shader.name, Is.EqualTo("CoopDeck/Weapon/HardSurfaceToon"), m.name);
                 Assert.That(m.IsKeywordEnabled("_EMISSION"), Is.True, m.name);
                 Assert.That(m.IsKeywordEnabled("_OUTLINE_UV3_NORMALS"), Is.True, m.name);
                 Assert.That(m.GetTexture("_BaseMap"), Is.Not.Null, m.name);
@@ -115,6 +130,11 @@ namespace CoopDeck.Tests
                 Assert.That(m.GetColor("_EmissionColor").maxColorComponent, Is.GreaterThan(1f), m.name + ": HDR so bloom (threshold 1) catches it");
                 Assert.That(m.IsKeywordEnabled("_NORMALMAP"), Is.True, m.name + ": the sculpt's detail as a normal map");
                 Assert.That(m.GetTexture("_BumpMap"), Is.EqualTo(Load<Texture2D>(NormalPath)), m.name);
+                Assert.That(m.IsKeywordEnabled("_SURFACE_MAPS"), Is.True, m.name + ": per-material gloss and edge highlights");
+                Assert.That(m.GetTexture("_MaterialMask"), Is.EqualTo(Load<Texture2D>(MaterialMaskPath)), m.name);
+                Assert.That(m.GetTexture("_SurfaceMap"), Is.EqualTo(Load<Texture2D>(SurfacePath)), m.name);
+                Assert.That(m.GetVector("_MetalParams").y, Is.GreaterThan(m.GetVector("_PolymerParams").y), m.name + ": metal is metallic, polymer is not");
+                Assert.That(m.GetFloat("_OutlineMinPixels"), Is.GreaterThanOrEqualTo(1f), m.name + ": no outline thinner than a pixel");
             }
 
             var baseImporter = (TextureImporter)AssetImporter.GetAtPath(BaseColorPath);
@@ -122,9 +142,62 @@ namespace CoopDeck.Tests
             Assert.That(baseImporter.textureCompression, Is.EqualTo(TextureImporterCompression.CompressedHQ));
             Assert.That(((TextureImporter)AssetImporter.GetAtPath(NormalPath)).textureType, Is.EqualTo(TextureImporterType.NormalMap));
             Assert.That(Load<Texture2D>(BaseColorPath).width, Is.EqualTo(4096));
+            foreach (string data in new[] { SurfacePath, MaterialMaskPath })
+            {
+                var importer = (TextureImporter)AssetImporter.GetAtPath(data);
+                Assert.That(importer.sRGBTexture, Is.False, data + " holds data, not colour");
+            }
 
             Assert.That(viewModel.GetFloat("_OutlineWidth"), Is.LessThan(world.GetFloat("_OutlineWidth") * 0.5f));
-            Assert.That(Spawn(PrefabPath).GetComponentInChildren<MeshRenderer>().sharedMaterial, Is.EqualTo(world));
+            Assert.That(Spawn(PrefabPath).GetComponentsInChildren<MeshRenderer>().All(r => r.sharedMaterial == world), Is.True);
+        }
+
+        /// <summary>
+        /// The view-model camera is the last camera of the player's stack: post-processing runs there once for the whole
+        /// stack, so tonemapping, bloom and SMAA reach the rifle and arms (on the world camera they ran before the overlay
+        /// drew them). The Handheld tier renders at native resolution (0.833 + FSR stair-stepped the rifle).
+        /// </summary>
+        [Test]
+        public void PlayerCameraStack_PostProcessesAndAntiAliasesTheViewModel()
+        {
+            GameObject player = Spawn(PlayerPath);
+            Camera[] cameras = player.GetComponentsInChildren<Camera>(true);
+            Camera world = cameras.Single(c => c.name == "PlayerCamera");
+            Camera viewModel = cameras.Single(c => c.name == "ViewModelCamera");
+            var worldData = new SerializedObject(world.GetComponent("UniversalAdditionalCameraData"));
+            var viewModelData = new SerializedObject(viewModel.GetComponent("UniversalAdditionalCameraData"));
+            Assert.That(worldData.FindProperty("m_RenderPostProcessing").boolValue, Is.False, "post-processing runs once, on the last camera");
+            Assert.That(viewModelData.FindProperty("m_RenderPostProcessing").boolValue, Is.True, "the overlay (last camera) post-processes the stack");
+            Assert.That(viewModelData.FindProperty("m_CameraType").intValue, Is.EqualTo(1), "the view model is an overlay camera");
+            Assert.That(worldData.FindProperty("m_Antialiasing").intValue, Is.EqualTo(2), "SMAA (the base camera's setting applies to the stack)");
+            Assert.That(worldData.FindProperty("m_AntialiasingQuality").intValue, Is.EqualTo(2), "SMAA High");
+
+            var handheld = new SerializedObject(Load<Object>("Assets/_Game/Settings/Rendering/URP_Handheld.asset"));
+            Assert.That(handheld.FindProperty("m_RenderScale").floatValue, Is.EqualTo(1f).Within(0.001f), "Handheld renders at native resolution");
+        }
+
+        [Test]
+        public void MaterialMask_CoversEveryPaintAndMetal()
+        {
+            var texture = new Texture2D(2, 2);
+            texture.LoadImage(System.IO.File.ReadAllBytes(MaterialMaskPath));
+            Color[] pixels = texture.GetPixels();
+            Object.DestroyImmediate(texture);
+            // share of each class across the whole atlas (gutters included): all present, none taking over
+            var share = new float[4];
+            foreach (Color p in pixels)
+            {
+                share[0] += p.r;
+                share[1] += p.g;
+                share[2] += p.b;
+                share[3] += p.a;
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                share[i] /= pixels.Length;
+                Assert.That(share[i], Is.InRange(0.01f, 0.7f), $"class {i} (white, red, polymer, metal): {share[i]:P1}");
+            }
         }
 
         [Test]

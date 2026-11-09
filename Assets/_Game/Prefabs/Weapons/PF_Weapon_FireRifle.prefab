@@ -56,10 +56,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: -8427156708167225661, guid: d205bacf353827940a8e11ac773eda1a, type: 3}
-      propertyPath: 'm_Materials.Array.data[0]'
-      value: 
-      objectReference: {fileID: 2100000, guid: 53cbe3672816bf14696ce665ad1931fb, type: 2}
     - target: {fileID: -4984922621100823528, guid: d205bacf353827940a8e11ac773eda1a, type: 3}
       propertyPath: m_LocalRotation.w
       value: 1
@@ -68,10 +64,26 @@ PrefabInstance:
       propertyPath: m_LocalRotation.x
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 550552111087488114, guid: d205bacf353827940a8e11ac773eda1a, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 53cbe3672816bf14696ce665ad1931fb, type: 2}
     - target: {fileID: 919132149155446097, guid: d205bacf353827940a8e11ac773eda1a, type: 3}
       propertyPath: m_Name
       value: PF_Weapon_FireRifle
       objectReference: {fileID: 0}
+    - target: {fileID: 4742473837712756890, guid: d205bacf353827940a8e11ac773eda1a, type: 3}
+      propertyPath: m_LODs.Array.data[0].screenRelativeHeight
+      value: 0.12
+      objectReference: {fileID: 0}
+    - target: {fileID: 4742473837712756890, guid: d205bacf353827940a8e11ac773eda1a, type: 3}
+      propertyPath: m_LODs.Array.data[1].screenRelativeHeight
+      value: 0.004
+      objectReference: {fileID: 0}
+    - target: {fileID: 8222317206127884521, guid: d205bacf353827940a8e11ac773eda1a, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 53cbe3672816bf14696ce665ad1931fb, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

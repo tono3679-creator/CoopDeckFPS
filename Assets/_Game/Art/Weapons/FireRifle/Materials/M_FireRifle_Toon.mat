@@ -8,13 +8,14 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: M_FireRifle_Toon
-  m_Shader: {fileID: 4800000, guid: 97aef93c1d4698a4cb7049bafa7e9912, type: 3}
+  m_Shader: {fileID: 4800000, guid: c4377e23c085ee448b8afbfc5e66a4e1, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - _EMISSION
   - _NORMALMAP
   - _OUTLINE_UV3_NORMALS
+  - _SURFACE_MAPS
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
@@ -38,25 +39,55 @@ Material:
         m_Texture: {fileID: 2800000, guid: cc187e34086b5c143af59e37b279571a, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _MaterialMask:
+        m_Texture: {fileID: 2800000, guid: fe4af70bdb576c44fac3b6fc63397e79, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SurfaceMap:
+        m_Texture: {fileID: 2800000, guid: 02bce98c4879cfe4887a2e4b1bfab0e5, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _AmbientStrength: 0.55
+    - _AmbientStrength: 0.6
     - _BumpScale: 1
-    - _MaxLightIntensity: 1.4
+    - _CreaseDarkening: 0.5
+    - _DiffuseWrap: 0.55
+    - _EdgeLift: 0.35
+    - _MaxLightIntensity: 1.2
+    - _OcclusionStrength: 1
+    - _OutlineMaxPixels: 4
+    - _OutlineMinPixels: 1
     - _OutlineUV3Normals: 1
     - _OutlineWidth: 0.003
+    - _PaintFresnel: 0.35
+    - _PaintReflectance: 0.08
+    - _ReflectionStrength: 1
     - _RimPower: 4.5
-    - _RimStrength: 0.3
-    - _ShadeSoftness: 0.04
-    - _ShadeThreshold: 0.05
+    - _RimStrength: 0.18
+    - _ShadeSoftness: 0.12
+    - _ShadeThreshold: 0
     - _ShadowStrength: 1
+    - _SpecularSoftness: 0.25
+    - _SpecularThreshold: 0.35
+    - _SpecularToon: 0.6
     - _UseEmission: 1
     - _UseNormalMap: 1
+    - _UseSurfaceMaps: 1
+    - _ViewLightPower: 10
+    - _ViewLightSpecular: 0
     m_Colors:
+    - _AccentParams: {r: 0.62, g: 0.55, b: 0.7, a: 0.7}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _EdgeTint: {r: 1, g: 0.93, b: 0.85, a: 1}
     - _EmissionColor: {r: 2, g: 2, b: 2, a: 1}
+    - _MetalParams: {r: 0.7, g: 0.9, b: 1, a: 1}
     - _OutlineColor: {r: 0.16999996, g: 0.089999996, b: 0.06999998, a: 1}
+    - _PolymerParams: {r: 0.42, g: 0, b: 0.35, a: 0.8}
+    - _RedPaintParams: {r: 0.55, g: 0, b: 0.55, a: 0.85}
     - _RimColor: {r: 1, g: 0.86, b: 0.72, a: 1}
     - _ShadeColor: {r: 0.6399999, g: 0.54999995, b: 0.68, a: 1}
+    - _ViewLightDirection: {r: -0.35, g: 0.8, b: 0.45, a: 0}
+    - _WhitePaintParams: {r: 0.5, g: 0, b: 0.5, a: 0.8}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

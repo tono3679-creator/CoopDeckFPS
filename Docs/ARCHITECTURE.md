@@ -266,7 +266,7 @@ Health.Died → EnemyActor                    コライダー無効化・撃破 
 
 - 判定用マスク（`GameLayers`）：プレイヤーの射撃＝Player・ViewModel・UI 以外、敵弾＝Enemy・ViewModel・UI 以外、敵の視線＝Player・Enemy・ViewModel・UI 以外（キャラクター同士は視線を遮らない）。
 - NavMesh：`Environment` に置いた `NavMeshSurface`（物理コライダーから生成、Default レイヤー）。データは `Scenes/Sandbox_Phase1_NavMesh.asset`。
-- 本体カメラ：FOV 68°（スプリントで +5°）、FXAA、ポストプロセス有効。
+- 本体カメラ：FOV 68°（スプリントで +5°）。AA は **SMAA High**（ベースカメラの設定がスタック全体に効く）。**ポストプロセスは無効で、スタックの最後のカメラ（ViewModel のオーバーレイ）が全体に 1 回掛ける**。URP はトーンマップ・ブルーム・SMAA を「ポストプロセスが有効なカメラ」の中で掛けるので、本体カメラで掛けると銃・腕・マズルフラッシュが描かれる前に終わってしまう（`WEAPON_VISUAL_QUALITY.md`）。
 - ポストプロセス（`VP_Sandbox`）：Bloom（しきい値 1.0・強度 0.55）、Neutral トーンマップ、彩度 +18・コントラスト +8、弱いビネット。カラフルで視認性の高い見た目の土台（トゥーンシェーダーは Phase 5）。
 - 自分の体（カプセル）は影だけ描画。
 
@@ -277,9 +277,10 @@ Health.Died → EnemyActor                    コライダー無効化・撃破 
 | | High（メインPC） | Handheld（ROG Ally X） |
 |---|---|---|
 | URP アセット | `URP_High` | `URP_Handheld` |
-| Render Scale | 1.0 | **0.833**（1080p パネルで内部 900p） |
-| アップスケール | Auto | **FSR** |
-| MSAA | 2x | なし |
+| Render Scale | 1.0 | 1.0（2026-11-09 まで 0.833＋FSR。一人称の銃が階段状になったため変更、GPU 約 +0.7 ms） |
+| アップスケール | Auto | Auto（拡大なし） |
+| MSAA | 4x | なし（2x は約 +3 ms） |
+| AA（カメラ） | SMAA High＋MSAA | SMAA High |
 | 影 | 70 m / 2048 / 4 カスケード / ソフト | 35 m / 1024 / 2 カスケード / ハード |
 | SSAO | テンプレート既定 | 無効 |
 | エフェクト品質（VFX） | 高（粒子 1.0・エフェクト用ライトあり） | 中（粒子 0.55・ライトなし）。低（0.3・追加の層なし・画面揺れ半分）も選べる |
