@@ -52,6 +52,9 @@ namespace CoopDeck.Animation
         /// <summary>A hit landed (true = heavy).</summary>
         public event System.Action<bool> Hurt;
 
+        /// <summary>A dash started, toward this world direction (electric afterimages and similar extras listen).</summary>
+        public event System.Action<Vector3> Dashed;
+
         public Animator Animator => animator;
         public Vector3 AimDirection { get; private set; } = Vector3.forward;
         public bool HasAim { get; private set; }
@@ -73,6 +76,16 @@ namespace CoopDeck.Animation
             clipStrideSpeed = stride;
             source = locomotionSource as ILocomotionSource;
             cachedController = null;
+        }
+
+        /// <summary>
+        /// Swaps only where the locomotion comes from. A character simulated on another machine is moved by received
+        /// poses, not by its motor (CoopDeck.Networking).
+        /// </summary>
+        public void SetLocomotionSource(ILocomotionSource locomotion)
+        {
+            source = locomotion;
+            locomotionSourceComponent = locomotion as MonoBehaviour;
         }
 
         /// <summary>Blend in m/s with speed rings (Fox Gunner controller).</summary>
@@ -215,6 +228,7 @@ namespace CoopDeck.Animation
             SetFloat(AnimatorParams.DashXId, dir.x);
             SetFloat(AnimatorParams.DashYId, dir.y);
             Trigger(AnimatorParams.DashId);
+            Dashed?.Invoke(worldDirection);
         }
 
         public void SetSliding(bool sliding) => SetBool(AnimatorParams.SlideId, sliding);

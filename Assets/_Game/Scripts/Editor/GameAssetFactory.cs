@@ -294,6 +294,26 @@ namespace CoopDeck.EditorTools
             return weapon;
         }
 
+        /// <summary>
+        /// Only effect cores go above 1 (HDR), so a threshold of 1 keeps the scene clean while effects glow. 2026-11-09: stronger
+        /// (0.55 -> 0.8) and high-quality filtering (bicubic upsampling: a smooth glow instead of a blocky one). Re-applied to the
+        /// existing profile on every bootstrap.
+        /// </summary>
+        static void TuneBloom(VolumeProfile profile)
+        {
+            if (!profile.TryGet(out Bloom bloom))
+            {
+                return;
+            }
+
+            bloom.threshold.Override(1f);
+            bloom.intensity.Override(0.8f);
+            bloom.scatter.Override(0.65f);
+            bloom.highQualityFiltering.Override(true);
+            EditorUtility.SetDirty(bloom);
+            EditorUtility.SetDirty(profile);
+        }
+
         public static VolumeProfile EnsureSandboxVolumeProfile()
         {
             EditorUtil.EnsureFolder(GamePaths.Rendering);
@@ -301,6 +321,7 @@ namespace CoopDeck.EditorTools
             var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(path);
             if (profile != null)
             {
+                TuneBloom(profile);
                 return profile;
             }
 
@@ -308,10 +329,8 @@ namespace CoopDeck.EditorTools
             AssetDatabase.CreateAsset(profile, path);
 
             var bloom = profile.Add<Bloom>(true);
-            bloom.threshold.Override(1f);
-            bloom.intensity.Override(0.55f);
-            bloom.scatter.Override(0.65f);
             AssetDatabase.AddObjectToAsset(bloom, profile);
+            TuneBloom(profile);
 
             var tonemapping = profile.Add<Tonemapping>(true);
             tonemapping.mode.Override(TonemappingMode.Neutral);

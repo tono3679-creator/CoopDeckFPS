@@ -913,6 +913,15 @@ MonoBehaviour:
   weapon: {fileID: 8649399183881329978}
   muzzleFlashLayer: -1
   prewarmCount: 3
+  dischargeTiming:
+    chainDelay: 0.075
+    chainTravel: 0.035
+    hopGap: 0.03
+  primaryFlashStrength: 0.5
+  chainFlashStrength: 0.45
+  dischargeKickEuler: {x: -0.7, y: 0.25, z: 0}
+  dischargeKickOffset: {x: 0, y: 0, z: -0.02}
+  dischargeKickDuration: 0.075
 --- !u!114 &8199523688907450708
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -969,6 +978,8 @@ MonoBehaviour:
   castHand: {fileID: 0}
   viewModelCamera: {fileID: 0}
   worldCamera: {fileID: 0}
+  launchKickEuler: {x: -0.9, y: 0, z: -0.6}
+  launchKickOffset: {x: 0, y: -0.004, z: -0.018}
 --- !u!114 &8221320516631139121
 MonoBehaviour:
   m_ObjectHideFlags: 0

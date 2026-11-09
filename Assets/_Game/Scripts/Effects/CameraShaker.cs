@@ -42,6 +42,7 @@ namespace CoopDeck.Effects
         Vector3 kickEuler;
         Vector3 kickOffset;
         float kickAge = float.PositiveInfinity;
+        float activeKickDuration = 0.22f;
         bool posed;
 
         public float Trauma => trauma;
@@ -57,7 +58,24 @@ namespace CoopDeck.Effects
         /// <see cref="Shake"/> which reaches every camera near an impact. Euler in degrees (x &lt; 0 tips the view up),
         /// offset in metres in the camera's space. Scaled like the shake; the aim ray is unaffected.
         /// </summary>
-        public void Kick(Vector3 eulerDegrees, Vector3 localOffset)
+        public void Kick(Vector3 eulerDegrees, Vector3 localOffset) => StartKick(eulerDegrees, localOffset, kickDuration);
+
+        /// <summary>
+        /// A small <see cref="Kick(Vector3, Vector3)"/> lasting <paramref name="duration"/> seconds (e.g. a 60–90 ms jolt for
+        /// a weapon discharge). It does not cut a stronger kick that is still playing (a cast's launch kick).
+        /// </summary>
+        public void Kick(Vector3 eulerDegrees, Vector3 localOffset, float duration)
+        {
+            float scale = PerformanceSettings.ScreenShakeScale * PerformanceSettings.ShakeFor(PerformanceSettings.Vfx);
+            if (kickAge < activeKickDuration && KickShapeAt(kickAge / activeKickDuration) * kickEuler.magnitude > eulerDegrees.magnitude * scale)
+            {
+                return;
+            }
+
+            StartKick(eulerDegrees, localOffset, duration);
+        }
+
+        void StartKick(Vector3 eulerDegrees, Vector3 localOffset, float duration)
         {
             float scale = PerformanceSettings.ScreenShakeScale * PerformanceSettings.ShakeFor(PerformanceSettings.Vfx);
             if (scale <= 0f)
@@ -68,6 +86,7 @@ namespace CoopDeck.Effects
             kickEuler = eulerDegrees * scale;
             kickOffset = localOffset * scale;
             kickAge = 0f;
+            activeKickDuration = Mathf.Max(0.02f, duration);
         }
 
         /// <summary>
@@ -181,16 +200,19 @@ namespace CoopDeck.Effects
         float KickShape()
         {
             KickAmount = 0f;
-            if (kickAge >= kickDuration)
+            if (kickAge >= activeKickDuration)
             {
                 return 0f;
             }
 
             kickAge += Time.deltaTime;
-            float t = Mathf.Clamp01(kickAge / kickDuration);
-            KickAmount = t < 0.15f ? Mathf.SmoothStep(0f, 1f, t / 0.15f) : 1f - Mathf.SmoothStep(0f, 1f, (t - 0.15f) / 0.85f);
+            float t = Mathf.Clamp01(kickAge / activeKickDuration);
+            KickAmount = KickShapeAt(t);
             return KickAmount;
         }
+
+        /// <summary>Kick envelope over its life (0..1): snaps in over the first 15 %, eases back.</summary>
+        static float KickShapeAt(float t) => t < 0.15f ? Mathf.SmoothStep(0f, 1f, t / 0.15f) : 1f - Mathf.SmoothStep(0f, 1f, (t - 0.15f) / 0.85f);
 
         void ApplyPunch()
         {

@@ -8,6 +8,7 @@ using CoopDeck.Core;
 using CoopDeck.Effects;
 using CoopDeck.Player;
 using CoopDeck.Skills;
+using CoopDeck.Weapons;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -84,6 +85,15 @@ namespace CoopDeck.Tests
             yield return Frames(30);
         }
 
+        /// <summary>Runs <see cref="Run"/> after every other LateUpdate (the view model's kick, the arms), on the pose the frame is drawn with.</summary>
+        [DefaultExecutionOrder(30000)]
+        sealed class AfterViewModel : MonoBehaviour
+        {
+            public System.Action Run;
+
+            void LateUpdate() => Run?.Invoke();
+        }
+
         static IEnumerator Frames(int n)
         {
             for (int i = 0; i < n; i++)
@@ -129,8 +139,10 @@ namespace CoopDeck.Tests
 
             commands.Next.ReloadPressed = true;
             yield return WaitForState("UpperBody", "Reload", 6, "reload");
-            Assert.That(body.GetFloat(AnimatorParams.ReloadSpeed), Is.EqualTo(1f).Within(0.05f), "1.7 s clip for a 1.7 s reload");
-            yield return Frames(130);
+            // The 1.7 s reload clip is time-scaled to the equipped weapon's reload (the IGNIS-27's 2.1 s since Docs/IGNIS27_RIFLE.md).
+            float reloadSeconds = player.GetComponent<CoopDeck.Weapons.HitscanWeapon>().Definition.reloadTime;
+            Assert.That(body.GetFloat(AnimatorParams.ReloadSpeed), Is.EqualTo(1.7f / reloadSeconds).Within(0.05f), "the 1.7 s clip fits the weapon's reload");
+            yield return Frames(Mathf.CeilToInt((reloadSeconds + 0.47f) / Dt));
             Assert.That(InState("UpperBody", "Empty"), Is.True, "back to the shared pose after the reload");
 
             health.ApplyDamage(new DamageInfo { Amount = 5f, SourceTeam = TeamId.Enemies });
@@ -354,14 +366,72 @@ namespace CoopDeck.Tests
                 return Vector3.Angle(axis, off * axis);
             }
 
+            // the low hip carry (2026-11-09 reference): the muzzle just right of and below the crosshair
+            Transform muzzle = view.transform.parent.GetComponentsInChildren<Transform>(true)
+                .First(t => t.name == "Muzzle" && t.gameObject.layer == GameLayers.ViewModelIndex);
+            Vector3 muzzleVp = view.WorldToViewportPoint(muzzle.position);
+
             Debug.Log($"[FoxBody] first-person layout: left wrist {wristL} elbow {elbowL} right wrist {wristR} (screen bottom y/z {bottom:0.000}); " +
-                      $"wrist bend left {Bend(true):0} right {Bend(false):0} deg");
-            Assert.That(wristL.y / wristL.z, Is.GreaterThan(bottom + 0.1f), "the left hand is well inside the view");
+                      $"wrist bend left {Bend(true):0} right {Bend(false):0} deg; muzzle viewport {muzzleVp}");
+            Assert.That(muzzleVp.x, Is.InRange(0.55f, 0.65f), "the muzzle sits just right of the crosshair");
+            Assert.That(muzzleVp.y, Is.InRange(0.28f, 0.45f), "the muzzle sits below the crosshair: the rifle is carried low");
+            Assert.That(wristL.y / wristL.z, Is.GreaterThan(bottom), "the left hand on the handguard is in view at the lower edge");
             Assert.That(elbowL.y / elbowL.z, Is.LessThan(bottom), "the left elbow stays under the lower edge");
             Assert.That(elbowL.x, Is.LessThan(wristL.x - 0.05f), "the left forearm reaches in from the lower left, not straight up");
             Assert.That(wristR.y / wristR.z, Is.GreaterThan(bottom * 1.15f), "the right hand on the grip reaches the lower edge");
             Assert.That(Bend(true), Is.LessThan(30f), "the left hand continues its forearm (no hand folded back over the bracer)");
             Assert.That(Bend(false), Is.LessThan(40f), "the right hand continues its forearm");
+        }
+
+        [UnityTest]
+        public IEnumerator Tracers_LeaveAlongTheBarrel_OnScreen()
+        {
+            // 2026-11-08 and 2026-11-09 user: the tracers did not line up with the barrel, and the shots fly straight out of
+            // it (no bending). A tracer runs from the muzzle to the hit under the crosshair, so on screen it points from the
+            // muzzle into the crosshair: the barrel's line has to point there too, at rest and while the view model kicks.
+            yield return Spawn();
+            var arms = player.GetComponentInChildren<FirstPersonArms>(true);
+            Transform rifle = arms.transform.parent.Find("Rifle");
+            Transform muzzle = rifle.GetComponentsInChildren<Transform>(true).First(t => t.name == "Muzzle");
+            Camera world = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "PlayerCamera");
+            Camera view = player.GetComponentsInChildren<Camera>(true).First(c => c.name == "ViewModelCamera");
+
+            // the angle on screen between the barrel's line (view-model camera) and a tracer's (world camera)
+            float OffBy(Vector3 start, Vector3 end)
+            {
+                Vector2 m0 = view.WorldToScreenPoint(muzzle.position);
+                Vector2 barrel = (Vector2)view.WorldToScreenPoint(muzzle.position + rifle.forward * 2f) - m0;
+                Vector2 tracer = (Vector2)world.WorldToScreenPoint(end) - (Vector2)world.WorldToScreenPoint(start);
+                return Vector2.Angle(barrel, tracer);
+            }
+
+            float rest = OffBy(muzzle.position, world.transform.position + world.transform.forward * 20f);
+
+            // Each shot is measured in the frame it is fired, after the view model's kick (LateUpdate): the pose that frame
+            // is drawn with (WaitForEndOfFrame does not run in batch mode).
+            var shots = new List<ShotEvent>();
+            var firing = new List<float>();
+            HitscanWeapon weapon = player.GetComponent<FpsCharacter>().Weapon;
+            weapon.Fired += shots.Add;
+            var probe = new GameObject("DrawnPoseProbe").AddComponent<AfterViewModel>();
+            spawned.Add(probe.gameObject);
+            int seen = 0;
+            probe.Run = () =>
+            {
+                for (; seen < shots.Count; seen++)
+                {
+                    firing.Add(OffBy(shots[seen].Muzzle, shots[seen].End));
+                }
+            };
+            commands.Next.FireHeld = true;
+            yield return Frames(45);
+            commands.Next.FireHeld = false;
+            probe.Run = null;
+            weapon.Fired -= shots.Add;
+            Debug.Log($"[FoxBody] barrel vs tracer on screen: at rest {rest:0.0} deg, firing {string.Join(" ", firing.Select(a => a.ToString("0.0")))} deg");
+            Assert.That(firing.Count, Is.GreaterThanOrEqualTo(5), "the rifle fired");
+            Assert.That(rest, Is.LessThan(1.5f), "at rest the barrel's line runs into the crosshair");
+            Assert.That(firing.Max(), Is.LessThan(3f), "while firing the tracers still leave along the barrel");
         }
 
         [UnityTest]

@@ -5,7 +5,7 @@ namespace CoopDeck.Player
 {
     /// <summary>
     /// Procedural first-person weapon motion (placeholder until real arm animations exist):
-    /// walk bob, look sway, firing kick, reload dip, sprint tilt and landing dip.
+    /// walk bob, look sway, firing kick, reload tilt, sprint tilt and landing dip.
     /// Only the view model moves; the camera itself never bobs.
     /// </summary>
     public class ViewModelAnimator : MonoBehaviour
@@ -22,16 +22,23 @@ namespace CoopDeck.Player
         [SerializeField] float swayMax = 0.035f;
         [SerializeField] float swaySmoothing = 12f;
 
+        // Kick: the rifle slides back and a little up without tipping. Its barrel runs parallel to the view so that on
+        // screen it points into the crosshair, where the tracers go; tipping it up 2.4 deg a shot turned the barrel's line
+        // about 8 deg off the tracers' (2026-11-09, user: the tracers did not line up with the barrel).
         [Header("Kick")]
         [SerializeField] float kickBack = 0.045f;
-        [SerializeField] float kickPitch = 2.4f;
+        [SerializeField] float kickRise = 0.006f;
+        [SerializeField] float kickPitch = 0f;
         [SerializeField] float kickReturn = 18f;
 
         [Header("Poses")]
         [SerializeField] Vector3 sprintOffset = new Vector3(0.04f, -0.05f, -0.03f);
         [SerializeField] Vector3 sprintEuler = new Vector3(8f, -22f, 12f);
-        [SerializeField] Vector3 reloadOffset = new Vector3(0f, -0.12f, 0f);
-        [SerializeField] Vector3 reloadEuler = new Vector3(28f, 0f, -18f);
+        // Reload: the rifle rolls toward the player (top to the right) with its muzzle a little up, so the magazine side
+        // turns into view while the left hand works under it. The rifle is carried low at the hip (2026-11-09); the old
+        // dip (12 cm down, muzzle 28 deg down) took it out of the screen.
+        [SerializeField] Vector3 reloadOffset = new Vector3(-0.02f, -0.01f, 0f);
+        [SerializeField] Vector3 reloadEuler = new Vector3(-6f, -4f, 18f);
         [SerializeField] float poseSmoothing = 10f;
 
         Vector3 restPosition;
@@ -165,7 +172,7 @@ namespace CoopDeck.Player
             sprintBlend = Mathf.Lerp(sprintBlend, motor != null && motor.IsSprinting ? 1f : 0f, poseBlend);
             float reloadWeight = ReloadWeight();
 
-            Vector3 position = restPosition + bob + new Vector3(sway.x, sway.y - landingDip, -kick * kickBack)
+            Vector3 position = restPosition + bob + new Vector3(sway.x, sway.y - landingDip + kick * kickRise, -kick * kickBack)
                                + sprintOffset * sprintBlend + reloadOffset * reloadWeight;
             Quaternion rotation = restRotation
                                   * Quaternion.Euler(sprintEuler * sprintBlend)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using CoopDeck.Cards;
+using CoopDeck.Characters;
 using CoopDeck.Items;
 using CoopDeck.Player;
 using CoopDeck.Weapons;
@@ -87,10 +88,25 @@ namespace CoopDeck.EditorTools
             // The player's full-body model (Meshy → Blender → Unity, Docs/CHARACTER_PIPELINE.md). The NPC keeps the placeholder rig.
             FoxGunnerAssets fox = FoxGunnerAssetFactory.EnsureAll(overwriteAnimations);
             FireRifleAssets fireRifle = FireRifleAssetFactory.EnsureAll();
-            GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials, starterDeck, items, fox.BodyPrefab, fireRifle, practiceDeck);
+            // The second playable character: the Lightning Rabbit with its Lightning SMG (Docs/LIGHTNING_RABBIT.md). PF_Player keeps
+            // the fox; the rabbit's kit replaces its body and first-person parts at start when selected (-character LightningRabbit).
+            FireRifleAssets smg = LightningSMGAssetFactory.EnsureAll();
+            LightningRabbitAssets rabbit = LightningRabbitAssetFactory.EnsureAll();
+            CharacterKit rabbitKit = LightningRabbitAssetFactory.BuildKit(rabbit, smg);
+            CharacterDefinition[] characters = LightningRabbitAssetFactory.EnsureDefinitions(rabbitKit);
+            // The rabbit's own gun, the VOLT-9 Thunderhop (Docs/THUNDERHOP_SMG.md): data, electric effects, starting-weapon link.
+            ThunderhopAssetFactory.AssignToRabbit(characters, ThunderhopAssetFactory.EnsureAll());
+            IgnisAssetFactory.AssignToFox(characters, IgnisAssetFactory.EnsureAll()); // the fox's IGNIS-27 (Docs/IGNIS27_RIFLE.md)
+            // Every starter card's own effect at the fireball's quality bar (Docs/WEAPON_SKILL_VFX.md §3); after the cards,
+            // the fireball and the lightning, whose shaders, meshes and prefabs it reuses.
+            SkillVfxFactory.EnsureAll();
+            GameObject player = CharacterPrefabBuilder.BuildPlayer(input, rifle, movement, materials, starterDeck, items, fox.BodyPrefab, fireRifle,
+                practiceDeck, characters);
             GameObject dummy = CharacterPrefabBuilder.BuildTargetDummy(materials, fx);
             NpcAssetSet npc = NpcFactory.EnsureNpc(movement, rifle, allCards, npcDecks, animations.Humanoid);
             SandboxSceneBuilder.Build(player, dummy, materials, volume, enemies, combos, npc.Prefab);
+            // Phase 2.5: the networked player variant and the two-client smoke scene (second scene in the build).
+            NetSmokeSceneBuilder.Build(player, materials, volume);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();

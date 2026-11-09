@@ -557,6 +557,17 @@ namespace CoopDeck.Tests
                 viewCam.fieldOfView = v.fov;
                 yield return Frames(3);
                 FirstPerson(v.label);
+
+                // Where the muzzle is on screen, and how far the barrel's line on screen turns off the tracer's
+                // (muzzle → the crosshair's hit 20 m out).
+                Transform muzzle = rifle.GetComponentsInChildren<Transform>(true).First(t => t.name == "Muzzle");
+                Vector3 vp = viewCam.WorldToViewportPoint(muzzle.position);
+                Vector2 m0 = viewCam.WorldToScreenPoint(muzzle.position);
+                Vector2 barrel = (Vector2)viewCam.WorldToScreenPoint(muzzle.position + rifle.forward * 2f) - m0;
+                Vector2 tracer = (Vector2)worldCam.WorldToScreenPoint(worldCam.transform.position + worldCam.transform.forward * 20f)
+                                 - (Vector2)worldCam.WorldToScreenPoint(muzzle.position);
+                Debug.Log($"[FoxFP] {v.label}: muzzle viewport ({vp.x:0.000}, {vp.y:0.000}), barrel on screen {Mathf.Atan2(-barrel.y, -barrel.x) * Mathf.Rad2Deg:0.0} deg, " +
+                          $"tracer {Mathf.Atan2(-tracer.y, -tracer.x) * Mathf.Rad2Deg:0.0} deg, off by {Vector2.Angle(barrel, tracer):0.0} deg");
                 foreach (bool left in new[] { true, false })
                 {
                     Transform hand = arms.Hand(left), fore = arms.ForeArm(left);

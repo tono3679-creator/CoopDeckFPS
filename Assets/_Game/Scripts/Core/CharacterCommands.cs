@@ -77,5 +77,13 @@ namespace CoopDeck.Core
     {
         Ray GetAimRay();
         void AddRecoil(Vector2 kickDegrees);
+
+        /// <summary>
+        /// The held weapon's recoil recovery: seconds for the recoverable kick to settle back
+        /// (0 = the aim provider's default). Providers without recovery can ignore it.
+        /// </summary>
+        void SetRecoilRecovery(float seconds)
+        {
+        }
     }
 }

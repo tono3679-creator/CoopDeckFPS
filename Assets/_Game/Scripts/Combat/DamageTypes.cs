@@ -33,6 +33,12 @@ namespace CoopDeck.Combat
 
         /// <summary>The combo was completed by two different actors.</summary>
         Coop = 1 << 3,
+
+        /// <summary>
+        /// Damage from a weapon's on-hit ability (e.g. the Thunderhop's 帯電連射), not from a bullet.
+        /// It never builds that ability's stacks again, so it cannot re-trigger itself.
+        /// </summary>
+        WeaponProc = 1 << 4,
     }
 
     /// <summary>

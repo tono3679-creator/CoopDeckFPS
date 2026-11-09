@@ -231,7 +231,7 @@ namespace CoopDeck.EditorTools
             return result;
         }
 
-        static void ApplyCommonModelSettings(ModelImporter importer)
+        internal static void ApplyCommonModelSettings(ModelImporter importer)
         {
             importer.globalScale = 1f;
             importer.useFileScale = true;      // Blender exports metres
@@ -247,7 +247,7 @@ namespace CoopDeck.EditorTools
         /// Humanoid with the explicit bone map. The first import lets Unity collect the skeleton (bind pose);
         /// the second replaces the automatic mapping, which would guess the reversed spine names.
         /// </summary>
-        static void ApplyHumanoid(ModelImporter importer, Action<ModelImporter> beforeFinalImport)
+        internal static void ApplyHumanoid(ModelImporter importer, Action<ModelImporter> beforeFinalImport)
         {
             importer.animationType = ModelImporterAnimationType.Human;
             importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
@@ -268,7 +268,7 @@ namespace CoopDeck.EditorTools
             importer.SaveAndReimport();
         }
 
-        static Avatar LoadAvatar(string path)
+        internal static Avatar LoadAvatar(string path)
         {
             Avatar avatar = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Avatar>().FirstOrDefault();
             if (avatar == null || !avatar.isValid || !avatar.isHuman)
@@ -279,7 +279,7 @@ namespace CoopDeck.EditorTools
             return avatar;
         }
 
-        static T GetImporter<T>(string path) where T : AssetImporter
+        internal static T GetImporter<T>(string path) where T : AssetImporter
         {
             if (AssetImporter.GetAtPath(path) is T importer)
             {

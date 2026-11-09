@@ -46,6 +46,30 @@ namespace CoopDeck.EditorTools
         public const string AdditiveLayer = "Additive";
         public const string ReactionLayer = "Reaction";
 
+        /// <summary>
+        /// Where a character's Blender-authored clips, masks and generated controller live. <see cref="Fox"/> is the Fox
+        /// Gunner; other characters built with the same clip set and controller layout (LightningRabbitAssetFactory)
+        /// pass their own. Every method without a spec uses the fox's.
+        /// </summary>
+        public sealed class CharacterAnimSpec
+        {
+            public string ModelPath;      // the body FBX: its avatar and its skeleton for the masks
+            public string SetPath;
+            public string ClipTablePath;
+            public string UpperMaskPath;
+            public string ClipMaskPath;
+            public string ControllerPath;
+            public string Prefix;
+            public string BuildTool;      // named when a generated file is missing
+        }
+
+        public static readonly CharacterAnimSpec Fox = new CharacterAnimSpec
+        {
+            ModelPath = FoxGunnerAssetFactory.ModelPath, SetPath = SetPath, ClipTablePath = ClipTablePath, UpperMaskPath = UpperMaskPath,
+            ClipMaskPath = ClipMaskPath, ControllerPath = FoxGunnerAssetFactory.ControllerPath, Prefix = Prefix,
+            BuildTool = "ArtSource/Tools/fox_anim/build_clips.py",
+        };
+
         // ------------------------------------------------------------------ clip table (JSON from build_clips.py)
 
         [Serializable]
@@ -80,39 +104,45 @@ namespace CoopDeck.EditorTools
             public float[] values;
         }
 
-        public static ClipTable LoadTable()
+        public static ClipTable LoadTable() => LoadTable(Fox);
+
+        public static ClipTable LoadTable(CharacterAnimSpec spec)
         {
-            if (!File.Exists(ClipTablePath))
+            if (!File.Exists(spec.ClipTablePath))
             {
-                throw new FileNotFoundException(ClipTablePath + " is missing: run ArtSource/Tools/fox_anim/build_clips.py");
+                throw new FileNotFoundException(spec.ClipTablePath + " is missing: run " + spec.BuildTool);
             }
 
-            return JsonUtility.FromJson<ClipTable>(File.ReadAllText(ClipTablePath));
+            return JsonUtility.FromJson<ClipTable>(File.ReadAllText(spec.ClipTablePath));
         }
 
         // ------------------------------------------------------------------ entry point
 
-        public static FoxGunnerAnimationSet EnsureAll(Avatar avatar)
+        public static FoxGunnerAnimationSet EnsureAll(Avatar avatar) => EnsureAll(avatar, Fox);
+
+        public static FoxGunnerAnimationSet EnsureAll(Avatar avatar, CharacterAnimSpec spec)
         {
-            ClipTable table = LoadTable();
-            AvatarMask clipMask = EnsureMask(ClipMaskPath, ClipImportMask);
-            AvatarMask upperMask = EnsureMask(UpperMaskPath, UpperBodyMask);
-            Dictionary<string, AnimationClip> clips = ImportClips(table, avatar, clipMask);
-            LocomotionRing[] rings = Rings(table);
-            AnimatorController controller = BuildController(table, clips, upperMask, rings);
-            ClipEntry reload = table.clips.First(c => c.name == Prefix + "Rifle_Reload");
+            ClipTable table = LoadTable(spec);
+            AvatarMask clipMask = EnsureMask(spec.ClipMaskPath, spec.ModelPath, ClipImportMask);
+            AvatarMask upperMask = EnsureMask(spec.UpperMaskPath, spec.ModelPath, UpperBodyMask);
+            Dictionary<string, AnimationClip> clips = ImportClips(table, avatar, clipMask, spec);
+            LocomotionRing[] rings = Rings(table, spec.Prefix);
+            AnimatorController controller = BuildController(table, clips, upperMask, rings, spec);
+            ClipEntry reload = table.clips.First(c => c.name == spec.Prefix + "Rifle_Reload");
             return new FoxGunnerAnimationSet
             {
                 Controller = controller, Rings = rings, ReloadClipSeconds = reload.seconds, Clips = clips, UpperBodyMask = upperMask,
             };
         }
 
-        public static LocomotionRing[] Rings(ClipTable table)
+        public static LocomotionRing[] Rings(ClipTable table) => Rings(table, Prefix);
+
+        public static LocomotionRing[] Rings(ClipTable table, string prefix)
         {
             var rings = new List<LocomotionRing>();
             foreach (string name in new[] { "Walk_Forward", "Run_Forward", "Sprint" })
             {
-                ClipEntry e = table.clips.First(c => c.name == Prefix + name);
+                ClipEntry e = table.clips.First(c => c.name == prefix + name);
                 rings.Add(new LocomotionRing(e.speed, e.cycle));
             }
 
@@ -124,10 +154,31 @@ namespace CoopDeck.EditorTools
         static bool IsProcedural(string path)
         {
             string leaf = path.Substring(path.LastIndexOf('/') + 1);
-            return leaf.StartsWith("Tail", StringComparison.Ordinal) || leaf.StartsWith("Ear_", StringComparison.Ordinal);
+            return leaf.StartsWith("Tail", StringComparison.Ordinal) || leaf.StartsWith("Ear_", StringComparison.Ordinal)
+                   || leaf.StartsWith("Scarf_", StringComparison.Ordinal); // the rabbit's scarf tails (ChainSecondaryMotion)
         }
 
-        /// <summary>Every humanoid part and every transform except the procedural tail and ears.</summary>
+        /// <summary>A finger joint of a five-finger rig (the Lightning Rabbit: LeftHandIndex1 .. RightHandPinky3).</summary>
+        static bool IsDigitJoint(string leaf)
+        {
+            foreach (string side in new[] { "LeftHand", "RightHand" })
+            {
+                if (!leaf.StartsWith(side, StringComparison.Ordinal) || leaf.Length <= side.Length + 1 || !char.IsDigit(leaf[leaf.Length - 1]))
+                {
+                    continue;
+                }
+
+                string digit = leaf.Substring(side.Length, leaf.Length - side.Length - 1);
+                if (digit == "Thumb" || digit == "Index" || digit == "Middle" || digit == "Ring" || digit == "Pinky")
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Every humanoid part and every transform except the procedural tail, ears and scarf.</summary>
         static void ClipImportMask(AvatarMask mask)
         {
             for (var part = AvatarMaskBodyPart.Root; part < AvatarMaskBodyPart.LastBodyPart; part++)
@@ -158,14 +209,14 @@ namespace CoopDeck.EditorTools
                 string path = mask.GetTransformPath(i);
                 string leaf = path.Substring(path.LastIndexOf('/') + 1);
                 bool upper = leaf == "Weapon" || leaf.StartsWith("IK_", StringComparison.Ordinal)
-                             || leaf.Contains("Fingers") || leaf.EndsWith("Thumb", StringComparison.Ordinal);
+                             || leaf.Contains("Fingers") || leaf.EndsWith("Thumb", StringComparison.Ordinal) || IsDigitJoint(leaf);
                 mask.SetTransformActive(i, upper);
             }
         }
 
-        static AvatarMask EnsureMask(string path, Action<AvatarMask> fill)
+        static AvatarMask EnsureMask(string path, string modelPath, Action<AvatarMask> fill)
         {
-            var model = AssetDatabase.LoadAssetAtPath<GameObject>(FoxGunnerAssetFactory.ModelPath);
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
             var mask = AssetDatabase.LoadAssetAtPath<AvatarMask>(path);
             bool created = mask == null;
             if (created)
@@ -190,11 +241,12 @@ namespace CoopDeck.EditorTools
 
         // ------------------------------------------------------------------ import
 
-        static Dictionary<string, AnimationClip> ImportClips(ClipTable table, Avatar avatar, AvatarMask clipMask)
+        static Dictionary<string, AnimationClip> ImportClips(ClipTable table, Avatar avatar, AvatarMask clipMask, CharacterAnimSpec spec)
         {
-            if (!(AssetImporter.GetAtPath(SetPath) is ModelImporter importer))
+            string setPath = spec.SetPath;
+            if (!(AssetImporter.GetAtPath(setPath) is ModelImporter importer))
             {
-                throw new FileNotFoundException(SetPath + " is missing: run ArtSource/Tools/fox_anim/build_clips.py");
+                throw new FileNotFoundException(setPath + " is missing: run " + spec.BuildTool);
             }
 
             importer.globalScale = 1f;
@@ -229,7 +281,7 @@ namespace CoopDeck.EditorTools
                 ModelImporterClipAnimation take = takes.FirstOrDefault(t => t.takeName == entry.name || t.takeName.EndsWith("|" + entry.name, StringComparison.Ordinal));
                 if (take == null)
                 {
-                    throw new InvalidOperationException($"{SetPath}: take '{entry.name}' not found (re-run build_clips.py)");
+                    throw new InvalidOperationException($"{setPath}: take '{entry.name}' not found (re-run {spec.BuildTool})");
                 }
 
                 take.name = entry.name;
@@ -256,14 +308,14 @@ namespace CoopDeck.EditorTools
             importer.clipAnimations = result.ToArray();
             importer.SaveAndReimport();
 
-            var clips = AssetDatabase.LoadAllAssetsAtPath(SetPath).OfType<AnimationClip>()
+            var clips = AssetDatabase.LoadAllAssetsAtPath(setPath).OfType<AnimationClip>()
                 .Where(c => !c.name.StartsWith("__preview__", StringComparison.Ordinal))
                 .ToDictionary(c => c.name);
             foreach (ClipEntry entry in table.clips)
             {
                 if (!clips.TryGetValue(entry.name, out AnimationClip clip) || !clip.isHumanMotion)
                 {
-                    throw new InvalidOperationException($"{SetPath}: humanoid clip '{entry.name}' was not imported");
+                    throw new InvalidOperationException($"{setPath}: humanoid clip '{entry.name}' was not imported");
                 }
             }
 
@@ -292,14 +344,17 @@ namespace CoopDeck.EditorTools
         // ------------------------------------------------------------------ controller
 
         public static AnimatorController BuildController(ClipTable table, Dictionary<string, AnimationClip> clips, AvatarMask upperMask,
-            LocomotionRing[] rings)
+            LocomotionRing[] rings) => BuildController(table, clips, upperMask, rings, Fox);
+
+        public static AnimatorController BuildController(ClipTable table, Dictionary<string, AnimationClip> clips, AvatarMask upperMask,
+            LocomotionRing[] rings, CharacterAnimSpec spec)
         {
-            string path = FoxGunnerAssetFactory.ControllerPath;
+            string path = spec.ControllerPath;
             AssetDatabase.DeleteAsset(path); // generated asset: rebuilt from the clip table every run
             AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(path);
             AddParameters(controller);
 
-            AnimationClip Clip(string name) => clips[Prefix + name];
+            AnimationClip Clip(string name) => clips[spec.Prefix + name];
 
             // ---------------- Base: locomotion and movement actions (full body)
             AnimatorControllerLayer[] layers = controller.layers;
@@ -625,7 +680,7 @@ namespace CoopDeck.EditorTools
             Transform t = FindBone(root, name);
             if (t == null)
             {
-                throw new InvalidOperationException($"{FoxGunnerAssetFactory.ModelPath}: bone '{name}' is missing (re-run fox_rig.py)");
+                throw new InvalidOperationException($"{root.name}: bone '{name}' is missing (re-run the rig script)");
             }
 
             return t;
@@ -639,8 +694,22 @@ namespace CoopDeck.EditorTools
         public static void SetupBody(GameObject body)
         {
             Transform root = body.transform;
-            var animator = body.GetComponent<Animator>();
+            SetupHandIkAndLookAt(body);
 
+            var secondary = body.AddComponent<FoxSecondaryMotion>();
+            Transform[] tail = Enumerable.Range(1, 4).Select(i => Require(root, $"Tail{i:00}")).ToArray();
+            secondary.Configure(null, Require(root, "Hips"), tail, Require(root, "Ear_L"), Require(root, "Ear_R"),
+                body.GetComponentInChildren<SkinnedMeshRenderer>());
+            FinishBody(body);
+        }
+
+        /// <summary>
+        /// The part of <see cref="SetupBody"/> every character built on these clips shares: Animation Rigging hand IK onto
+        /// the clip-keyed IK_Hand_* goals (with the IK_Elbow_* hints) and the look-at (<see cref="FoxBodyAnimator"/>).
+        /// </summary>
+        public static FoxBodyAnimator SetupHandIkAndLookAt(GameObject body)
+        {
+            Transform root = body.transform;
             var rigGo = new GameObject("HandIK");
             rigGo.transform.SetParent(root, false);
             var rig = rigGo.AddComponent<Rig>();
@@ -674,14 +743,15 @@ namespace CoopDeck.EditorTools
 
             var look = body.AddComponent<FoxBodyAnimator>();
             look.Configure(null, Require(root, "LeftHand"), Require(root, "Weapon"));
+            return look;
+        }
 
-            var secondary = body.AddComponent<FoxSecondaryMotion>();
-            Transform[] tail = Enumerable.Range(1, 4).Select(i => Require(root, $"Tail{i:00}")).ToArray();
-            secondary.Configure(null, Require(root, "Hips"), tail, Require(root, "Ear_L"), Require(root, "Ear_R"),
-                body.GetComponentInChildren<SkinnedMeshRenderer>());
-            animator.keepAnimatorStateOnDisable = true;
-            // Four influences for the fox even where the quality level uses two (Handheld): two cut the blended
-            // tail root and finger joints into flat, stretched-looking shapes.
+        /// <summary>Keeps the Animator's state across disable, and four skin influences everywhere.</summary>
+        public static void FinishBody(GameObject body)
+        {
+            body.GetComponent<Animator>().keepAnimatorStateOnDisable = true;
+            // Four influences even where the quality level uses two (Handheld): two cut the blended tail root and
+            // finger joints into flat, stretched-looking shapes.
             foreach (SkinnedMeshRenderer skinned in body.GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {
                 skinned.quality = SkinQuality.Bone4;
@@ -705,15 +775,48 @@ namespace CoopDeck.EditorTools
         /// <summary>Chest leaning forward into the stock: the shoulders come forward under the eyes.</summary>
         public const float FirstPersonTorsoLean = 33f;
 
+        /// <summary>
+        /// The fox's chest for its low hip carry (CharacterPrefabBuilder.ViewModelGripInCamera, 2026-11-09): turned and
+        /// leaned a little further than <see cref="FirstPersonTorsoYaw"/> / <see cref="FirstPersonTorsoLean"/> (which the
+        /// rabbit keeps) so the left hand still reaches the handguard out at the lower right (at 40/33 it fell 2 cm short).
+        /// </summary>
+        public const float FoxHipTorsoYaw = 44f;
+        public const float FoxHipTorsoLean = 38f;
+
         /// <summary>Elbow directions in FPArms (= ViewModel) space: down and out, below the screen.</summary>
         public static readonly Vector3 FirstPersonLeftElbow = new Vector3(-0.6f, -0.8f, -0.1f);
         public static readonly Vector3 FirstPersonRightElbow = new Vector3(0.9f, -0.35f, -0.25f);
 
-        static GameObject ConfigureFirstPersonArms()
+        /// <summary>A character's first-person arms (cut from its own sculpt) and how they are posed. <see cref="FoxFirstPerson"/> is the fox.</summary>
+        public sealed class FirstPersonSpec
         {
-            if (!(AssetImporter.GetAtPath(FirstPersonArmsPath) is ModelImporter importer))
+            public string ArmsPath;
+            public string MaterialPath;
+            public string ViewWeaponName;   // the weapon model in the view model
+            public string BodyWeaponName;   // the held weapon under the body's Weapon bone
+            public float EyeAboveHeadBone;
+            public float EyeInFrontOfHeadBone;
+            public float TorsoYaw;
+            public float TorsoLean;
+            public Vector3 LeftElbow;
+            public Vector3 RightElbow;
+            public string BuildTool;
+        }
+
+        public static readonly FirstPersonSpec FoxFirstPerson = new FirstPersonSpec
+        {
+            ArmsPath = FirstPersonArmsPath, MaterialPath = FoxGunnerLookFactory.FirstPersonMaterialPath, ViewWeaponName = "FireRifle",
+            BodyWeaponName = "HeldRifle", EyeAboveHeadBone = EyeAboveHeadBone, EyeInFrontOfHeadBone = EyeInFrontOfHeadBone,
+            TorsoYaw = FoxHipTorsoYaw, TorsoLean = FoxHipTorsoLean, LeftElbow = FirstPersonLeftElbow, RightElbow = FirstPersonRightElbow,
+            BuildTool = "ArtSource/Tools/fox_anim/fox_fp_arms.py",
+        };
+
+        static GameObject ConfigureFirstPersonArms(FirstPersonSpec spec)
+        {
+            string path = spec.ArmsPath;
+            if (!(AssetImporter.GetAtPath(path) is ModelImporter importer))
             {
-                throw new FileNotFoundException(FirstPersonArmsPath + " is missing: run ArtSource/Tools/fox_anim/fox_fp_arms.py");
+                throw new FileNotFoundException(path + " is missing: run " + spec.BuildTool);
             }
 
             importer.globalScale = 1f;
@@ -732,7 +835,7 @@ namespace CoopDeck.EditorTools
             importer.meshCompression = ModelImporterMeshCompression.Off;
             importer.optimizeGameObjects = false;
             importer.SaveAndReimport();
-            return AssetDatabase.LoadAssetAtPath<GameObject>(FirstPersonArmsPath);
+            return AssetDatabase.LoadAssetAtPath<GameObject>(path);
         }
 
         /// <summary>
@@ -740,9 +843,18 @@ namespace CoopDeck.EditorTools
         /// body, ViewModel layer, no shadows, and a <see cref="FirstPersonArms"/> that copies the body's hand goals
         /// (relative to its rifle) onto the view-model rifle.
         /// </summary>
-        public static GameObject AddFirstPersonArms(Transform viewModelRoot, Transform bodyRoot, int layer, CharacterAnimatorDriver driver)
+        public static GameObject AddFirstPersonArms(Transform viewModelRoot, Transform bodyRoot, int layer, CharacterAnimatorDriver driver) =>
+            AddFirstPersonArms(viewModelRoot, bodyRoot, layer, driver, FoxFirstPerson, out _, out _);
+
+        /// <summary>
+        /// <see cref="AddFirstPersonArms(Transform, Transform, int, CharacterAnimatorDriver)"/> for any character. The eyes
+        /// are the view model's parent; the shoulder offsets used are returned (a character kit re-applies them to the
+        /// player camera when it is put into the player).
+        /// </summary>
+        public static GameObject AddFirstPersonArms(Transform viewModelRoot, Transform bodyRoot, int layer, CharacterAnimatorDriver driver,
+            FirstPersonSpec spec, out Vector3 leftShoulder, out Vector3 rightShoulder)
         {
-            GameObject model = ConfigureFirstPersonArms();
+            GameObject model = ConfigureFirstPersonArms(spec);
             var arms = (GameObject)PrefabUtility.InstantiatePrefab(model, viewModelRoot);
             arms.name = "FPArms";
             Animator unused = arms.GetComponent<Animator>();
@@ -757,7 +869,7 @@ namespace CoopDeck.EditorTools
             t.localScale = Vector3.one;
 
             // the body's soft toon look with the arms' own textures (baked from the same sources as the body's)
-            Material material = AssetDatabase.LoadAssetAtPath<Material>(FoxGunnerLookFactory.FirstPersonMaterialPath)
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(spec.MaterialPath)
                                 ?? bodyRoot.GetComponentInChildren<SkinnedMeshRenderer>().sharedMaterials[0];
             foreach (Transform child in arms.GetComponentsInChildren<Transform>(true))
             {
@@ -774,19 +886,19 @@ namespace CoopDeck.EditorTools
                 skinned.quality = SkinQuality.Bone4;
             }
 
-            Transform viewRifle = viewModelRoot.GetComponentsInChildren<Transform>(true).First(x => x.name == "FireRifle");
+            Transform viewRifle = viewModelRoot.GetComponentsInChildren<Transform>(true).First(x => x.name == spec.ViewWeaponName);
             var fp = arms.AddComponent<FirstPersonArms>();
-            fp.Configure(Require(bodyRoot, "HeldRifle"), Require(bodyRoot, "IK_Hand_L"), Require(bodyRoot, "IK_Hand_R"), viewRifle,
+            fp.Configure(Require(bodyRoot, spec.BodyWeaponName), Require(bodyRoot, "IK_Hand_L"), Require(bodyRoot, "IK_Hand_R"), viewRifle,
                 new[] { Bone("LeftArm"), Bone("LeftForeArm"), Bone("LeftHand") },
                 new[] { Bone("RightArm"), Bone("RightForeArm"), Bone("RightHand") });
             fp.SetDriver(driver); // LeftHandIK / CastHand: whether the left hand is on the rifle or casting right now
             // the left hand keeps the body's own hold (no first-person-only grip the fox's arm cannot reach);
             // elbows: fixed hints for these shoulders (the body's are for its own shoulders and would lift the elbow into view)
             fp.ConfigureExtras(null, null, null);
-            fp.SetElbowHints(FirstPersonLeftElbow, FirstPersonRightElbow);
+            fp.SetElbowHints(spec.LeftElbow, spec.RightElbow);
             FirstPersonArms.ShoulderOffsets(bodyRoot, Require(bodyRoot, "Head"), Require(bodyRoot, "LeftArm"), Require(bodyRoot, "RightArm"),
-                EyeAboveHeadBone, EyeInFrontOfHeadBone, out Vector3 leftShoulder, out Vector3 rightShoulder);
-            fp.SetShoulders(viewModelRoot.parent, leftShoulder, rightShoulder, FirstPersonTorsoYaw, FirstPersonTorsoLean);
+                spec.EyeAboveHeadBone, spec.EyeInFrontOfHeadBone, out leftShoulder, out rightShoulder);
+            fp.SetShoulders(viewModelRoot.parent, leftShoulder, rightShoulder, spec.TorsoYaw, spec.TorsoLean);
             return arms;
         }
 

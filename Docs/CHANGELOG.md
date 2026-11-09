@@ -2,6 +2,128 @@
 
 形式：日付ごとに「追加 / 変更 / 修正 / 検証」。検証していないものは「検証」に書かない。
 
+## 2026-11-09 — 一人称の構図を前の版に寄せ、弾は銃身からまっすぐ飛ぶ
+
+ユーザー指示「構図はなるべく前のやつにしたい。前の構図で弾道だけ修整できない？」、続けて「玉は曲げない。銃身から直線で飛ぶ」。
+- まっすぐな弾道は、画面上では必ず銃口から照準へ向かう。だから銃身の線が照準を通らないと揃わない。
+- 前の構図（銃口 6° 下）では、銃身が照準より下を向いていた。
+- そこで銃身はカメラと平行のまま、前の構図にいちばん近い置き場所を選び直した。
+- 途中で、弾道を銃身に沿って出してから照準へ曲げる案（`TracerPath`）を作って撮影までしたが、この指示で取りやめ、コードは残していない。
+
+### 変更
+- キツネの一人称のライフル：
+  - グリップ `ViewModelGripInCamera` を (0.215, -0.29, 0.38) → (0.234, -0.255, 0.38) へ。
+  - 銃身は平行のまま（`ViewModelHipPitch` 0°・`ViewModelHipYaw` 0°）。
+  - 銃は画面上で 35° → 27° の傾きになり、前の構図（22°）に近づいた。
+  - 銃口の画面位置は左下原点で (0.63, 0.41)。
+- テスト：`FoxBodyPlayModeTests` の銃口の高さの範囲を 0.28〜0.42 → 0.28〜0.45 に広げた（0.414 で上限に近かったため）。
+- `FOX_ANIMATION.md` を更新。
+
+### 検証
+- 候補 6 通りを `Tune_FirstPersonFox` で撮影し、前の構図の銃の輪郭との重なりで比べた：
+  - 同じ高さ：31°、85%。
+  - 2 cm 上：27°、83%（採用）。
+  - 4.4 cm 上：22°、70%。
+  - 1.5 cm 右・2 cm 上：25°、79%（左手が 0.6 cm 届かない）。
+  - 直前の版：35°、73%。
+  - 比較画像は `Screenshots/FoxFP_StraightLevel_Candidates.png`。
+- バッチでブートストラップを実行した。別セッションの演出（第 2 弾）とブルームもここで再生成された。
+- EditMode：326/326。
+- PlayMode（全件）：122 件中 101 件が通過、4 件が失敗、17 件は手動実行用でスキップ。
+  - 失敗の 4 件は、バッチ実行のときだけ落ちる既知のもの（ウサギの光・残像の 3 件と `HudPlayModeTests.KeyLabels_SwitchToTheDeviceThePlayerJustUsed`）。
+  - 画面上の銃身と弾道の差：静止 0.0°、連射中 0.8〜0.9°。
+  - 手首の曲がり：左 15°・右 37°。
+  - 範囲を広げたあと `FoxBodyPlayModeTests` を回し直し、8/8 が通過した。
+- Windows ビルド（Ally X、1920×1080 全画面、`-perfrun 8`、自動射撃）：
+  - 平均 59.9 fps、1% Low 59.9 fps、GPU 平均 5.7 ms。
+  - 画面（`PerfCaptures/fp_straight_level.png`）で、銃身の線が照準へ向かい、弾道がその上を飛ぶことを確認した。
+- 未確認：人の手でのプレイ、ウサギの一人称の見え方。
+
+## 2026-11-09 — 射撃・スキルの演出 第 2 弾：もっと派手に・くっきり・地面に
+
+ユーザー指示「もっと派手でいい。エフェクトの解像度教えて、ぼやけてるから解像度あげて。一部のエフェクトが宙に浮いてる」。詳細は `WEAPON_SKILL_VFX.md` §8。
+
+### 追加
+- `GroundedFx`（Effects）：地面に立つ作りのエフェクトの印。`SkillVfxFactory` が全カードの範囲エフェクトと予告円に付ける。
+
+### 変更
+- `SkillCaster`：範囲エフェクト・予告円・飛翔弾の爆発のうち `GroundedFx` のものは、表示位置だけを狙った点の真下の地面（最大 3 m 下、キャラクターは飛ばす）へ下ろす。ダメージの中心は変えていない。
+- 品質「中」（Ally X の既定）：粒子 55% → 80%、エフェクトのライトを点灯（`PerformanceSettings`）。
+- ブルーム：強さ 0.55 → 0.8、高品質フィルター。既存の `VP_Sandbox` にもブートストラップのたびに反映（`GameAssetFactory.TuneBloom`）。
+- スキル・銃の演出を強化：閃光・火花・ライト・画面揺れ・芯の明るさ、敵への命中の大きさ。炎の温度と明るさ。
+- 鮮明さ：炎・煙のノイズを 4 段に（`FbFbm`）、輪郭の柔らかさ 0.65 倍（煙は除く）。
+- `EffectsCaptureTests`：1920×1080 で撮影（以前は 1280×720）。
+
+### 修正
+- 敵を狙ったときに、火炎旋風・焼夷・メテオ（予告円・爆発）・重力系の地面の層が胸の高さに浮いていた。
+- サンダーチャージの発動直後に一人称で見えた縦の白い筋（昇る火花を輪の縁から出すようにした）。
+
+### 検証
+- テスト：EditMode 326/326、PlayMode 105/105（エディタ）。
+  - 追加：`SkillVfxPlayModeTests.GroundEffects_AimedAtAnEnemysChest_StandOnTheFloorUnderIt`。
+  - 更新：`WeaponSkillVfxTests`（`GroundedFx` の有無）、`ComboAssetTests`（品質「中」の値）。
+- 1080p で撮影して前回と比べた（`Screenshots/Effects/Pass5_*`、まとめ動画 `VFX_Round2.mp4`）。
+- Ally X の Release ビルドで、直前のビルドと同じ条件で比べた。平均 59.6〜59.7 fps（前後同じ）、GPU 5.3〜5.4 → 5.7〜6.7 ms。
+
+## 2026-11-09 — 一人称の弾道を銃身に揃え、カード欄を下中央へ
+
+ユーザー指示「ズレて見える弾道と、カード欄を修正して。カード欄は真ん中に移動」。弾道は銃口から照準の先の着弾点へ飛ぶ。そのため画面上では、銃身の線も照準へ向いていないとずれて見える。直前の腰だめの構え（銃口 6° 下）では、画面上で 20° ずれていた。
+
+### 変更
+- キツネの一人称のライフル：銃身をカメラの正面と平行にした（`CharacterPrefabBuilder.ViewModelHipPitch` 6° → 0°、新しい `ViewModelHipYaw` 0°。以前は `ViewModelRifleYaw` の -1° を使っていた）。
+  - グリップ `ViewModelGripInCamera` を (0.234, -0.275, 0.38) → (0.215, -0.29, 0.38) へ。
+  - 銃口の画面位置は左下原点で (0.62, 0.39)。銃は画面上で 35° の傾きで右下の角へ抜ける。
+  - ウサギの SMG は変えていない（`ViewModelRiflePitch` 0°・`ViewModelRifleYaw` -1°）。
+- `ViewModelAnimator` の射撃の跳ね上がり：1 発ごとに銃口を 2.4° 上げる回転をやめ（`kickPitch` 0）、後ろ 4.5 cm に加えて上へ 0.6 cm 滑らせる（新しい `kickRise`）。回転させると、撃つたびに銃身の線が弾道からずれるため。ウサギにも同じく効く。
+- HUD（`HudLayout`）：
+  - カード欄（スキル枠 3 つ）を右下から下中央へ。照準の真下に中央揃え。支援品の枠と山札・捨て札の枚数はその左。
+  - 武器欄はスキル枠の上から右下の角へ。
+  - 引いたカードの表示と知らせはスキル枠の上へ。
+- テスト：
+  - PlayMode `FoxBodyPlayModeTests.Tracers_LeaveAlongTheBarrel_OnScreen` を追加。静止中と連射中に、画面上の銃身の線と弾道の線の角度差を測る。
+  - EditMode `UiDesignSystemTests.Layout_CardHand_IsCentredAtTheBottom_AndLeavesTheLowerRightToTheRifle` を追加し、アンカーの確認を下中央に変えた。
+  - `FoxAnimationCaptureTests.Tune_FirstPersonFox` は銃口の画面位置と、銃身と弾道の角度差も出す。
+- `FOX_ANIMATION.md`・`UI_DESIGN.md` §4.1・§5・`ARCHITECTURE.md`（`DeckHud`）を更新。
+
+### 検証
+- 候補 6 通りを `Tune_FirstPersonFox` で撮影して比べた。銃口 0° はどれも、画面上の銃身と弾道の差が 0.0°（変更前の構えは 20.1°）。左手が届き、手首の曲がりが最も小さい案を選んだ。
+- バッチでブートストラップを実行した。PF_Player の Rifle は回転 0、`kickPitch` 0・`kickRise` 0.006。
+- EditMode：326/326。
+- PlayMode（全件）：121 件中 99 件が通過、5 件が失敗、17 件は手動実行用でスキップ。
+  - 失敗のうち 1 件は新しいテスト。待ち方（`WaitForEndOfFrame` はバッチでは動かない）のせいだった。直したあと、関係する 3 クラス（キツネ・HUD・ウサギの 18 件）を回し直し、新しいテストは通過：銃身と弾道の差は静止 0.0°、連射中 0.8°（視点の反動の分）。
+  - キツネの一人称のテストは全部通過。手と目標のずれ 0.0 cm、手首の曲がりは左 12°・右 32°、銃口の画面位置 (0.62, 0.39)。
+  - 失敗 4 件：
+    - `LightningRabbitPlayModeTests` の光と残像の 3 件。どれも `Renderer.isVisible` を見る。
+    - `HudPlayModeTests.KeyLabels_SwitchToTheDeviceThePlayerJustUsed`：キーボード入力のあとも Gamepad のまま。
+    - どれもバッチ実行のときだけ落ちる。Game ビューがないので `isVisible` が立たず、入力デバイスの扱いも違う。
+    - 別セッション（キツネ武器モデル品質改善）が、このブートストラップ後の状態で Editor 上の PlayMode 全件を回し、4 件とも通った（104/104、同セッションの SMG 差し替えを含む）。EditMode も 326/326。
+- Windows ビルド（Ally X、1920×1080 全画面、`-perfrun 8`、自動射撃）：
+  - 1% Low 59.9 fps、GPU 平均 5.0 ms。
+  - 画面（`PerfCaptures/fp_tracer_fix.png`）で、弾道が銃口から銃身の線の延長上を照準へ飛ぶことを確認した。
+  - カード欄は下中央にあり、左手とも重ならない。武器欄は右下の角で、機関部の後ろ側に重なる。
+  - 比較画像：`Screenshots/FoxFP_TracerAlign_BeforeAfter.png`。
+- 見た目の代償：銃の画面上の傾きが 22° から 35° になり、参考画像より少し斜めに右下の角へ落ちる。
+- 未確認：人の手でのプレイ、ウサギの一人称の見え方。
+
+## 2026-11-09 — 雷ウサギの Lightning SMG も同じ方法で作り直し
+
+ユーザー依頼「うさぎも作り直して」。詳細は `WEAPON_VISUAL_QUALITY.md` §7。元は `ArtSource/LightningSMG/Backup/20261109_before_quality/`。
+
+### 追加
+- `Editor/HardSurfaceWeapon.cs`：武器のデータテクスチャ・`CoopDeck/Weapon/HardSurfaceToon` のマテリアル（初期ルック、一人称／三人称の輪郭と補助ハイライト）・LOD の切替を共通化。
+- `rebuild_weapon_hq.py`：材質マスクの塗装・アクセントの色相範囲を `--paint-hue` / `--accent-hue` で指定（既定は Fire Rifle の赤と金）。
+
+### 変更
+- Lightning SMG：高精細から 55k＋1.0 mm ベベル＋面積重み付き法線（LOD0 91,290、LOD1 30,000）、色・法線を焼き直し、表面マップと材質マスク（黄橙の塗装・水色のガラス）を追加、2 つのマテリアルを新シェーダーへ。小さい銃なので塗装のエッジは弱め。ソケットは同じ。
+- `FireRifleAssetFactory`・`LightningSMGAssetFactory` は `HardSurfaceWeapon` を使う（Fire Rifle の見た目は不変）。
+- テスト：`LightningRabbitAssetTests` の SMG（約 90k、新シェーダー・材質マスク）。`WeaponLookCaptureTests` はキャラクターを選べる（`WEAPON_LOOK_CHARACTER`）。
+
+### 検証
+- 撮影（`Compare_Rabbit_*.png`）：一人称・三人称とも角の光・階調・つや、輪郭の途切れなし。
+- テスト：EditMode 326/326、PlayMode 104/104（Editor 上）、コンソールのエラー 0。
+- Release（Ally X、1080p 全画面、ウサギ）：SMG だけ違うビルドで GPU 4.32 → 3.91 ms（静止）、4.15 → 4.22 ms（射撃中）、平均 59.6 fps で同じ。
+- 参考：バッチ実行の PlayMode では `LightningRabbitPlayModeTests` の発光・残像 3 件と `HudPlayModeTests.KeyLabels…` が落ちる（Game ビューが無く `Renderer.isVisible` が立たない／入力デバイスの扱い。Unity 6000.6.8f1 セットアップセッションの報告）。Editor 上ではすべて成功。
+
 ## 2026-11-09 — キツネの一人称の銃（Fire Rifle）の画質：ジャギー・平坦さ・安っぽさの原因と改善
 
 詳細は `WEAPON_VISUAL_QUALITY.md`。ユーザー依頼「輪郭のジャギー、平坦な装甲、安っぽさを、スタイライズドな造形のまま高品質な FPS 武器の見た目に。先に原因を特定すること」。元のモデル・Prefab は `ArtSource/FireRifle/Backup/20261109_before_quality/`。
@@ -28,6 +150,379 @@
 - テスト：EditMode 323/323、PlayMode 103/103、コンソールのエラー 0。`FoxBodyPlayModeTests`（手の持ち位置・銃口の画面位置）を含む。
 - Release ビルド（Ally X、1080p 全画面）：Handheld・射撃中 60fps 上限で平均 59.9／1% Low 59.9（前後同じ）、GPU 2.87 → 4.71 ms。静止・上限なしで GPU 3.40 → 4.12 ms。High は GPU 7.33 → 7.27 ms。
 - 未確認：人の手でのプレイ、RTX 4070 の PC での見た目と負荷、リロード中・スキル詠唱中の一人称の見え方（撮影は待機姿勢と射撃の静止画）。
+
+## 2026-11-09 — 射撃とスキルの演出を火球の品質基準に（迫力と高品質）
+
+詳細は `WEAPON_SKILL_VFX.md`。ユーザー指示「スキルや射撃時のエフェクト周りを改善してほしい。迫力があって、より高品質に」。
+
+### 追加
+- `Editor/Vfx/VfxKit`：火球の生成ヘルパーを一般化した共通部品。火球のグラフを属性の色見本で塗り替える `ToneMat`、雷のグラフの `BoltMat`。
+- `Editor/Vfx/WeaponVfxFactory`：IGNIS-27・VOLT-9 のマズル（芯・光暈・星形の筋・炎または電撃・火花・煙）、2 層の弾道（`ShotTracerFx`）、着弾（地形：閃光・火花・炎または電流・破片・土煙・焦げ跡／キャラ：火の玉または体を這う電流）。
+- `Editor/Vfx/SkillVfxFactory`：初期カード 12 枚それぞれの専用演出（`Prefabs/Skills/<カード>/`）と、詠唱時の手元の閃光（属性ごと、`Prefabs/Skills/Cast/`）。ブートストラップから呼ぶ。
+- シェーダー `Art/VFX/Skills/Shaders/ElementVfx.hlsl`：`SG_FX_ElementShell`（盾の膜）、`SG_FX_ElementSigil`（魔法陣・照準・着弾予告・渦）、`SG_FX_ElementCrystal`（氷の結晶）。
+- ランタイム（Effects）：`IBeamFx`、`ShotTracerFx`、`ShapeAnimFx`、`FallingStrikeFx`、`ThrownBeamFx`、`LightningBeamFx`、`ImpactShakeFx`、`SpinFx`、`RepeatArcsFx`。（Skills）`StatusAuraFx`。
+- テスト：EditMode `WeaponSkillVfxTests` 8、PlayMode `SkillVfxPlayModeTests` 6、撮影 `EffectsCaptureTests`（Explicit、前後比較）。
+
+### 変更
+- `SkillCaster`：
+  - ビームは `IBeamFx` で再生する。
+  - 味方に付く効果（盾・強化・回復）は味方の子にして、付いて回るようにした。
+  - マーキングの効果は `attachImpactFx` に従って敵に付ける。
+  - 飛翔弾以外のカードも手元の `castFx` を再生する。
+  - 事前生成を全カードに広げた。
+- `WeaponFx`：弾道は `IBeamFx` で再生する。`TracerFx` も `IBeamFx` を実装。
+- `IgnisAssetFactory`・`ThunderhopAssetFactory`：マズル・弾道・着弾の生成を `WeaponVfxFactory` に置き換え、旧来の生成コードを削除。
+
+### 検証
+- 撮影で比べながら調整した（`WEAPON_SKILL_VFX.md` §6）。
+  - 地面のリングの大きさ、メテオの閃光、フロストノヴァの白さ、氷の槍の出だし、銃口のもや。
+  - マーキングの照準を頭上へ、盾とサンダーチャージの一人称での見え方。
+- テスト：EditMode 321/321、PlayMode 103/103、コンソールのエラー 0。
+- Ally X の Release ビルド（1080p 全画面・内部 900p）で、平均 59.6〜59.9 fps を維持。GPU 3.2〜3.4 ms（改修前 3.4〜3.5 ms、差は誤差の範囲）。
+  - 125〜134 ms の引っかかりは改修前のビルドでも同じように出る（既存の未解決問題）。
+  - 最初の計測は、通信テストの小窓設定（960×540）がレジストリに残ったまま測っていたので、全画面で測り直した。
+- 未確認：人の手でのプレイ、高品質の PC での見た目、他人から見た銃口の演出。
+
+## 2026-11-09 — キツネの一人称の銃を腰だめの低い構えに
+
+ユーザーが示した参考画像（銃を右下に低く構え、銃口は照準の右下、機関部は右下の角の外へ抜ける）に合わせた。
+
+### 変更
+- `CharacterPrefabBuilder.ViewModelGripInCamera`：(0.15, -0.20, 0.39) → (0.234, -0.275, 0.38)。`ViewModelRootPosition` も同じだけ動かした：(0.194, -0.245, 0.29)。
+- 新しい定数 `CharacterPrefabBuilder.ViewModelHipPitch` = 6°：キツネのライフルの銃口を下げる角度。ウサギの SMG は `ViewModelRiflePitch`（0°）・`ViewModelRifleYaw`（-1°）のまま。ウサギのキットも作り直したので、SMG の画面上の位置は変わらない。
+- 新しい定数 `FoxGunnerAnimationFactory.FoxHipTorsoYaw/Lean` = 44°・38°（キツネ専用の胸の向き。以前は 40°・33°）。遠くなったハンドガードに左手を届かせるため。ウサギは `FirstPersonTorsoYaw/Lean` のまま。
+- `ViewModelAnimator` の装填の姿勢：12 cm 下げて銃口を 28° 下げる動きをやめた。代わりに銃を時計回りに 18° 傾け、銃口を 6° 上げる。低い構えのままでは装填中に銃が画面から消えたため。
+- テスト `FirstPersonArms_ReachInFromTheLowerCorners_WithStraightWrists`：銃口の画面位置（横 0.55〜0.65、下から 0.28〜0.42）の確認を追加。左手の条件は「画面の内側へ十分入る」から「画面の下端で見える」に変えた。
+
+### 検証
+- 候補 20 通りを `Tune_FirstPersonFox` で撮り、参考画像と並べて選んだ（銃口の下げ 0〜12°、前後 30〜52 cm、胸の向き）。
+  - 前へ 40 cm 以上出すと、左手が 4.6 cm 以上届かない。
+  - 胸を 40°・33° のままにすると、2 cm 届かない。
+- 起動中の Editor でブートストラップを実行し、PF_Player とキットを作り直した。PlayMode 97/97、EditMode 313/313、コンソールのエラー 0。
+  - ブートストラップ直後は、EditMode の 3 件が「PF_FoxGunner_Body のコントローラーが null」で落ちた。Editor 上でコントローラーを作り直したのに、メモリ上の Prefab が古い参照を持ったままになっていたため。Prefab を再インポートしたら通った（ディスク上のファイルは正しい）。
+- 一人称の数値：手と目標のずれは静止 0.0 cm、移動中 0.3 cm。手首の曲がりは左 19°・右 38°。ねじれは最大 38°。銃口の画面位置は (0.59, 0.36)（左下原点）。
+- 確認した画像：
+  - Sandbox のプレイ画面（HUD 込み）：`Screenshots/FoxFP_HipCarry_Game.png`
+  - 変更前・参考・変更後・装填中の比較：`Screenshots/FoxFP_HipCarry_BeforeAfter.png`
+  - 連射の動画：`Screenshots/Lightning/GunAim_Fox.mp4`
+  - 待機・走り・ダッシュ・装填・詠唱：`Screenshots/FoxAnim_FirstPerson.png`
+- 見た目の代償：
+  - 銃身が照準の 6° 下を向くので、曳光弾は銃口から銃身の線より上（照準）へ向かって出る。
+  - 右下の武器欄とカード欄が機関部の後ろ側に重なる。
+- 未検証：Windows ビルドと Ally X での性能（描画するものは変わっていない）、ウサギの見た目の撮影。
+
+## 2026-11-08 — Phase 2.5：2 人の移動を同期する最小の通信テスト（Netcode）
+
+詳細は `MULTIPLAYER_PLAN.md` §7.1〜7.3。移動だけ・所有者権威・ローカル接続の最小構成。戦闘・デッキ・コンボの同期は Phase 6。
+
+### 追加
+- Netcode for GameObjects 2.13.3（Unity Transport を含む）。`Assets/DefaultNetworkPrefabs.asset` は Netcode が自動で作るプレハブ一覧。
+- `CoopDeck.Networking`：`NetworkPlayer`（所有者は単独プレイと同じ経路、他の端末のコピーは入力・シミュレーション・一人称リグを止めて全身を表示）、`RemoteCommandSource`（`ControllerKind.Remote`）、`RemoteMotion`（受け取った位置からの速度）、`NetPose`（ピッチ・接地・スプリントを 4 バイトで）、`NetLaunchOptions`（`-nethost` `-netclient` `-netport` `-netlisten` `-netauto` `-netout` `-netreconnect`）、`NetSmokeSession` / `NetSmokeWalker` / `NetSmokeRecorder`（Net_Smoke の簡易パネルと無人テスト）。
+- `Editor/NetSmokeSceneBuilder`：`PF_NetPlayer`（`PF_Player` の Prefab Variant）と `Net_Smoke` シーンを生成し、ビルドの 2 番目のシーンに追加。ブートストラップから呼ぶ。単体はメニュー `CoopDeck > Setup > Build Net Smoke Scene (Phase 2.5)`。
+- テスト：EditMode `NetworkingTests` 11（起動引数・`NetPose`・`RemoteMotion`・生成物・依存の向き）、PlayMode `NetworkPlayModeTests` 2（Host 開始〜移動〜退出、コピーの見せ方）。
+
+### 変更
+- `CharacterAnimatorDriver.SetLocomotionSource`：移動の入力元だけを差し替える（コピーは受け取った位置で動くため）。
+- `SandboxSceneBuilder.BuildLighting` / `Block` を Editor アセンブリ内で共有（`internal`）。
+- `DischargeFxPlayModeTests`：非推奨の `FindObjectsByType(…, FindObjectsSortMode)` を置き換え（警告 2 件）。
+
+### 検証
+- ROG Ally X 1 台で Release ビルドを 2 つ（Host 32 秒・Client 27 秒、Client は 14 秒で切断して再参加）。定常時の表示遅れ 0.185 秒、位置誤差 中央値 5 cm・95% 17〜19 cm・最大 26 cm、ヨー誤差 中央値 0.2°。参加・再接続の直後 1.5 秒は最大 0.65〜1.68 m の追いつき。RTT 平均 17 ms。所有権の確認 104 回で違反 0、エラー・警告 0。両方の画面のスクリーンショットで相手の全身とアニメーションを確認。
+- EditMode 313/313、PlayMode 97/97、コンソールのエラー 0。
+- 未検証：別の PC 同士、人の手での操作、キャラ選択の同期（未実装：相手の体は自分の端末の選択で表示される）。
+
+## 2026-11-08 — 雷ウサギの Death で SMG が腿に入るのを修正
+
+### 修正
+- `ArtSource/Tools/rabbit/rabbit_clips.py`：Death で SMG を膝の上から床へまっすぐ移していたため、倒れ始めにグリップが右腿へ 8〜11 mm（3 コマ）入っていた。倒れる途中で外 8 cm・前 6 cm・上 12 cm の弧を描かせる（`DEATH_ARC`）。体から押し出す補正も最大 48 → 21 cm に減った。
+- `rabbit_check.py` に `timeline` モード（1 クリップのコマごとの食い込み）。走査（scan）は部位ごとの最悪値しか出さず、コマの間だけの一瞬の値と区別できなかった。
+
+### 検証
+- 書き出すコマ（30 fps）で Death の食い込みは最大 7 mm（着地で尻尾の毛が床の SMG に触れる）。全クリップの走査で 5 mm 以上は Rifle_Inspect・Revived（毛先 6〜8 mm）だけ。
+
+## 2026-11-08 — 雷ウサギの全力疾走でストックが右腕に入るのを修正
+
+### 修正
+- `ArtSource/Tools/rabbit/rabbit_clips.py`：ウサギの Sprint だけ、銃口の下向きをキツネの 22° から 13° に（`GAIT_TWEAKS["Sprint"]["rifle_pitch"]`）。ウサギは右腕の下にストックを挟む構えなので、22° ではストックの端が右上腕に最大 21 mm 入っていた。10〜16° の範囲ならどれも食い込まない（`rabbit_check.py` scan）。銃を前へ出す案は腕もついて来て悪化したので不採用。
+- 全 47 クリップを作り直して `A_LightningRabbit_Set.fbx` を取り込み直し（クリップ表は不変）。
+
+### 検証
+- 全クリップの走査：食い込み 5 mm 未満が 43 → 44 クリップ。残りは従来どおり Rifle_Inspect・Revived（毛先 6〜8 mm）と Death（0.2 秒だけ脚に 6〜11 mm）。両手は SMG から外れない（0.0 cm）。
+- EditMode 302/302、PlayMode 95/95。
+
+## 2026-11-08 — 炎キツネ専用アサルトライフル「IGNIS-27 ブレイズテイル」と固有能力「火種刻印」
+
+詳細は `IGNIS27_RIFLE.md`。設計データ `Docs/Design/IGNIS27_Blazetail_WeaponData.json` を既存の武器形式に変換（数値は JSON の初期案のまま、燃焼の強さだけ既存の火球カードの値をユーザー確認のうえ使用）。
+
+### 追加
+- `WD_Ignis27Blazetail`（1 発 18・480 rpm・28 発・リロード 2.1 秒・射程 85 m・24→60 m で 0.7 倍・頭 1.65 倍）。生成は `Editor/IgnisAssetFactory`（`RunStandalone` あり）。
+- 火種刻印：同じ敵に 6 連続命中で起爆。主対象 22、半径 2.5 m の近い敵 4 体に 12、全員に既存の燃焼（毎秒 6・4 秒）と炎の属性ヒット（既存のコンボ処理でオーバーロード・灼熱特異点）。同じ敵は 4 秒に 1 回。
+- 炎のエフェクト `Prefabs/VFX/Ignis/`（マズル・弾道・着弾・蓄積中の残り火・起爆・飛び火）。
+- テスト `IgnisTests`（5）・`IgnisPlayModeTests`（6、VOLT-9・プロトAR とのバランス比較を含む）。
+
+### 変更
+- `ChargeBurstSpec` に型 `shape`（Chain＝従来・既定 / Splash）と飛び火・継続ダメージの項目を追加。既定値で従来の動作（VOLT-9 の帯電連射と雷撃の見た目は不変）。`HitscanWeapon.ReleaseChargeBurst` に Splash の分岐。
+- キツネの初期武器を IGNIS-27 に（`CD_FoxGunner.startingWeapon`）。`PlayerCharacterSwap.Apply` は未選択・不明な id でも組み込みのキャラクター（キツネ）の初期武器を当てる（警告文は従来どおり）。
+- `ProjectBootstrap` が IGNIS-27 を作ってキツネに割り当てる。
+- テスト：`ThunderhopTests` のキツネの初期武器の確認、`FoxBodyPlayModeTests` のリロードのクリップ速度を装備中の武器から計算。
+- 拡散：ユーザー決定（ADS は実装しない、腰撃ちの拡散 0）で IGNIS-27 の `baseSpread`・`spreadPerShot`・`maxBloom`・`movingSpread` を 0 に（空中の拡散 1.4 は残す）。
+- プロトAR（`WD_AssaultRifle`）・NPC のカービン・VOLT-9 のデータは変更なし。
+
+### 検証
+- EditMode 301/301、PlayMode 90/90。
+- Editor の Play モード（キツネ・選択なし）：IGNIS-27 と「火種刻印」ゲージ、6 連続命中で起爆（46 ダメージ・2 体に飛び火）、燃焼、NPC の雷との組み合わせでオーバーロード。
+- バランス（`IGNIS27_RIFLE.md` §5）：至近は VOLT-9 が約 10% 上、13 m 付近から IGNIS-27 が上（30 m で +37%）、55 m 超は IGNIS-27 だけ。集団には 3 武器中最強。プロトAR より単体 DPS が 8〜25% 低い（調整案 2 つを記載、未適用）。拡散 0 で 17・30 m の命中率は 100%（反動なしの計測）。
+
+## 2026-11-08 — 一人称の銃身と弾道のずれを直す／ライブ Editor でのブートストラップの不具合を直す
+
+ユーザー指摘「銃の向きと飛んでる弾道ずれてない？」。弾は照準の中心から飛び、弾道の光は銃口から命中点へ引くが、一人称の銃が照準より左を向いていた（ウサギ 10°・下 2°、キツネ 6°・下 1°）ため、銃身と弾道が画面上で約 30° ずれて見えた。当たり判定は元から正しく、見た目だけの問題。
+
+### 変更
+- `CharacterPrefabBuilder.ViewModelRifleYaw` −6 → −1、`ViewModelRiflePitch` 1 → 0。ウサギの `LightningRabbitAssetFactory.ViewModel` も同じ値を使う（−10・2 から）。銃身の線が照準に向かい、弾道が銃身から出て見える。
+- `CharacterPrefabBuilder.RelinkController`：プレイヤーとキャラクターキットを組むとき、体の Animator のコントローラーが空なら読み直す。
+
+### 修正
+- ライブ Editor でブートストラップ（`ProjectBootstrap.Run`）を流すと、キツネとウサギの体のコントローラーが「空」の上書きとして PF_Player とウサギのキットに保存され、体が動かなくなっていた（アニメーションの生成がコントローラーを毎回削除して作り直すため、読み込み済みの体のプレハブが削除前のコントローラーを指したままになる）。上の `RelinkController` で解消（キットは正しいコントローラーの上書き、PF_Player は上書きなし）。
+
+### 検証
+- 一人称の撮影（`LightningCaptureTests.Capture_GunAim_Rabbit/Fox`、60 fps、9 m の的に連射）：ウサギ・キツネとも銃身の線が照準に向かい、弾道がその延長に見える（`Screenshots/Lightning/gun_aim_compare.png`）。キツネの IGNIS-27 は長いので、銃口は以前と同じく照準のすぐ右。
+- `LightningRabbitPlayModeTests` 8/8（一人称の両手は目標に届きずれ 0.0 cm、左手首は画面内、左肘は画面の下端より下）。EditMode 302/302、PlayMode 95/95。
+- 未確認：人の手でのプレイ、ビルド。
+
+## 2026-11-08 — VOLT-9 サンダーホップの腰撃ちの拡散を 0 に
+
+ユーザー決定：ADS は実装しない。腰撃ちの拡散は 0、基本は腰撃ちで戦う（IGNIS-27 と同じ）。
+
+### 変更
+- `ThunderhopAssetFactory`：`baseSpread` 0.65 → 0、`spreadPerShot` 0.25 → 0、`maxBloom` 1.75 → 0、`movingSpread` 0.6 → 0。`airborneSpread` 1.0（空中、JSON に無い）は腰撃ちとは別の仕組みなので残した。`WD_Volt9Thunderhop.asset` は生成し直し。
+- `ThunderhopTests`：拡散 0 を確かめる形に。`THUNDERHOP_SMG.md` の数値表と比較表。
+
+## 2026-11-08 — 帯電連射の放電を「ドン、バチッ」の二段に（表示だけ時間差）
+
+ユーザー指示：基準は `Lightning_Fixed.mp4` の 7.6 秒付近の一人称。左の敵が爆ぜ → 横に太い電撃が飛び → 右の敵がもう一度爆ぜる、が通常の距離・等速で読めるように。ダメージ・対象選定・属性処理・同期は変えず、時間差は表示側で。詳細は `LIGHTNING_VFX.md` §1・§1.1。
+
+### 追加
+- `DischargeTiming`（Weapons、純 C#）：連鎖の横アークの開始 75 ms・先端の移動 35 ms・次の連鎖先まで 30 ms。
+- `LightningImpactFx`（Effects）：命中を敵の胴幅に合わせて拡大縮小し、床のリングを足元に置く（空中なら出さない）。生成時に音を鳴らす。
+- `IHitFlashView`（Combat）と `HitFlash.ShowFlash`：白い明滅を表示側の時刻に移す・弱める（ダメージは不変）。
+- `CameraShaker.Kick(euler, offset, duration)`：長さ指定のキック。もっと強いキックの途中なら上書きしない（既存の `Kick` は従来どおり）。
+- `ProceduralAudioFactory.EnsureDischargeSound`：破裂音 `SFX_Discharge_Burst` と高めの電気音 `SFX_Discharge_Chain`（コードで合成）。
+- テスト：PlayMode `DischargeFxPlayModeTests`（5 件）、EditMode `LightningVfxTests` に時間差 1 件。撮影 `LightningCaptureTests.Capture_Acceptance`（60 fps 等速、`[Explicit]`）。
+
+### 変更
+- `WeaponFx`：Chain の放電は、放電のフレームに縦ボルト（終点＝閃光の中心）と初撃のバースト・明滅 0.5・発動者のカメラキック 75 ms。75 ms 後に連鎖先へ横アーク、到達（110 ms）で二発目のバーストと明滅 0.45。連鎖先が表示前に消えたら最後の位置で。Splash（IGNIS-27）は従来どおり同時。
+- `LightningBoltFx`：再点滅をやめ、縦ボルトは約 0.1 秒で上から薄くなって消える。枝は着弾側（62〜95%）に短く（0.3〜0.8 m）。横アークは先端が走る（travel）、幅は初撃の 95%、白芯 0.2・縁 2.2 を Renderer ごとに設定。
+- 命中 Prefab：星形閃光（胴幅の半分強の白、トゲは輪郭の外、ピーク 45〜50 ms）、白〜黄白の破片 8〜12 本を追加、細い火花 18 → 10、胸元のリングを床の水平リングに（150〜220 ms、直径 3 m）、連鎖先は 68 → 70%。命中は密度で粒を減らさない。
+- 雷のシェーダー：衝撃リングが速く広がって細く薄く消える。
+
+### 検証
+- 受け入れ動画（`Screenshots/Lightning/Lightning_Accept_Before/After/Compare.mp4`、60 fps 等速、7.6 秒付近と同じ距離・FOV・明るさ・中品質）：縦ボルトと閃光が同じフレーム、右の敵は 117 ms 後に別の瞬間として爆ぜる、縦ボルトは約 100 ms で消えて火花と残留アークが残る、最大発光でも敵の輪郭が見える、連射中の 2 回目も同じ二段、1 体・連鎖先が消えた場合も問題なし（静止画で確認）。
+- EditMode 302/302、PlayMode 95/95（新規 5 件を含む。2 人同時の放電で二重再生なし、発動者のカメラだけ揺れる、音が各着弾フレームで鳴る）。
+- 未確認：ネットワーク同期（未実装のため）、ビルドでの Ally X 計測、人の手でのプレイ・音の聞こえ方。
+
+## 2026-11-08 — 帯電連射の雷の色と大きさを直す（動画で確認）
+
+ユーザー：「発光が足りないのかな。動画で見せてくれる？」→ 今の雷と発光を強めた版を動画で比較 →「色と大きさを直す」。詳細は `LIGHTNING_VFX.md`。
+
+### 追加
+- PlayMode `LightningCaptureTests`（`[Explicit]`）：雷の確認動画（1280×720・30 fps、一人称・横から 1/4 スロー・寄り・中品質）と 3 コマごとの静止画を `Screenshots/Lightning/` に書き出す。`Capture_GlowBoost` は発光を強めた比較版。
+- `LightningPath.StrokeCount`・`LightningBoltFx.DurationFor`・`LightningBoltFx.Strokes`（再点滅）。
+
+### 変更
+- 雷のシェーダー 2 つを加算合成からアルファ合成に。白い細い芯と、それを包む太いシアンの帯（外側ほど空色）で描く（`_EdgeColor`・`_HaloOpacity` を追加）。芯 4.5 → 3.2 倍、シアン 1.9 → 1.2 倍（強すぎるとトーンマップで白くなる）。
+- メインボルトは 7.5 m の高さから 1.6 m 横にずらして落とす（3.4 m・0.9 m から）。幅 0.5 → 0.6 m。
+- 再点滅：0.1 秒おきに 3 回（連鎖先は 2 回）光り直す。長さ 0.22 → 約 0.35 秒（連鎖先 0.25 秒）。
+- 命中：星形フラッシュを小さく（画面の上限 15 → 12%）、柔らかい光は白い塊から半透明の青に（敵を隠さない）。
+
+### 検証
+- 比較動画（直す前）：発光 1.7 倍にしても明るい背景では白く飛ぶだけだった。
+- 直したあとの動画と静止画：一人称で画面の上端から落ちるシアンの雷が約 0.33 秒見える。空と壁の上でもシアンが出る。中品質でも同じ。
+- EditMode 296/296。PlayMode は `LightningVfxPlayModeTests` 2/2 と `ThunderhopPlayModeTests` 5/5（PlayMode の全体は未実行）。コンソールのエラー 0。
+- ビルドでの Ally X 計測、人の手でのプレイ確認は未。
+
+## 2026-11-08 — 雷ウサギの実ゲーム確認と撮影（Phase 10）
+
+詳細は `LIGHTNING_RABBIT.md` §3.8。コードとアセットの変更はなし（撮影は Editor の Play モード、計測は Release ビルド）。
+
+### 検証
+- 撮影：正面・左右の側面・背面・斜め前・戦闘（帯電連射の雷撃・スキル詠唱・ダッシュの残像）・一人称（`Screenshots/Rabbit_Phase10_Sheet_*.png`）。撮影中のコンソールに警告・エラーなし。
+- Release ビルド（エラー・警告 0）で `-character LightningRabbit -perfrun 30 -perfarena` を 3 回：自動操縦で移動・射撃・スキル・敵の波 4。平均 59〜60 fps、GPU 約 3.0 ms（キツネ 2.88 ms）。初回だけ 358 ms の引っかかり 1 回、2・3 回目は最悪 33 ms。
+- 終了時の異常終了が 1 回（計 9 回中）。ログは正常な終了処理まで出ており、その後の 6 回は再現なし。
+- キツネの実行は従来どおり（Fire Rifle・プロトAR）。
+
+## 2026-11-08 — 雷ウサギの質感・発光・自身の雷の演出（Phase 9）
+
+詳細は `LIGHTNING_RABBIT.md` §3.7。VFX Graph は使わず、火球と同じく Particle System・LineRenderer・手書きシェーダーで作った（グラフを公開 API で作れないため。`FIREBALL_VFX.md`）。
+
+### 追加
+- `ArtSource/Tools/rabbit/rabbit_look.py`：体と一人称の腕の部位マスク（毛・顔・目・布・革・金属・ガラス、2048）と発光マスク（シアン〜青白の稲妻・レンズ・バッテリー管）を作る。確認画像つき。
+- シェーダー `CH_GlowLines`（光る部分を加算で重ねる、強さはスクリプトから）と `CH_ElectricGhost`（ダッシュの残像）。
+- 工場 `LightningRabbitLookFactory`：マスクの取り込み設定、LOD ごとと一人称の腕の「光る三角形だけの複製メッシュ」、グローブのレンズと耳先の目印、火花（一人称用・体用）と耳の放電のプレハブ、残像のマテリアル。キットに `ElectricBodyFx` を付ける。
+- `ElectricBodyFx`（`CoopDeck.Characters`）：発光の呼吸・全力疾走・詠唱・ダッシュ・被弾での強弱、グローブの火花、体が見えているときだけの残像と耳の放電。規則は純 C# の `ElectricPulse`。
+- `ICharacterKitListener`：キットの部品に「プレイヤーに入った」ことを伝える。
+- 帯電連射との連動：`ElectricBodyFx` が武器の `ChargeBurst.Progress` と `ChargeBurstTriggered` を読み、帯電がたまるほど稲妻マークが明るく、雷撃で最も強く光ってグローブから火花が出る（`ElectricPulse.ChargeGlow`・`BurstSpike`）。
+- テスト `LightningRabbitLookTests`（9 件）と PlayMode 2 件（発光と火花、残像）。
+
+### 変更
+- `CharacterAnimatorDriver` に `Dashed` イベントを追加（追記のみ）。
+- `PlayerCharacterSwap`：差し替え後にキットの `ICharacterKitListener` へ通知。
+- `CoopDeck.Characters` が `CoopDeck.Effects` を参照。
+- `LightningRabbitAssetFactory`：仮の一様マスクを廃止し焼いたマスクを使う。体の LOD に発光の複製を足す。キットは `BuildKit` で作る（`ProjectBootstrap` もこれを呼ぶ）。
+- 一人称の腕のマテリアルは腕専用の部位マスクを使う。
+
+### 検証
+- 起動中の Editor でウサギの生成（体・キット・SMG・定義）を実行。コンパイルの警告・エラーは 0。キツネの生成物は変更なし。
+- EditMode 283/283、PlayMode 76/76 成功。
+- 帯電連射の連動を追加後：EditMode 291/291、PlayMode 82/82（VOLT-9 で的を撃つテストを追加：発光 0.17 → 帯電中 0.61 → 雷撃 3.09 → 1.5 秒後 0.18）。
+- Play モード（ROG Ally X）：ダッシュで発光が 0.05 → 2.07、1.5 秒で 0.18 に戻る。エフェクトあり/なしの差は GPU・メインスレッドとも計測のぶれ以下。残像の焼き込みは 1 体 0.19 ms。
+- 撮影：`Screenshots/Rabbit_Phase9_Sheet.png` ほか。
+
+## 2026-11-08 — 雷ウサギを Unity に取り込み、キツネと差し替えて遊べるように（Phase 7〜8）
+
+詳細は `LIGHTNING_RABBIT.md` §3.6。PF_Player はキツネのまま。ウサギは起動引数 `-character LightningRabbit` か、Editor のメニュー CoopDeck > Play As > Lightning Rabbit で選ぶ。
+
+### 追加
+- アセンブリ `CoopDeck.Characters`：
+  - `CharacterDefinition`：id・表示名・属性・キット。`CD_FoxGunner` と `CD_LightningRabbit` を作成。
+  - `CharacterKit`：キャラクターごとの体と一人称部分。
+  - `CharacterSelection`：起動引数と Editor の選択。
+  - `PlayerCharacterSwap`：開始時に体と一人称部分を差し替える。ゲームプレイの部品は触らない。
+- ウサギの資産：
+  - 体 `PF_LightningRabbit_Body`：16 万三角形と LOD 2 段、Humanoid、手の IK、視線、ばね。
+  - `AC_LightningRabbit_TP`（47 クリップ）。
+  - 一人称の腕：ウサギの彫刻から切り出した 4 万三角形、4K。
+  - キット `PF_CharacterKit_LightningRabbit`。
+  - 工場は `LightningRabbitAssetFactory`、`ArtSource/Tools/rabbit/rabbit_fp_arms.py`。
+- `PF_Weapon_LightningSMG`：10 万三角形と LOD 3 万、4K、水色の窓だけが発光。工場は `LightningSMGAssetFactory`。
+- `ChainSecondaryMotion`：3 関節の耳とマフラーの帯を動かすばね。
+- テスト `LightningRabbitAssetTests`（8 件）と `LightningRabbitPlayModeTests`（5 件）。
+- PlayMode テストをキツネに固定する `CharacterSelectionPin`。
+
+### 変更
+- `FoxGunnerAnimationFactory`：パス・接頭辞・一人称の設定を引数で渡せるようにした。キツネの値が既定で、キツネの生成物は差分なし。
+- `FoxGunnerAnimationFactory`：マフラー（`Scarf_`）を手続き制御の骨に、5 本指の関節（`LeftHandIndex1` など）を上半身マスクに加えた。キツネには該当する骨がない。
+- `CharacterPrefabBuilder` に `BuildCharacterKit` と差し替え役の追加。`ProjectBootstrap` がウサギと SMG も作る。
+- `FoxGunnerAssetFactory`：取り込みの補助関数を internal に（中身は変更なし）。
+
+### 検証
+- 起動中の Editor でブートストラップを実行。コンパイルの警告・エラーは 0。
+- EditMode 273/273、PlayMode 74/74 成功。
+- Play モードで一人称（`Screenshots/Rabbit_Unity_FirstPerson_Check.png`）と三人称（`Rabbit_Unity_ThirdPerson_Check.png`）を撮影して確認。
+
+## 2026-11-08 — 帯電連射の雷撃をスタイライズした太い雷に作り直し／サンダーホップの数値調整
+
+ユーザー指示：①比較を見て調整案を適用（1 発 8 → 11、縦反動 0.8 → 0.5）。②「細い幾何学ラインに見えて気持ちよさが足りない」雷を、太く読みやすいスタイライズ雷に（Gunfire Reborn の方向性だけを参考、見た目は真似ない）。詳細は `LIGHTNING_VFX.md`・`THUNDERHOP_SMG.md` §5。
+
+### 追加
+- Shader Graph `SG_FX_LightningBolt`（白熱コア＋シアンの外側発光、逆向きに流れるノイズ＝UV スクロール、根元から先へ走るパルス）と `SG_FX_LightningFlash`（星形の閃光・衝撃リング・柔らかい光）。HLSL は `Art/VFX/Lightning/Shaders/LightningVfx.hlsl`、グラフ・マテリアル・Prefab は `LightningVfxFactory` が生成。
+- `LightningBoltFx`（太いメインボルト＋枝 2〜4 本、強さで太さ・明るさ・枝の数を変える、カメラに近いと細く）、`SurfaceArcFx`（敵の表面に 0.1〜0.2 秒残る電流）、`LightningPath`（交互に折れるジグザグと品質ごとの量、純関数）。
+- `FX_Lightning_Bolt`・`FX_Lightning_Hit`（星形の閃光・光・衝撃リング・火花・点光・残留アーク）・`FX_Lightning_Hit_Chain`（小さく暗め）。
+- `ChargeBurstSpec.chainBurstFx`（連鎖先の命中）。
+
+### 変更
+- 帯電連射：メインボルトは敵の真上から斜めに落ちる形に（銃口からだと視線と平行で潰れ、照準の前で白い塊になった）。連鎖先へは強さ 0.65 の細い雷と小さい命中。命中は撃った側へ少し手前に出して敵にめり込まないように。
+- 品質：高（枝 4/2・残留 3・リング・点光）、中＝Ally X 既定（枝 2/1・残留 2・リング）、低（枝なし・残留 1・リングなし）。命中の粒子は画面の 15〜20% まで。
+- 最初の細い弧と炸裂（`FX_Thunderhop_Arc`・`FX_Thunderhop_Burst`）は削除。
+- サンダーホップ：1 発 11、縦反動 0.5（`WD_Volt9Thunderhop.asset` と生成ツールの初期値）。
+
+### 検証
+- EditMode 全 295 件・PlayMode 全 84 件が成功。新規 `LightningVfxTests` 4 件・`LightningVfxPlayModeTests` 2 件。
+- 調整後の比較（6 秒、リロード込み、全弾命中）：8 m 131.2 DPS（プロトAR 129.0）、17 m 109.0、30 m 83.5。
+- Editor：雷ウサギで撃ち、雷撃の 2・8 フレーム後に一時停止して高・中・低・9 m・3 m を撮影（`Screenshots/Lightning/`）。Editor 上の FPS は雷撃前と同程度。ビルドでの Ally X 計測、人の手でのプレイ確認は未。
+
+## 2026-11-08 — 雷ウサギ専用 SMG「VOLT-9 サンダーホップ」と固有能力「帯電連射」
+
+ユーザー指示：提供された武器設計 JSON（`ThunderHop_SMG_WeaponData.json`）を雷ウサギの初期武器として実装。詳細・対応表・比較は `THUNDERHOP_SMG.md`。
+
+### 追加
+- `WD_Volt9Thunderhop.asset`（8 ダメージ・900 rpm・40 発・リロード 1.65 秒・頭 1.5 倍・射程 55 m・10→24 m で 0.6 倍・拡散 0.65°→2.4°・反動 縦 0.8°／横 0.3°・戻り 0.16 秒・雷属性）と生成ツール `ThunderhopAssetFactory`（ブートストラップから呼ぶ）。
+- 帯電連射：同じ敵に 12 連続命中（間隔 2 秒以内）で雷撃 18＋6 m 以内の 1 体に 12、対象ごとの再発動待ち 1.25 秒。ルールは純 C# の `ChargeBurstModel`、雷撃は `HitscanWeapon`（既存の `Health.ApplyDamage`、新フラグ `DamageFlags.WeaponProc`）→ 雷の属性ヒット → 既存の `ComboSystem`。
+- 電撃のエフェクト 7 種（シアンのマズル・弾道・着弾 2・帯電中の銃口の火花・雷撃の炸裂・電撃の弧）。
+- HUD：武器表示の上に帯電ゲージ（12 分割、雷撃で残像と発光、再発動待ちは点滅）、雷撃のダメージ数値は雷色。
+- 武器データに `falloffEnd`（距離減衰の終点）・`recoilRecoverySeconds`（反動の戻り）・`chargeBurst`・`categoryLabel`・`description` を追加。既定値は従来の動作。
+- `CharacterDefinition.startingWeapon` と `PlayerCharacterSwap` での適用。ウサギに設定（キツネは空＝プロトAR のまま）。
+- `IAimProvider.SetRecoilRecovery`（既定は何もしない）と `FpsLook` の対応。
+
+### 検証
+- EditMode 全 290 件・PlayMode 全 81 件が成功。新規：`ThunderhopTests` 7 件、`ThunderhopPlayModeTests` 5 件（12 発目の雷撃と連鎖、範囲外に連鎖しない、雷の付与、スキルゲージ不変、再蓄積・自己連鎖なし、氷との超伝導バースト〔協力〕とコンボ 3 秒制限、フルオート 15 発/秒・40 発・リロード 1.65 秒、キツネの銃との比較）。
+- Editor：ウサギを選んで Play、2 体の的へ撃ち続けて雷撃・連鎖・HUD のゲージを撮影（`Screenshots/Thunderhop/`）。押さえ込みなしの自動射撃では反動で照準が的から外れた。
+- 比較（6 秒、リロード込み、全弾命中）：8 m で 98.7 DPS（プロトAR 129.0）、17 m で 82.6、30 m で 64.0。JSON の値のままではどの距離でもキツネの銃より弱い（調整は未適用）。
+- 未実装：予備弾 200（予備弾の仕組みが無い）、ADS・持ち替え時間・武器ごとの移動速度、効果音、リロードの電池の発光。
+
+## 2026-11-08 — HUD の属性マークを使っているキャラクターから読む
+
+雷ウサギの取り込みでキャラクター定義（`CoopDeck.Characters.CharacterDefinition`）ができたので、左下の属性マークを固定の「火」から定義の属性に変更。
+
+### 変更
+- `HudController` が `PlayerCharacterSwap.Current.Element` を読む（キツネ＝火、ウサギ＝雷）。定義が無いときは従来どおり `characterElement`（火）。`CoopDeck.UI` が `CoopDeck.Characters` を参照（逆方向の参照はない）。
+
+### 検証
+- EditMode 全 274 件・PlayMode 全 74 件が成功。新しいテスト `VitalsElement_ComesFromTheCharacterInUse`。
+- Editor でウサギを選んで Play し、左下に雷マークが出ることを確認（`Screenshots/UI_Redesign/compact_1080p_rabbit.png`）。確認後、キャラクターの選択はキツネに戻した（EditorPrefs を削除）。
+- 気づいた点：ウサギでも武器のデータはキツネと同じ（HUD の武器名が「プロトAR」）。SMG 用の武器データができれば HUD は自動で追従する。
+
+## 2026-11-08 — 戦闘 HUD をコンパクトに作り直し
+
+ユーザーの指摘：「UI が大きすぎる」。参考画像（小さく・パネル少なめ）の方向性だけを取り入れ、配色と探索端末らしさは維持（他作品の UI そのものは真似ていない）。詳細は `UI_DESIGN.md` §4・§5。この大きさ・配置で進めることをユーザーが承認。
+
+### 変更
+- 文字サイズを約 2 割小さく（本文 20 → 16、最小 18 → 15）、余白 28 → 24。HUD の文字は縁取りで読ませ、パネルは右上の目標だけにした。
+- スキル：中央下の大きなカード 3 枚 → 右下の 76×76 の枠（`SkillSlotView`：アイコン・残り回数・ゲージ・CD・レアリティ・キー・同調）。名前と説明はカードを引いたときに下中央へ 2 秒表示。
+- 支援品は枠 1 つ（所持数・使用キー・種類の ◆、切り替えると名前と効果を知らせる）、山札・捨て札は小さな文字に。
+- HP：左下の 1 本のバー（数値はバーの中）と、その上の行に名前・状態アイコン・回避ランプ。残弾はスキル枠の上の小さな表示。
+- 味方：アイコン・名前・方針・細い HP バーの 1 行（ダウン中は残り秒・蘇生の進み）。行動・スキル・手札の表示はやめ、NPC の知らせは戦闘ログへ。
+- 通知：目標の下の帯 → 左下の戦闘ログ（5 行、新しいものが下）。目標は右上の小さな枠。コンボ名の板を外し、文字とアイコンを小さく。
+- 大きい `CardFrameView` は報酬・交換・図鑑用として残し、F8 のプレビューにスキル枠の各状態を追加。
+
+### 検証
+- EditMode 全 265 件・PlayMode 全 69 件が成功。新しいテスト：常に出ている HUD の面積が画面の 8% 未満（現在約 6%、以前は約 20%）。配置の重なりなし・照準周りの空き・7 種類の解像度は引き続き保証（最小文字は 720p で 10 px）。
+- Editor の Play モードで 1920×1080・1280×720・1920×1200・2560×1080 と F8 プレビューを撮影し、重なり・はみ出しがないことを目視（`Screenshots/UI_Redesign/compact_*`、`compare_original_vs_compact_1080p.png`）。
+- 人の手でのプレイ・実機のコントローラー操作は未確認。
+
+## 2026-11-08 — UI 全面改修 Phase 1・2：灯守隊の探索端末としての戦闘 HUD
+
+ユーザー指示：世界観（エルディア・原脈・灯守隊・継ぎ木港、すべて仮）に合わせて UI を全面改修。まず Phase 1（共通デザインシステム）と Phase 2（戦闘 HUD・スキルカード 3 枚）。詳細は `UI_DESIGN.md`。
+
+### 追加
+- 共通デザインシステム `Scripts/UI/Theme`：`UiTokens`（指定パレット・レアリティ色・文字サイズ・コントラスト計算）、`UiSprites`（コード描画の面取り金属フレーム・回路模様・ランプ・属性アイコン 5 種・同調マークなど）、`UiWidgets`（パネル・ラベル・バー・ランプ・キー表示・フォーカス括弧・チップ）、`CardFrameView`（共通カードフレーム）、`TerminalButton`（共通ボタン）、`HudNotifications`（戦闘通知）、`InputGlyphs`（使っている機器でキー表示を切替）、`HudLayout`・`HudSafeFrame`（配置と 16:9 の枠）、`WorldTerms`（仮の固有名詞）。
+- 戦闘 HUD の部品 `Scripts/UI/Combat`：`VitalsPanel`（HP・障壁・状態異常チップ・回避ランプ）、`WeaponPanel`（残弾・目盛り・予備・リロード）、`NotificationFeedView`、`GuidePanel`（操作ガイド）。
+- 戦闘通知：WAVE 開始・突破、味方のダウン・蘇生・後退、あなたの蘇生。
+- F8：UI プレビュー（Editor・開発ビルドのみ、「操作できません」と明記）。原脈同調（金枠・同調マーク・ゲージ 0 で使用不可）、レジェンダリー、強化・変異、ボタンの各状態、ランプ、通知を確認できる。
+- テスト：EditMode `UiDesignSystemTests` 19 件、PlayMode `HudPlayModeTests` 2 件。PlayMode のテストアセンブリが `CoopDeck.UI`・`UnityEngine.UI` を参照。
+
+### 変更
+- `HudController`・`DeckHud`・`ArenaHud`・`NpcHud`・`ComboHud`・`DamageFeedbackHud` を新しいデザインシステムで作り直し（既存の表示内容・イベントの購読・デバッグキーは維持）。
+- キャンバスの拡縮を「幅と高さの中間」から「Expand」に変更し、HUD を 16:9 の枠に収めた（720p は 1080p の縮小、16:10 は上下に余白、ウルトラワイドで HUD が端へ離れない）。
+- 画面上部に常に出ていた 4 行の操作説明を廃止：戦闘中は「F1 操作ガイド」の札だけ、F1 で左端に一覧、ポーズ画面に全操作（キーボード・パッドの 2 列）。以前は性能表示と重なっていた。
+- 手札：使い切りは捨て札の方へ、ドローは山札の方からスライド。ゲージが減ると残像と発光。キー表示は今の機器のもの（Ally X はパッド表示で開始）。
+- コンボ名：2 つの属性アイコンが共鳴し、薄いホログラム板の上に表示。
+- `HudKit.PanelColor` がトークンのパネル色になったので、NPC デッキ編集のテスト UI も同じ色になる。
+
+### 検証
+- EditMode 全 264 件・PlayMode 全 68 件が成功（開いている Editor で `unity command test run`）。新規テストは配色の指定値、文字のコントラスト（パネルの後ろが白・黒・空・砂でも 4.5:1 以上）、レアリティと属性の色相差、全領域の重なりなし・照準周りの空き、7 種類の解像度での表示範囲と最小文字 12 px、カード表示（残り回数・ラスト1回・使い切り・同調でゲージ 0）、通知、キー表示、属性アイコンの形の違い、手札とデッキの連動・使い切りのスライド・仮想ゲームパッドとキーボードでの表示切替。
+- テストで見つかったコントラスト不足を修正：パネルの不透明度 0.9 → 0.94（白の上の補助文字 4.3 → 4.9:1）、危険の文字用に `DangerText` を追加（4.1 → 4.5:1 以上）。
+- Editor の Play モードで 1920×1080・1280×720・1920×1200・2560×1080 を撮影し、重なり・はみ出しがないことを目視（`Screenshots/UI_Redesign/` の `before_*` / `after_*` / `compare_*`）。戦闘中（WAVE・通知・状態異常チップ・被弾の残像・コンボ名）、ポーズ画面、F1 ガイド、F8 プレビューを確認。Editor 上の FPS は改修前後で同程度（約 88）。
+- 人の手でのプレイ・実機のコントローラー操作は未確認。
+
+## 2026-11-08 — 雷ウサギのモーションを Lightning SMG に合わせて作成（Phase 6〜7）
+
+ユーザー指示：モーションはウサギ用の武器（Lightning SMG）に合わせる。詳細は `LIGHTNING_RABBIT.md` §3.5。Blender 上の作業で、Unity にはまだ入れていない。
+
+### 追加
+- `ArtSource/Tools/rabbit/rabbit_weapon.py`：SMG の握り位置（右手＝ピストルグリップ、左手＝縦のフォアグリップ）、リロードのマガジンの位置、インスペクトの手の位置、確認用の描画、解き方に渡す SMG の表面。
+- `ArtSource/Tools/rabbit/rabbit_check.py`：構え・クリップの描画と、手の届き・SMG と体の食い込み（両方向、重ね着に惑わされない光線の判定）の数値。`sweep`（構えの候補を比べる）・`scan`（全クリップの食い込みを走査）も。
+- 解き方（`rabbit_motion.RabbitRig.solve`）に 2 つの補正：手が握りに届かない分だけ SMG を手へ寄せる、SMG が頭・胸・肩・上腕・腰・脚に入ったら押し出す。
+
+### 変更
+- 構え（`rabbit_clips.py`）：肩付けせず、お腹の高さで右寄り・銃口 12° 内向き・右肘を外へ・ストックは右腕の下（頭・頬の毛・マフラーが肩の前を埋めているため）。格子探索で決定。
+- ウサギ用に差し替えたクリップ：ADS（照準を目に合わせられないので右頬の横まで上げる「レイズドレディ」）、Downed・Revived（SMG を胸の前で持ち、左手は腰の近くの床）、Death（倒れる途中で右手が離れ、SMG は床へ）、インスペクト・スライド・ダッシュ（銃を顔へ引かず前・下へ）、左ストレイフと後退（胸を開かず SMG を左肩へ寄せる）。
+- Skill_QuickCast はキツネの新しい版をそのまま使う（ウサギ専用の時間の付け替えをやめた）。
+
+### 検証
+- 全 47 クリップ・全フレームで、SMG を持っている間の手の誤差 0.0 cm。
+- SMG と体の食い込み（手・前腕を除く）を全クリップ 10 コマずつ走査：43/47 クリップは 5 mm 未満。残りは Sprint のストックが右肩・上腕に最大 23 mm（見える）、Death の倒れる途中に脚へ 6〜11 mm、Revived・Rifle_Inspect の毛先 6〜8 mm。
+- 構え（4 方向・手の拡大）と主なクリップのコマ送りを目視（`ArtSource/LightningRabbit/Inspection/05_motion/`）。
+- 書き出し：`ArtSource/LightningRabbit/Export/Unity/A_LightningRabbit_Set.fbx`・`A_LightningRabbit_Clips.json`。Unity での再生は未確認（Phase 8）。
 
 ## 2026-11-08 — クイックキャストを「前へ突き出す」モーションに作り直し
 
@@ -95,6 +590,33 @@
 - EditMode 245/245。PlayMode 65 成功・6 スキップ（手動撮影）・1 失敗（`FoxBodyPlayModeTests.FirstPersonArms_ReachInFromTheLowerCorners_WithStraightWrists`、別セッションが作業中だった一人称の腕の作り直しによるもの。その作業の後の全件実行では 66 成功・失敗 0 との報告）。Shader Graph 6 種はエラーなくコンパイル。コンパイル警告 0（テストの非推奨 API 呼び出し 4 か所を修正後、火球 PlayMode 6/6 で確認）。
 - 撮影 `Screenshots/Fireball_*.png`（一人称の発射〜遠くの爆発、飛翔の横・前・後ろ、敵・床・壁での爆発と余韻、炎上、品質 3 段階）。
 - Windows ビルド成功（258.6 MB、エラー・警告 0）。ROG Ally X（Handheld）で敵ウェーブと戦いながら 0.3 秒ごとに火球：VFX 中・60 上限 平均 60.0／1% Low 58.4、上限なし 平均 91.1（従来と同等）、GPU 3.6〜3.8 ms、VFX 高・低も 60.0／60.0。実戦中にプレイヤーの火球 → ヴォルトの雷で協力コンボ（オーバーロード）が発生することを確認。
+
+## 2026-11-08 — 雷属性ウサギ（2 体目のプレイアブル）の調査・Meshy 生成・検査
+
+詳細は `LIGHTNING_RABBIT.md`。有料サービス Meshy を使用（ユーザー承認済み、40 クレジット：複数画像からの 3D 生成 35〔Ultra 形状・4K テクスチャ〕＋自動リギング 5。残高 1,576 → 1,536）。Unity 側はまだ変更していない。
+
+### 追加
+- Meshy の出力 `ArtSource/LightningRabbit/Meshy/`：高精細マスター（939,370 三角形、閉じたメッシュ）、30,862 三角形の下地と 4K の基本色、24 ボーンのリグ（身長 1.70 m）と歩き・走り。
+- 検査結果 `ArtSource/LightningRabbit/Inspection/`（四面・歩き・走り・手と頭の拡大）、比較画像 `Screenshots/Rabbit_Meshy_vs_Reference.png`。手は左右とも 5 本の指が分かれて生成された。
+- `ArtSource/Tools/render_closeups.py`（Blender）：手・頭などの拡大を、色つきと形だけ（灰色＋くぼみの陰影）で複数のモデルを同じ枠に並べて描く（`--grey-only` で形だけ）。
+- ゲーム用の体をユーザー指示「極力滑らかに」で 16 万三角形に（キツネは 4 万）。遠距離用に 4 万・1.5 万の LOD を作る方針。`ArtSource/LightningRabbit/Export/LightningRabbit_HQ.glb`（79,902 頂点、24 ボーンのウェイト）、均一 UV の 4K 基本色、高精細からの 4K 法線マップ。
+- `ArtSource/Tools/decimation_study.py`（Blender）：高精細を複数の三角形数に削減し、隣り合う面の角度と高精細からのずれ（部位別）を測る。結果は `LIGHTNING_RABBIT.md` §3.2。
+- `ArtSource/Tools/rebuild_body.py`（Blender）：共有の `refine_character.py rebuild` を変更せずに呼び、体をキャラクター名で書き出す。
+- ウサギのリグ `ArtSource/Tools/rabbit/`（`rabbit_common` / `rabbit_segment` / `rabbit_rig` / `rabbit_debug`）：指 30（1 本ずつ 3 関節）・耳 6・尻尾 2・マフラー 8・銃と IK 5 の計 51 ボーンを追加して 75 ボーン、部位の自動切り分けとウェイト、曲げ検査の画像、LOD 3 段（16 万 / 4 万 / 1.5 万）入りの FBX（`ArtSource/LightningRabbit/Export/Unity/LightningRabbit.fbx`、まだ Assets には入れていない）。詳細は `LIGHTNING_RABBIT.md` §3.3。
+
+- ウサギの武器「Lightning SMG」（ユーザーの設定画から）：Meshy で 3D 化（35 クレジット、ユーザー承認済み。残高 1,536 → 1,501）、高精細から 10 万三角形・4K の色と法線マップで作り直し、遠景用 LOD1（3 万）、全長 0.52 m、ソケット `Muzzle`・`LeftHandGrip`。`ArtSource/LightningSMG/`。詳細は `LIGHTNING_RABBIT.md` §3.4。
+- ツール：`crop_reference.py`（設定画から各面を切り出して AI 拡大）、`rebuild_prop_hq.py`（共有の `refine_prop.py` を変えずに 4K の元テクスチャへ対応）、`fp_view_check.py`（一人称の構図で描いて等倍で切り出す）。
+- ウサギのモーション生成スクリプト（`ArtSource/Tools/rabbit/rabbit_motion.py`・`rabbit_clips.py`・`rabbit_build_clips.py`、キツネの `fox_anim` を読むだけで使う）。ユーザーの指示で武器に合わせるため未実行。
+
+### 検証
+- Blender の曲げ検査（腕・肘・股関節・膝・ひねり・耳・マフラー・尻尾・握り）で、マフラーの筋状の伸びと指の間の裂け目を見つけて修正。
+- SMG を一人称の構図（1920×1080、縦 70°）で描き、等倍の切り出しでテクスチャの画素の粗さが見えないこと、作り直しで照準・レール・銃口の角がくっきりしたことを確認。Unity での確認はまだ。FBX を読み直して 75 ボーン・LOD 3 つ・1 頂点最大 4 ボーン・身長 1.70 m・+Z 向きを確認。Unity での確認はまだ。
+- `Docs/LIGHTNING_RABBIT.md`：外見仕様、キツネとのシルエットの違い、三面図からの大きさ（耳の先まで約 1.70 m）、Meshy の設定と費用、予想される問題（指・耳・マフラー）、既存構成の調査結果、Phase 4 以降の計画、確認事項。
+- 参照画像 `ArtSource/LightningRabbit/Reference/`（ユーザー提供の三面図の原画と、Meshy 用の正方形 PNG）。
+- `ArtSource/Tools/prepare_reference.py`（Blender）：三面図の 1 枚を縮小せずに背景色で正方形へ広げ、体の外接枠を出力する。
+
+### 変更
+- `.gitattributes`：`*.webp` を Git LFS の対象に。
 
 ## 2026-11-08 — 一人称の腕の構図を作り直し（銃を持つ腕が変に見える）
 

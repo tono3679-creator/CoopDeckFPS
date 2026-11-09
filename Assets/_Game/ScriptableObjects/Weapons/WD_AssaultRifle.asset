@@ -14,11 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: CoopDeck.Weapons::CoopDeck.Weapons.WeaponDefinition
   weaponId: weapon.assault_rifle
   displayName: "\u30D7\u30ED\u30C8AR"
+  categoryLabel: 
+  description: 
   damage: 18
   element: 0
   headshotMultiplier: 2
   range: 150
   falloffStart: 40
+  falloffEnd: 0
   minDamageFactor: 0.6
   roundsPerMinute: 600
   automatic: 1
@@ -34,6 +37,29 @@ MonoBehaviour:
   recoilPitch: 0.55
   recoilYaw: 0.22
   firstShotRecoilMultiplier: 1.3
+  recoilRecoverySeconds: 0
+  chargeBurst:
+    enabled: 0
+    displayName: 
+    requiredStacks: 0
+    maxSecondsBetweenHits: 0
+    stacksPerHit: 0
+    primaryDamage: 0
+    chainTargets: 0
+    chainRange: 0
+    chainDamage: 0
+    element: 0
+    perTargetCooldown: 0
+    shape: 0
+    splashRadius: 0
+    splashTargets: 0
+    splashDamage: 0
+    statusDamagePerSecond: 0
+    statusDuration: 0
+    burstFx: {fileID: 0}
+    arcFx: {fileID: 0}
+    chainBurstFx: {fileID: 0}
+    chargeFx: {fileID: 0}
   muzzleFlashPrefab: {fileID: 4192602697150042217, guid: d4b62ce81d4b64d4bb1d6fc43745f2df, type: 3}
   tracerPrefab: {fileID: 5022968376242788108, guid: dd68b56a7fca15f42a2fff58d52de7c0, type: 3}
   impactPrefab: {fileID: 1236046108860414391, guid: ee63d3bd511fb6d43bda9d432f266d73, type: 3}

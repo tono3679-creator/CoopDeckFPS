@@ -97,7 +97,7 @@ namespace CoopDeck.EditorTools
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(GamePaths.SandboxScene, true) };
         }
 
-        static void BuildLighting(MaterialSet m, VolumeProfile volumeProfile)
+        internal static void BuildLighting(MaterialSet m, VolumeProfile volumeProfile)
         {
             var sunGo = new GameObject("Sun");
             var sun = sunGo.AddComponent<Light>();
@@ -321,7 +321,7 @@ namespace CoopDeck.EditorTools
             }
         }
 
-        static GameObject Block(Transform parent, string name, Vector3 position, Vector3 size, Material material, Vector3 euler = default)
+        internal static GameObject Block(Transform parent, string name, Vector3 position, Vector3 size, Material material, Vector3 euler = default)
         {
             GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;

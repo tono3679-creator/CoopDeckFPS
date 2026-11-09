@@ -34,7 +34,8 @@ CoopDeck.Core      （依存なし）  CharacterCommands（指示ボタン含む
    ├── CoopDeck.Input    GameInputActions（既定バインド生成）, PlayerInputReader   ← Unity.InputSystem
    ├── CoopDeck.Effects  FxPool, PooledFx, TracerFx, LightFlash
    │
-   ├── CoopDeck.Weapons  WeaponDefinition, WeaponState, HitscanWeapon, WeaponFx  ← Combat, Effects
+   ├── CoopDeck.Weapons  WeaponDefinition, WeaponState, HitscanWeapon, WeaponFx, ChargeBurst（連続命中の能力：Chain＝VOLT-9 帯電連射、
+   │                     Splash＝IGNIS-27 火種刻印、既存の継続ダメージを付与）  ← Combat, Effects
    ├── CoopDeck.Enemies  TargetDummy, PatrolMover, HitFlash, DamageZone,
    │                     EnemyDefinition, EnemyActor, EnemyProjectile,
    │                     WaveSchedule（純 C#）, WaveDirector                       ← Combat, Effects
@@ -44,17 +45,38 @@ CoopDeck.Core      （依存なし）  CharacterCommands（指示ボタン含む
    ├── CoopDeck.Skills   SkillCaster（＝共通の SkillExecutor：効果の実行・属性ヒットの発行）, DeckController（キャラ⇔デッキ⇔アイテム、練習デッキ）,
    │                     DeckLoadoutController（非戦闘中のデッキ編集）
    │                                                                              ← Combat, Effects, Cards, Deck, Items, Player
+   │     └── CoopDeck.Characters  CharacterDefinition（SO：id・表示名・属性・キット）, CharacterKit（体・持つ武器・一人称の腕と武器）,
+   │                              CharacterSelection（起動引数 -character <id> / Editor の Play As）, PlayerCharacterSwap（開始時に
+   │                              PF_Player の体と一人称部分をキットに差し替える。ゲームプレイの部品は触らない）
+   │                              ElectricBodyFx（雷ウサギの発光の強弱・火花・残像・耳の放電。規則は純 C# の ElectricPulse）,
+   │                              ICharacterKitListener（キットがプレイヤーに入ったことの通知）
+   │                                                                              ← Core, Animation, Effects, Weapons, Player, Skills
    ├── CoopDeck.Combos   ComboDefinition（SO、協力 VFX・音つき）, ComboRule/ComboResolver/ComboDamageBudget/ComboPlanner（純 C#）,
    │                     ComboSystem, ComboEvents, ComboAudio, ElementAuraPresenter（属性の見た目）  ← Core, Combat, Effects
    ├── CoopDeck.NPC      NpcController（AI コントローラー）, NpcDecisionMaker（Utility AI）, NpcStateMachine, NpcSituation,
    │                     NpcSteering, NpcNavigator, NpcCardTraits, NpcProfile（SO）  ← Core, Combat, Cards, Deck, Skills, Player, Weapons, Combos
    └── CoopDeck.UI       HudController, DeckHud, HudKit, WorldHealthBar, FrameTimeMonitor, NpcHud, NpcDeckEditorHud,
                          DamageFeedbackHud（被弾方向・ダウン表示）, ArenaHud（ウェーブ表示）, ComboHud（コンボ名・F4/F6/F7）,
-                         Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, Cards, Deck, Items, Skills, Enemies, Combos, NPC, InputSystem, uGUI
+                         Diagnostics/AutoPerfRunner, AutopilotCommandSource       ← Combat, Weapons, Player, Cards, Deck, Items, Skills, Enemies, Combos, NPC, Characters, InputSystem, uGUI
    （Combat に ReviveModel/Revivable・TeamEngagementMonitor・ITrainingTarget・ThreatWarning、Player に AllyCollisionFilter を追加）
    （Combat に ElementAuraModel、Effects に CameraShaker・LightningArcFx・SpiralTrailFx・RadiusScaledFx・VfxQualityGate を追加）
+   （スタイライズ雷：Effects に LightningBoltFx（太いボルト＋枝）・SurfaceArcFx（残留アーク）・LightningPath（形と品質ごとの量、純関数）、
+    Shader Graph SG_FX_LightningBolt / SG_FX_LightningFlash（Art/VFX/Lightning、LightningVfxFactory が生成）。LIGHTNING_VFX.md）
    （Phase 5 火球：Core に Palette（アートバイブルの色）、Cards に ProjectileSpec、Effects に IRadiusFx・ISurfaceFx・IProjectileFx・
     FireballProjectileFx・FireballExplosionFx を追加。飛翔弾は SkillCaster が判定し、見た目は IProjectileFx が追うだけ。FIREBALL_VFX.md）
+   （射撃・スキルの演出 2026-11-09：Effects に IBeamFx（弾道・ビームの共通の口）・ShotTracerFx・ShapeAnimFx・FallingStrikeFx・ThrownBeamFx・
+    LightningBeamFx・ImpactShakeFx・SpinFx・RepeatArcsFx、Skills に StatusAuraFx（状態が続く間だけ表示）。生成は Editor/Vfx の VfxKit・
+    WeaponVfxFactory・SkillVfxFactory、シェーダーは Art/VFX/Skills の ElementVfx.hlsl。WEAPON_SKILL_VFX.md）
+   （同日・第 2 弾：Effects に GroundedFx（地面に立つ作りの印）。SkillCaster は範囲エフェクトと予告円の表示位置だけを、狙った点の真下の
+    地面へ下ろす（キャラクターは飛ばす。ダメージの中心は狙った点のまま）。品質「中」でもエフェクトのライトを点ける。WEAPON_SKILL_VFX.md §8）
+   （雷ウサギの SMG：Weapons に ChargeBurstSpec・ChargeBurstModel（帯電連射）、Combat の DamageFlags に WeaponProc、Core の IAimProvider に
+    SetRecoilRecovery（既定は何もしない）、Characters の CharacterDefinition に startingWeapon（PlayerCharacterSwap が適用）。THUNDERHOP_SMG.md）
+
+   └── CoopDeck.Networking  （Phase 2.5、Netcode for GameObjects 2.13.3）NetworkPlayer（所有者は単独プレイと同じ経路で動かし、
+                            他の端末では入力・シミュレーション・カメラを止めて体を見せる）, RemoteCommandSource（ControllerKind.Remote）,
+                            RemoteMotion（受け取った位置からの速度、純 C#）, NetPose（ピッチ・接地・スプリント）, NetLaunchOptions（起動引数、純 C#）,
+                            NetSmokeSession / NetSmokeWalker / NetSmokeRecorder（Net_Smoke シーンと無人テスト）
+                                                                              ← Core, Animation, Combat, Player, Input, Unity.Netcode.Runtime
 
 CoopDeck.Editor           ProjectBootstrap ほか生成ツール（カード・アイコン・スキル VFX・仮リグ・アニメ・敵 Prefab・NavMesh・コンボと VFX 含む）
                           ← 全ランタイム + URP + Unity.AI.Navigation + Unity.Animation.Rigging
@@ -68,7 +90,8 @@ CoopDeck.Tests.PlayMode   53 テスト（NPC 16：追従・射撃・スキル/�
 - `CoopDeck.Player` と `CoopDeck.AI` はお互いを参照しない。敵はプレイヤーを `CombatantRegistry`（`ICombatActor`）経由でだけ知る。
 - `CoopDeck.Skills` と `CoopDeck.Combos` もお互いを参照しない。スキルは `CombatEvents.ElementHitApplied` を出すだけで、コンボの存在を知らない。
 - `CoopDeck.NPC` は `CoopDeck.AI`（敵）・`CoopDeck.Input`・`CoopDeck.UI` を参照しない。敵の攻撃は `CombatEvents.ThreatRaised`、敵の位置は `CombatantRegistry` からだけ知る。
-- 予定アセンブリ（フォルダのみ作成済み）：`Networking` `Save`。`Networking` → 全体（逆参照はしない）。
+- `CoopDeck.Networking` は他のゲームプレイのアセンブリから参照されない（Editor とテストだけが参照する。EditMode テストで確認）。Netcode に依存するのもこのアセンブリだけ。
+- 予定アセンブリ（フォルダのみ作成済み）：`Save`。
 
 ---
 
@@ -163,10 +186,10 @@ Health.Died → EnemyActor                    コライダー無効化・撃破 
 
 | クラス | 役割 |
 |---|---|
-| `WeaponDefinition` (SO) | 威力 18、ヘッドショット 2 倍、600 RPM、30 発、リロード 1.7 s、距離減衰 40 m→150 m で 0.6 倍、拡散（基本 0.2°・1発 +0.2°・最大 +2.4°・移動/空中ペナルティ）、リコイル（縦 0.55°・横 ±0.22°・初弾 1.3 倍）、エフェクト Prefab 参照 |
+| `WeaponDefinition` (SO) | 威力・属性・ヘッドショット倍率・射程・距離減衰（開始・**終点**〔0＝射程〕・最小倍率）・連射・弾倉・リロード・拡散・リコイル（**戻り秒数**〔0＝視点の既定〕）・**固有能力 `ChargeBurstSpec`**（既定は無効）・エフェクト Prefab 参照。プロトAR：18、2 倍、600 RPM、30 発、1.7 s、40→150 m で 0.6 倍。サンダーホップ（雷ウサギ）：`THUNDERHOP_SMG.md` |
 | `WeaponState` | 弾数・連射間隔・リロード・ブルーム。待ち時間の端数は「次弾待ちのときだけ」持ち越し、どのフレームレートでも連射速度が正確。リロード中やトリガーを離している間は貯まらない（初弾は必ず1発） |
-| `HitscanWeapon` | 照準レイ（`IAimProvider`）に拡散をかけてレイキャスト → `IDamageable`。拡散乱数は `System.Random` でシード指定可能（将来のホスト再現用） |
-| `WeaponFx` | マズルフラッシュ（ViewModel レイヤー）、弾道（移動する光の筋）、着弾（環境／敵で別 Prefab） |
+| `HitscanWeapon` | 照準レイ（`IAimProvider`）に拡散をかけてレイキャスト → `IDamageable`。拡散乱数は `System.Random` でシード指定可能（将来のホスト再現用）。固有能力があれば弾の命中を `ChargeBurstModel`（純 C#）に渡し、条件を満たすと雷撃（`DamageFlags.WeaponProc` のダメージ → 属性ヒット → 既存のコンボ判定）、`ChargeBurstTriggered` を発行 |
+| `WeaponFx` | マズルフラッシュ（ViewModel レイヤー）、弾道（移動する光の筋）、着弾（環境／敵で別 Prefab）。帯電連射（Chain）の放電は表示だけ時間差：初撃のバーストと縦ボルト → `DischargeTiming` 後に連鎖先へ横アークと二発目、連鎖先の `HitFlash` も到達時（`IHitFlashView`）、発動者のカメラキック（`CameraShaker.Kick` の長さ指定版）。ダメージは放電のフレームで確定済み（`LIGHTNING_VFX.md` §1.1） |
 
 ### 4.3 戦闘（`CoopDeck.Combat`）
 
@@ -196,12 +219,17 @@ Health.Died → EnemyActor                    コライダー無効化・撃破 
 
 ### 4.6 UI・診断（`CoopDeck.UI`）
 
-- `HudController`：コードで uGUI を生成。拡散に連動する照準、ヒットマーカー（ヘッドショット黄・キル赤）、ダメージ数値、弾数・リロード、HP（シールド量・攻撃強化の残り時間つき）、ダッシュ残数、一時停止表示、操作ヒント（F1 で非表示）、F3 性能表示。
-- `DeckHud`：手札 3 枚・山札／捨て札枚数・アイテム欄・破棄／ドロー演出（`CARD_SYSTEM.md` §11）。日本語は OS フォント（Yu Gothic UI → Meiryo → MS Gothic）を使用。
+2026-11-08 に「灯守隊の探索端末」の見た目へ全面改修（設計は `UI_DESIGN.md`）。すべてコードで uGUI を生成し、色・文字サイズは `UiTokens`、形は `UiSprites`（コード描画）、配置は `HudLayout` から取る。
+キャンバスは 1920×1080 から Expand で拡縮し、HUD は 16:9 の枠（`HudSafeFrame`）に収める。
+
+- `HudController`：照準・ヒットマーカー・ダメージ数値、`VitalsPanel`（左下：HP バー・障壁・状態アイコン・回避ランプ）、`WeaponPanel`（スキル枠の上：残弾・リロード）、`NotificationFeedView`（左下の戦闘ログ）、`GuidePanel`（F1 の操作ガイド／ポーズ画面の全操作）、F3 性能表示、F8 `UiStyleGallery`（開発用プレビュー）。
+- `DeckHud`：下中央のスキル枠 3 つ（`SkillSlotView`）とその左の支援品の枠・山札／捨て札枚数・引いたカードの名前と説明（スキル枠の上に 2 秒）・知らせ（`CARD_SYSTEM.md` §11）。大きい `CardFrameView` は報酬・図鑑用。日本語は OS フォント（Yu Gothic UI → Meiryo → MS Gothic）を使用。
+- `InputGlyphs`：使っている機器に合わせてキー表示を切替（ラベルのためだけにデバイスを読む）。`HudNotifications`：HUD 部品同士の通知の受け口（`SubsystemRegistration` でリセット）。
 - `FrameTimeMonitor`：平均 FPS・1% Low・最悪フレーム。
 - `AutoPerfRunner`：ビルドの無人計測（下記 6 章）。
 - `DamageFeedbackHud`：被弾時の赤い周辺減光（シールドだけで防いだときはシアン）、攻撃が来た方向の矢印（同時に 4 個まで）、ダウン中の「ダウン！ まもなく復活します」。
-- `ArenaHud`：アリーナに入る前は「北西のシアンの枠（アリーナ）に入ると敵が出現します」、戦闘中は「WAVE n」「残りの敵 m」、クリア時は「WAVE n クリア！」と「次のウェーブまで n」。
+- `ArenaHud`：右上の目標の枠。現在のエリア（仮名称 `WorldTerms`）、目標（アリーナに入る前は入場の案内、戦闘中は残りの敵、突破後は次のウェーブまで）、WAVE 番号。WAVE の開始・突破を通知へ流す。
+- `NpcHud`：味方の 1 行（属性・名前・方針・HP・ダウン／蘇生）と頭上の名札・敵のコンボマーカー。味方のダウン・蘇生・後退を通知へ流す。
 - `HudController`：弱点（Critical）ヒットはオレンジのマーカーとダメージ数値。
 
 ### 4.7 敵・AI（`CoopDeck.Enemies / AI`）
@@ -308,6 +336,7 @@ Builds\Windows\CoopDeckFPS.exe -perfrun 30 -perfout C:\temp\perf.json [-tier han
 | メニュー / メソッド | 内容 |
 |---|---|
 | `CoopDeck > Setup > Run Phase 1 Bootstrap` / `ProjectBootstrap.RunBatch` | レイヤー、URP ティア、Player Settings、入力アセット、マテリアル、エフェクト Prefab、武器・移動データ、仮アニメーション（`AnimationAssetFactory`）、敵データと敵 Prefab（`EnemyFactory`、仮リグは `PlaceholderRigBuilder`）、プレイヤー／的 Prefab、`Sandbox_Phase1` シーン（敵アリーナと NavMesh の生成を含む）、ビルド設定を生成。データ資産（武器・移動・入力・敵）は既存なら保持。仮アニメーションは既存なら保持し、`-coopdeckOverwriteAnimations` で作り直す |
+| `CoopDeck > Setup > Build Net Smoke Scene (Phase 2.5)` / `NetSmokeSceneBuilder.BuildStandalone`（ブートストラップ内では `Build`） | `PF_NetPlayer`（PF_Player の Variant ＋ NetworkObject・所有者権威の NetworkTransform・`NetworkPlayer`）と `Net_Smoke` シーン（NetworkManager・Unity Transport・30 Hz・接続承認で出現位置・シーン管理なし）を生成し、ビルドの 2 番目のシーンに追加。シーンは追加読み込みで作って閉じるので、開いているシーンは変わらない |
 | `CoopDeck > Build > Windows (Development/Release)` / `BuildScript.BuildWindowsBatch` | `Builds/Windows/CoopDeckFPS.exe` を出力（Mono、x64） |
 | `FireballVfxFactory.EnsureAll`（ブートストラップ内） | 火球のメッシュ・Shader Graph（`ShaderGraphWriter`）・マテリアル・Prefab を毎回生成。`CardDataFactory.EnsureFireball` がカードと初期デッキへの追加 |
 
@@ -364,7 +393,7 @@ Assets/_Game/
 |---|---|
 | 2 敵 AI（実装済み） | 新しい敵は `EnemyDefinition` と Prefab の追加で作れる。特殊な行動は `EnemyStateMachine` に状態を足すか、別の Brain を作る |
 | 2 モーション（実装済み・仮） | 本番モデルは `AC_PlaceholderHumanoid` と同じパラメータ名で Humanoid の Controller を作り、`CharacterAnimatorDriver` の Animator を差し替える。一人称は現状プロシージャル（`ViewModelAnimator`） |
-| 2.5 通信 | `ICharacterCommandSource` のネットワーク版、`FpsCharacter.Step` を固定ティックで呼ぶ。敵はホストだけで `EnemyBrain` を動かし、クライアントには位置・状態・攻撃イベントを送る想定 |
+| 2.5 通信（移動のみ実装済み） | `PF_NetPlayer`（PF_Player の Prefab Variant）＋ `Net_Smoke` シーン（`NetSmokeSceneBuilder`）。所有者権威の `NetworkTransform` と `NetPose`。他の端末のコピーは `RemoteCommandSource`・`FpsCharacter` 停止・一人称リグ非表示・`CharacterAnimatorDriver.SetLocomotionSource(RemoteMotion)`。Phase 6 でホスト権威（`CharacterCommands` をホストへ送り、`FpsCharacter.Step` をホストで実行）に移す。`MULTIPLAYER_PLAN.md` §7 |
 | 3 デッキ（実装済み） | 報酬は `DeckState.AddCard`、強化は `UpgradeCard`（強化表は未実装）、パッシブは `DeckState.Passives` |
 | 4 コンボ（実装済み） | 新コンボは `ComboDefinition` アセットの追加（種類は ChainBurst / Singularity / Explosion）。段階は `CardRuntime.UpgradeLevel`。オンラインではホストの `ComboSystem` だけが判定し、`ComboEvents` をクライアントへ送る想定 |
 | 4 NPC（実装済み） | 新しい NPC は `NpcProfile` と初期デッキ（`DeckDefinition`）と見た目を変えた Prefab で作れる（`NpcFactory`）。行動の傾向は `NpcProfile` と `NpcDecisionMaker` の点数帯 |

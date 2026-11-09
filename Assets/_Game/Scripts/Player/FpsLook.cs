@@ -30,6 +30,7 @@ namespace CoopDeck.Player
         float yaw;
         float pitch;
         Vector2 recoilOffset;
+        float weaponRecoilReturnSpeed;
         float sprintBlend;
 
         public float Yaw => yaw;
@@ -90,10 +91,19 @@ namespace CoopDeck.Player
             recoilOffset += kickDegrees * recoilRecoverableShare;
         }
 
+        /// <summary>The held weapon's recovery time (95 % settled after <paramref name="seconds"/>); 0 = this look's default.</summary>
+        public void SetRecoilRecovery(float seconds)
+        {
+            weaponRecoilReturnSpeed = seconds > 0f ? 3f / seconds : 0f;
+        }
+
+        /// <summary>Recoil return rate in use (1/s).</summary>
+        public float RecoilReturnSpeed => weaponRecoilReturnSpeed > 0f ? weaponRecoilReturnSpeed : recoilReturnSpeed;
+
         /// <param name="sprinting">Drives the sprint FOV boost.</param>
         public void Tick(float deltaTime, bool sprinting)
         {
-            float decay = 1f - Mathf.Exp(-recoilReturnSpeed * deltaTime);
+            float decay = 1f - Mathf.Exp(-RecoilReturnSpeed * deltaTime);
             recoilOffset = Vector2.Lerp(recoilOffset, Vector2.zero, decay);
 
             float fovBlend = 1f - Mathf.Exp(-fieldOfViewSmoothing * deltaTime);

@@ -20,6 +20,9 @@
         "CoopDeck.Combos",
         "CoopDeck.NPC",
         "CoopDeck.UI",
+        "CoopDeck.Characters",
+        "CoopDeck.Networking",
+        "Unity.Netcode.Runtime",
         "Unity.AI.Navigation",
         "Unity.Animation.Rigging",
         "Unity.InputSystem"

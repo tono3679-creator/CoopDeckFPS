@@ -131,3 +131,35 @@ $blender = 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe'
 
 - 白い装甲への赤のはみ出しなど、Meshy の元テクスチャの筆跡はそのまま（デザインを変えないため）。消すなら塗り分けの境目を面の境界に合わせる処理が要る。
 - 小さな UV 島（三角形 1〜2 枚）では曲率・AO にノイズが残る。画面上は数ピクセルで目立たない。
+
+## 7. 雷ウサギの Lightning SMG（同日、ユーザー依頼「うさぎも作り直して」）
+
+描画側（ポストプロセスの位置・SMAA・Handheld 1.0）はキツネと共通なので、ウサギの一人称にも既に効いている。残っていたモデルとシェーダーを Fire Rifle と同じ方法で作り直した。元は `ArtSource/LightningSMG/Backup/20261109_before_quality/`（ウサギ関連はまだ一度もコミットされていないので、このバックアップが唯一の控え）。
+
+| 項目 | 前 | 後 |
+|---|---|---|
+| 形状 | `rebuild_prop_hq.py`：高精細（427,470）から 100k、40° 以上を硬い角、法線の平均化なし | `rebuild_weapon_hq.py`：55k＋折れ目に **1.0 mm** のベベル（小さい銃なので Fire Rifle の 1.2 mm より細く）＋面積重み付き法線 → **91,290 三角形**、LOD1 30k |
+| テクスチャ | 4K の Meshy 色を 8K に拡大（`LightningSMG_atlas_x2.png`）して 4096 に焼く | 同じ 8K から新しい UV へ焼き直し（テクセル密度 4,985 / 5,594 / 5,775 で同じ） |
+| 材質マスク | なし | 白塗装 12%・**黄橙の塗装 28%**（`--paint-hue 0.055-0.175`）・紺の樹脂 51%・金属 3%・**水色のエネルギーガラス 5.6%**（`--accent-hue 0.44-0.66`。シェーダーのアクセント枠をガラスに：滑らかさ 0.85・金属 0・細いエッジ） |
+| エッジ | — | 小さい銃は角の割合が大きく（凸 6.8%）、Fire Rifle と同じ強さだと黄色いレールが白っぽく擦れて見えたので、塗装のエッジを 0.5（白 0.6）に弱めた |
+| シェーダー | `CoopDeck/Character/Toon` | `CoopDeck/Weapon/HardSurfaceToon`（一人称は補助ハイライトと 1.4〜2.5 px の輪郭線） |
+| ソケット | `Muzzle` (0, 0.097, 0.37)、`LeftHandGrip` (0, 0.014, 0.233) | 同じ（現行 FBX から読み取った値で書き出し） |
+
+色相の範囲は `rebuild_weapon_hq.py` の `--paint-hue` / `--accent-hue` で武器ごとに指定する（Fire Rifle は既定の赤と金）。Unity 側の材質・LOD の設定は `Editor/HardSurfaceWeapon.cs` にまとめ、`FireRifleAssetFactory` と `LightningSMGAssetFactory` が使う。
+
+```powershell
+& $blender -b --factory-startup -P ArtSource\Tools\rebuild_weapon_hq.py -- --name LightningSMG `
+  --prepared ArtSource\LightningSMG\Export\LightningSMG.glb --highres ArtSource\LightningSMG\Meshy\LightningSMG_highres.glb `
+  --atlas ArtSource\LightningSMG\Export\LightningSMG_atlas_x2.png --forward=-X `
+  --socket Muzzle=0,-0.370,0.097 --socket LeftHandGrip=0,-0.233,0.014 `
+  --faces 55000 --bevel 0.001 --bevel-angle 50 --lod 30000 --size 4096 `
+  --paint-hue 0.055-0.175 --accent-hue 0.44-0.66 `
+  --model-out Assets\_Game\Art\Weapons\LightningSMG\Models --texture-out Assets\_Game\Art\Weapons\LightningSMG\Textures `
+  --glb-out ArtSource\LightningSMG\Export
+```
+
+比較：`Screenshots/WeaponLook/rabbit_before_*`（旧 SMG）と `rabbit_after_*`・`rabbit_tune1_*`（新 SMG）、`Compare_Rabbit_FP_BeforeAfter.png`・`_FP_Zoom3x.png`・`_ThirdPerson_Near.png`。一人称で照門・レール・樹脂のブロックの角に光が乗り、黄色の銃床に階調とつや、輪郭が途切れない。三人称も紺の機関部・サプレッサーに角の光と反射。
+
+性能（Ally X、1080p 全画面、`-character LightningRabbit -perfrun 25`、`PerfCaptures/weapon_quality_rabbit_1080p/`）：SMG だけが違う 2 つのビルド（前＝`Builds/WeaponQuality`、後＝`Builds/WeaponQualityRabbit`）で、静止・上限なし GPU 4.32 → 3.91 ms、射撃中・60fps 上限 GPU 4.15 → 4.22 ms、平均 59.6 fps で同じ（誤差の範囲）。射撃中の 1% Low 約 39 は前後とも同じで、原因は 1 回だけの 130〜140 ms の引っかかり（`DEVELOPMENT_PLAN.md` の既知の未解決の引っかかり）。
+
+テスト：EditMode 326/326、PlayMode 104/104（Editor 上。`LightningRabbitAssetTests` の SMG の三角形数を「約 90k」に、シェーダーと材質マスクの確認を追加）。

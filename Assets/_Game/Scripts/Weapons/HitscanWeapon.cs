@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using CoopDeck.Combat;
 using CoopDeck.Core;
 using UnityEngine;
@@ -25,6 +26,30 @@ namespace CoopDeck.Weapons
         public DamageResult Result { get; }
     }
 
+    /// <summary>A <see cref="ChargeBurstSpec"/> discharge: the primary target, where it was hit, and the chained targets.</summary>
+    public readonly struct ChargeBurstReport
+    {
+        public ChargeBurstReport(Health primary, Vector3 point, IReadOnlyList<Health> chained, IReadOnlyList<Vector3> chainPoints, float damage)
+        {
+            Primary = primary;
+            Point = point;
+            Chained = chained;
+            ChainPoints = chainPoints;
+            Damage = damage;
+        }
+
+        public Health Primary { get; }
+        public Vector3 Point { get; }
+
+        /// <summary>Chained targets (valid during the event only; the list is reused).</summary>
+        public IReadOnlyList<Health> Chained { get; }
+
+        public IReadOnlyList<Vector3> ChainPoints { get; }
+
+        /// <summary>Total damage the discharge dealt (primary + chain).</summary>
+        public float Damage { get; }
+    }
+
     /// <summary>
     /// Instant-hit gun. Aims along the owner's <see cref="IAimProvider"/> ray (the crosshair),
     /// applies damage through <see cref="IDamageable"/>, and reports every shot as an event for
@@ -49,14 +74,38 @@ namespace CoopDeck.Weapons
         float movementSpread;
         bool airborne;
         System.Random random = new System.Random(1234);
+        ChargeBurstModel chargeBurst;
+        bool chargeBurstBuilt;
+        readonly List<Health> burstChain = new List<Health>(4);
+        readonly List<Vector3> burstChainPoints = new List<Vector3>(4);
+        readonly Collider[] overlapBuffer = new Collider[32];
+        readonly List<SplashCandidate> splashCandidates = new List<SplashCandidate>(8);
 
         public event Action<ShotEvent> Fired;
         public event Action ReloadStarted;
         public event Action ReloadFinished;
         public event Action AmmoChanged;
 
+        /// <summary>The on-hit ability discharged (FX, HUD).</summary>
+        public event Action<ChargeBurstReport> ChargeBurstTriggered;
+
         public WeaponDefinition Definition => definition;
         public WeaponState State => state ??= definition != null ? WeaponState.FromDefinition(definition) : null;
+
+        /// <summary>The weapon's consecutive-hit ability, or null when its definition has none.</summary>
+        public ChargeBurstModel ChargeBurst
+        {
+            get
+            {
+                if (!chargeBurstBuilt)
+                {
+                    chargeBurstBuilt = true;
+                    chargeBurst = definition != null && definition.chargeBurst.enabled ? new ChargeBurstModel(definition.chargeBurst) : null;
+                }
+
+                return chargeBurst;
+            }
+        }
         public Transform Muzzle => muzzle;
         public bool IsReloading => State != null && State.IsReloading;
 
@@ -86,13 +135,22 @@ namespace CoopDeck.Weapons
             aim = aimProvider;
             ownerTeam = team;
             hitMask = shotMask;
+            ApplyRecoilRecovery();
         }
 
         public void SetDefinition(WeaponDefinition newDefinition)
         {
             definition = newDefinition;
             state = null;
+            chargeBurst = null;
+            chargeBurstBuilt = false;
+            ApplyRecoilRecovery();
             AmmoChanged?.Invoke();
+        }
+
+        void ApplyRecoilRecovery()
+        {
+            aim?.SetRecoilRecovery(definition != null ? definition.recoilRecoverySeconds : 0f);
         }
 
         public void SetMuzzle(Transform newMuzzle)
@@ -144,6 +202,8 @@ namespace CoopDeck.Weapons
                 ReloadFinished?.Invoke();
                 AmmoChanged?.Invoke();
             }
+
+            ChargeBurst?.Tick(deltaTime);
 
             bool wantsFire = definition.automatic ? triggerHeld : triggerPressed;
             int shots = 0;
@@ -199,8 +259,7 @@ namespace CoopDeck.Weapons
                         hitDamageable = true;
                         var info = new DamageInfo
                         {
-                            Amount = definition.damage * damageMultiplier *
-                                     DamageRules.DistanceFalloff(hit.distance, definition.falloffStart, definition.range, definition.minDamageFactor),
+                            Amount = definition.damage * damageMultiplier * definition.FalloffAt(hit.distance),
                             Element = definition.element,
                             Kind = DamageKind.Weapon,
                             Source = owner,
@@ -215,11 +274,243 @@ namespace CoopDeck.Weapons
                 }
 
                 Fired?.Invoke(new ShotEvent(muzzlePosition, end, hitSomething, normal, hitDamageable, result));
+
+                if (hitDamageable && result.Applied && ChargeBurst != null)
+                {
+                    RegisterChargeHit(hit, direction, damageMultiplier, result.Killed);
+                }
             }
 
             float kickScale = firstShot ? definition.firstShotRecoilMultiplier : 1f;
             float yaw = ((float)random.NextDouble() * 2f - 1f) * definition.recoilYaw;
             aim.AddRecoil(new Vector2(yaw, definition.recoilPitch) * kickScale);
+        }
+
+        // ---------------------------------------------------------------- on-hit ability (帯電連射)
+
+        void RegisterChargeHit(RaycastHit hit, Vector3 direction, float damageMultiplier, bool killed)
+        {
+            Health health = hit.collider.GetComponentInParent<Health>();
+            if (health == null)
+            {
+                return;
+            }
+
+            if (killed || !health.IsAlive)
+            {
+                chargeBurst.ForgetTarget(health); // the charge was on this target: it is gone with it
+                return;
+            }
+
+            if (chargeBurst.RegisterHit(health))
+            {
+                ReleaseChargeBurst(health, hit.point, direction, damageMultiplier);
+            }
+        }
+
+        /// <summary>
+        /// The discharge: bonus damage to the primary target and, for a Chain, the nearest hostile(s) in range one
+        /// after another, for a Splash, the nearest hostiles within the radius of the hit (IGNIS-27 火種刻印); all
+        /// through <see cref="Health.ApplyDamage"/> with <see cref="DamageFlags.WeaponProc"/>; then one
+        /// element hit per target into the existing combo system (aura length and the 3 s combo
+        /// cooldown stay the combo system's). Never builds stacks itself: only bullets do.
+        /// </summary>
+        void ReleaseChargeBurst(Health primary, Vector3 point, Vector3 direction, float damageMultiplier)
+        {
+            ChargeBurstSpec spec = definition.chargeBurst;
+            burstChain.Clear();
+            burstChainPoints.Clear();
+            float dealt = Proc(primary, spec.primaryDamage * damageMultiplier, point, direction, spec.element);
+
+            if (spec.shape == ChargeBurstShape.Splash)
+            {
+                // IGNIS-27 火種刻印: a small explosion on the target, the nearest hostiles within the radius.
+                CollectSplashTargets(point, spec.splashRadius, spec.splashTargets, primary);
+                for (int i = 0; i < burstChain.Count; i++)
+                {
+                    dealt += Proc(burstChain[i], spec.splashDamage * damageMultiplier, burstChainPoints[i], (burstChainPoints[i] - point).normalized, spec.element);
+                }
+            }
+            else
+            {
+                Vector3 from = primary.transform.position;
+                for (int i = 0; i < spec.chainTargets; i++)
+                {
+                    if (!NearestChainTarget(from, spec.chainRange, primary, out Health next, out Vector3 nextPoint))
+                    {
+                        break;
+                    }
+
+                    dealt += Proc(next, spec.chainDamage * damageMultiplier, nextPoint, (nextPoint - point).normalized, spec.element);
+                    burstChain.Add(next);
+                    burstChainPoints.Add(nextPoint);
+                    from = next.transform.position;
+                }
+            }
+
+            // The existing damage over time (a burn, for fire) on every target: CombatStatus ticks it as status damage,
+            // which is not a bullet, so it never adds stacks.
+            ApplyStatus(primary, spec, damageMultiplier);
+            for (int i = 0; i < burstChain.Count; i++)
+            {
+                ApplyStatus(burstChain[i], spec, damageMultiplier);
+            }
+
+            if (spec.element != Element.None)
+            {
+                int ownerId = owner != null ? CombatantRegistry.IdOf(owner) : 0;
+                CombatEvents.RaiseElementHit(new ElementHit(primary, spec.element, owner, ownerId, ownerTeam, point, 0));
+                for (int i = 0; i < burstChain.Count; i++)
+                {
+                    if (burstChain[i] != null)
+                    {
+                        CombatEvents.RaiseElementHit(new ElementHit(burstChain[i], spec.element, owner, ownerId, ownerTeam, burstChainPoints[i], 0));
+                    }
+                }
+            }
+
+            ChargeBurstTriggered?.Invoke(new ChargeBurstReport(primary, point, burstChain, burstChainPoints, dealt));
+        }
+
+        void ApplyStatus(Health target, ChargeBurstSpec spec, float damageMultiplier)
+        {
+            if (target == null || !target.IsAlive || spec.statusDamagePerSecond <= 0f || spec.statusDuration <= 0f)
+            {
+                return;
+            }
+
+            CombatStatus status = target.GetComponent<CombatStatus>();
+            if (status != null)
+            {
+                Element element = spec.element != Element.None ? spec.element : Element.Fire;
+                status.AddDamageOverTime(owner, ownerTeam, element, spec.statusDamagePerSecond * damageMultiplier, spec.statusDuration);
+            }
+        }
+
+        /// <summary>
+        /// Splash targets: living hostiles whose colliders come within <paramref name="radius"/> of the burst point,
+        /// nearest first, at most <paramref name="max"/>, never the primary target twice. Fills burstChain / burstChainPoints.
+        /// </summary>
+        void CollectSplashTargets(Vector3 point, float radius, int max, Health primary)
+        {
+            splashCandidates.Clear();
+            if (radius <= 0f || max <= 0)
+            {
+                return;
+            }
+
+            int count = Physics.OverlapSphereNonAlloc(point, radius, overlapBuffer, hitMask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                Collider c = overlapBuffer[i];
+                Health health = c != null ? c.GetComponentInParent<Health>() : null;
+                if (health == null || health == primary || !health.IsAlive || !DamageRules.CanDamage(ownerTeam, health.Team))
+                {
+                    continue;
+                }
+
+                float distance = (c.ClosestPoint(point) - point).sqrMagnitude;
+                int existing = -1;
+                for (int k = 0; k < splashCandidates.Count; k++)
+                {
+                    if (splashCandidates[k].Target == health)
+                    {
+                        existing = k;
+                        break;
+                    }
+                }
+
+                if (existing >= 0)
+                {
+                    if (distance < splashCandidates[existing].Distance)
+                    {
+                        splashCandidates[existing] = new SplashCandidate(health, distance, c.bounds.center);
+                    }
+
+                    continue;
+                }
+
+                splashCandidates.Add(new SplashCandidate(health, distance, c.bounds.center));
+            }
+
+            splashCandidates.Sort(ByDistance);
+            for (int i = 0; i < splashCandidates.Count && burstChain.Count < max; i++)
+            {
+                burstChain.Add(splashCandidates[i].Target);
+                burstChainPoints.Add(splashCandidates[i].Center);
+            }
+        }
+
+        static readonly Comparison<SplashCandidate> ByDistance = (a, b) => a.Distance.CompareTo(b.Distance);
+
+        readonly struct SplashCandidate
+        {
+            public SplashCandidate(Health target, float distance, Vector3 center)
+            {
+                Target = target;
+                Distance = distance;
+                Center = center;
+            }
+
+            public Health Target { get; }
+            public float Distance { get; }
+            public Vector3 Center { get; }
+        }
+
+        float Proc(Health target, float amount, Vector3 point, Vector3 direction, Element element)
+        {
+            if (target == null || amount <= 0f)
+            {
+                return 0f;
+            }
+
+            DamageResult result = target.ApplyDamage(new DamageInfo
+            {
+                Amount = amount,
+                Element = element,
+                Kind = DamageKind.Weapon,
+                Flags = DamageFlags.WeaponProc,
+                Source = owner,
+                SourceTeam = ownerTeam,
+                Point = point,
+                Normal = -direction,
+                Direction = direction,
+                HeadshotMultiplier = 1f,
+            });
+            return result.Damage;
+        }
+
+        bool NearestChainTarget(Vector3 from, float range, Health primary, out Health best, out Vector3 bestPoint)
+        {
+            best = null;
+            bestPoint = default;
+            if (range <= 0f)
+            {
+                return false;
+            }
+
+            float bestDistance = float.MaxValue;
+            int count = Physics.OverlapSphereNonAlloc(from, range, overlapBuffer, hitMask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                Collider c = overlapBuffer[i];
+                Health health = c != null ? c.GetComponentInParent<Health>() : null;
+                if (health == null || health == primary || burstChain.Contains(health) || !health.IsAlive || !DamageRules.CanDamage(ownerTeam, health.Team))
+                {
+                    continue;
+                }
+
+                Vector3 center = c.bounds.center;
+                float distance = (center - from).sqrMagnitude;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = health;
+                    bestPoint = center;
+                }
+            }
+
+            return best != null;
         }
 
         Vector3 ApplySpread(Vector3 direction, float spreadDegrees)

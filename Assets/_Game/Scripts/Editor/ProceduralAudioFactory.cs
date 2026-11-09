@@ -22,6 +22,64 @@ namespace CoopDeck.EditorTools
             Overload,
         }
 
+        /// <summary>The Thunderhop discharge's two beats: the first strike's burst and the chained enemy's zap.</summary>
+        public enum DischargeSound
+        {
+            Burst,
+            Chain,
+        }
+
+        /// <summary>
+        /// Burst ("ドン"): a sharp crack on a short low thump with a little crackle, ~0.3 s. Chain ("バチッ"): a higher,
+        /// brighter electric zap, ~0.2 s. Both start at once (no lead-in) so they land on the impact frame.
+        /// </summary>
+        public static AudioClip EnsureDischargeSound(DischargeSound kind, bool overwrite = false)
+        {
+            return Ensure($"SFX_Discharge_{kind}", overwrite, () => Normalize(kind == DischargeSound.Burst ? DischargeBurst() : DischargeZap(), kind == DischargeSound.Burst ? 0.9f : 0.8f));
+        }
+
+        static float[] DischargeBurst()
+        {
+            var random = new System.Random(4021);
+            float[] s = new float[(int)(SampleRate * 0.32f)];
+            float lp = 0f;
+            float hp = 0f;
+            for (int i = 0; i < s.Length; i++)
+            {
+                float t = i / (float)SampleRate;
+                float noise = (float)random.NextDouble() * 2f - 1f;
+                lp += (noise - lp) * 0.12f;
+                hp = noise - lp;
+                float crack = hp * Env(t, 0.0005f, 0.03f) * 1.1f;
+                float thump = Mathf.Sin(2f * Mathf.PI * (110f - 160f * t) * t) * Env(t, 0.002f, 0.13f) * 0.9f;
+                float body = lp * Env(t, 0.002f, 0.09f) * 1.6f;
+                float crackle = hp * Env(t, 0.004f, 0.16f) * (random.NextDouble() < 0.18 ? 0.8f : 0.05f);
+                s[i] = crack + thump + body + crackle;
+            }
+
+            return s;
+        }
+
+        static float[] DischargeZap()
+        {
+            var random = new System.Random(5113);
+            float[] s = new float[(int)(SampleRate * 0.2f)];
+            float lp = 0f;
+            for (int i = 0; i < s.Length; i++)
+            {
+                float t = i / (float)SampleRate;
+                float noise = (float)random.NextDouble() * 2f - 1f;
+                lp += (noise - lp) * 0.35f;
+                float hiss = (noise - lp) * Env(t, 0.0005f, 0.05f) * (random.NextDouble() < 0.3 ? 1f : 0.2f);
+                float buzz = Mathf.Sign(Mathf.Sin(2f * Mathf.PI * 140f * t)) * 0.25f + 1f;
+                float tone = Mathf.Sin(2f * Mathf.PI * (2600f - 3000f * t) * t) * buzz * Env(t, 0.001f, 0.07f) * 0.45f;
+                float tone2 = Mathf.Sin(2f * Mathf.PI * 3900f * t) * Env(t, 0.001f, 0.04f) * 0.2f;
+                s[i] = hiss * 0.9f + tone + tone2;
+            }
+
+            return s;
+        }
+
         public static AudioClip EnsureComboSound(ComboSound kind, bool coop, bool overwrite = false)
         {
             string name = $"SFX_Combo_{kind}{(coop ? "_Coop" : "")}";
