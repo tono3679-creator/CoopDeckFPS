@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9f25c50914ddad4596f4b23505dd831, type: 3}
+  m_Name: WD_Ignis27Blazetail
+  m_EditorClassIdentifier: CoopDeck.Weapons::CoopDeck.Weapons.WeaponDefinition
+  weaponId: weapon.ignis27_blazetail
+  displayName: "IGNIS-27 \u30D6\u30EC\u30A4\u30BA\u30C6\u30A4\u30EB"
+  categoryLabel: "\u30A2\u30B5\u30EB\u30C8\u30E9\u30A4\u30D5\u30EB"
+  description: "\u708E\u5C5E\u6027\u30AD\u30C4\u30CD\u5C02\u7528\u306E\u4E2D\u8DDD\u96E2\u30A2\u30B5\u30EB\u30C8\u30E9\u30A4\u30D5\u30EB\u3002\u7CBE\u5BC6\u5C04\u6483\u3067\u706B\u7A2E\u3092\u84C4\u7A4D\u3057\u3001\u9023\u7D9A\u547D\u4E2D\u3067\u8D77\u7206\u3059\u308B\u3002"
+  damage: 18
+  element: 1
+  headshotMultiplier: 1.65
+  range: 85
+  falloffStart: 24
+  falloffEnd: 60
+  minDamageFactor: 0.7
+  roundsPerMinute: 480
+  automatic: 1
+  magazineSize: 28
+  reloadTime: 2.1
+  pelletsPerShot: 1
+  baseSpread: 0
+  spreadPerShot: 0
+  maxBloom: 0
+  bloomRecovery: 0
+  movingSpread: 0
+  airborneSpread: 1.4
+  recoilPitch: 1.05
+  recoilYaw: 0.35
+  firstShotRecoilMultiplier: 1.3
+  recoilRecoverySeconds: 0.2
+  chargeBurst:
+    enabled: 1
+    displayName: "\u706B\u7A2E\u523B\u5370"
+    requiredStacks: 6
+    maxSecondsBetweenHits: 2.25
+    stacksPerHit: 1
+    primaryDamage: 22
+    chainTargets: 0
+    chainRange: 0
+    chainDamage: 0
+    element: 1
+    perTargetCooldown: 4
+    shape: 1
+    splashRadius: 2.5
+    splashTargets: 4
+    splashDamage: 12
+    statusDamagePerSecond: 6
+    statusDuration: 4
+    burstFx: {fileID: 875889115081665610, guid: dce24d71a60b2d146ba6a6f42536cf14, type: 3}
+    arcFx: {fileID: 0}
+    chainBurstFx: {fileID: 3340093077809395536, guid: b136005fc689d8d42a4f6fd113f56159, type: 3}
+    chargeFx: {fileID: 3600390561192607174, guid: 28c3279b3d46c394d900101c7bdb73db, type: 3}
+  muzzleFlashPrefab: {fileID: 4614940069582843028, guid: ea265ab6c02fba24d8a951eb61e968bb, type: 3}
+  tracerPrefab: {fileID: 1356152303143396210, guid: 802d4f2b00ee51a419b4062a8fec295f, type: 3}
+  impactPrefab: {fileID: 6908904924813042722, guid: 0e4db20d063644745827765df0f1e8cf, type: 3}
+  damageableImpactPrefab: {fileID: 1840643509605372917, guid: 9220418ece4b9544baf76c78803b9251, type: 3}

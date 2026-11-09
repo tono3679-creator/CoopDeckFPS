@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9f25c50914ddad4596f4b23505dd831, type: 3}
+  m_Name: WD_Volt9Thunderhop
+  m_EditorClassIdentifier: CoopDeck.Weapons::CoopDeck.Weapons.WeaponDefinition
+  weaponId: weapon.volt9_thunderhop
+  displayName: "VOLT-9 \u30B5\u30F3\u30C0\u30FC\u30DB\u30C3\u30D7"
+  categoryLabel: "\u30B5\u30D6\u30DE\u30B7\u30F3\u30AC\u30F3"
+  description: "\u96F7\u30A6\u30B5\u30AE\u5C02\u7528\u306E\u9AD8\u9023\u5C04SMG\u3002\u9023\u7D9A\u547D\u4E2D\u3067\u5E2F\u96FB\u3092\u84C4\u7A4D\u3057\u3001\u96FB\u6483\u3092\u653E\u3064\u3002"
+  damage: 11
+  element: 3
+  headshotMultiplier: 1.5
+  range: 55
+  falloffStart: 10
+  falloffEnd: 24
+  minDamageFactor: 0.6
+  roundsPerMinute: 900
+  automatic: 1
+  magazineSize: 40
+  reloadTime: 1.65
+  pelletsPerShot: 1
+  baseSpread: 0
+  spreadPerShot: 0
+  maxBloom: 0
+  bloomRecovery: 2
+  movingSpread: 0
+  airborneSpread: 1
+  recoilPitch: 0.5
+  recoilYaw: 0.3
+  firstShotRecoilMultiplier: 1
+  recoilRecoverySeconds: 0.16
+  chargeBurst:
+    enabled: 1
+    displayName: "\u5E2F\u96FB\u9023\u5C04"
+    requiredStacks: 12
+    maxSecondsBetweenHits: 2
+    stacksPerHit: 1
+    primaryDamage: 18
+    chainTargets: 1
+    chainRange: 6
+    chainDamage: 12
+    element: 3
+    perTargetCooldown: 1.25
+    shape: 0
+    splashRadius: 0
+    splashTargets: 0
+    splashDamage: 0
+    statusDamagePerSecond: 0
+    statusDuration: 0
+    burstFx: {fileID: 8804314798762492857, guid: 5d8329455d096c942a30d8afb9d8e2fc, type: 3}
+    arcFx: {fileID: 4117280296416636805, guid: 37b679dc5df04374e8df4bc23c15accb, type: 3}
+    chainBurstFx: {fileID: 5876593266547017998, guid: 5e4a4a5006211e74d9b37d71fa3a0aaf, type: 3}
+    chargeFx: {fileID: 7288678590526271495, guid: 60996e7b77881ae438b558ff31dba103, type: 3}
+  muzzleFlashPrefab: {fileID: 894522231381665132, guid: ff0daa7b30632e64b919177657263de6, type: 3}
+  tracerPrefab: {fileID: 3972303552392797173, guid: 6751791b34e8ee645b6436d62ef5c8b4, type: 3}
+  impactPrefab: {fileID: 2683940422164481524, guid: 1bf13310df284b9468e6656d7b983a4a, type: 3}
+  damageableImpactPrefab: {fileID: 3603859896014079232, guid: d0e7434baa6578144bc79e19e81a9d7a, type: 3}
