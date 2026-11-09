@@ -1,0 +1,96 @@
+{
+  "model": {
+    "file": "LightningSMG_mesh.glb",
+    "objects": [
+      {
+        "name": "Mesh_0",
+        "type": "MESH"
+      }
+    ],
+    "bounds_min": [
+      -0.9508,
+      -0.1224,
+      -0.4499
+    ],
+    "bounds_max": [
+      0.9496,
+      0.1271,
+      0.4504
+    ],
+    "size_xyz_m": [
+      1.9004,
+      0.2495,
+      0.9002
+    ],
+    "height_m": 0.9002,
+    "feet_z": -0.4499,
+    "meshes": [
+      {
+        "name": "Mesh_0",
+        "vertices": 34427,
+        "triangles": 29656,
+        "polygons": 29656,
+        "non_manifold_edges": 31518,
+        "boundary_edges": 31518,
+        "loose_vertices": 0,
+        "degenerate_faces": 0,
+        "connected_parts": 3950,
+        "largest_parts": [
+          168,
+          158,
+          147,
+          140,
+          135,
+          128,
+          123,
+          119
+        ],
+        "near_duplicate_vertices": 29509,
+        "vertex_groups": 0,
+        "unweighted_vertices": 34427,
+        "max_influences": 0,
+        "vertices_over_4_influences": 0,
+        "uv_layers": [
+          "UVMap"
+        ],
+        "uv_coords_outside_0_1": 0,
+        "materials": [
+          {
+            "name": "Material_0",
+            "images": [
+              {
+                "name": "Image_0",
+                "size": [
+                  4096,
+                  4096
+                ],
+                "colorspace": "sRGB",
+                "alpha_mode": "CHANNEL_PACKED",
+                "feeds": [
+                  "Base Color"
+                ]
+              }
+            ],
+            "metallic": 0.0,
+            "roughness": 0.8,
+            "blend_method": "DITHERED"
+          }
+        ],
+        "object_scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "object_rotation_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "parent": null
+      }
+    ],
+    "armatures": [],
+    "actions": []
+  },
+  "animations": []
+}

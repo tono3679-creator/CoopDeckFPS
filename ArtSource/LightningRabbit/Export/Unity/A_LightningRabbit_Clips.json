@@ -1,0 +1,2734 @@
+{
+ "character": "LightningRabbit",
+ "fps": 60,
+ "clips": [
+  {
+   "name": "A_LightningRabbit_Combat_Idle",
+   "take": "Combat_Idle",
+   "seconds": 3.2,
+   "frames": 192,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "breathing and weight shift; the base pose every clip shares",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      3.2
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      3.2
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Locomotion_Center",
+   "take": "Locomotion_Center",
+   "seconds": 0.5167,
+   "frames": 31,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.5167,
+   "notes": "blend-tree centre (not one of the requested motions)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.5167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.5167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Walk_Forward",
+   "take": "Walk_Forward",
+   "seconds": 0.5167,
+   "frames": 31,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 1.5097,
+   "direction": [
+    0.0,
+    1.0
+   ],
+   "cycle": 0.5167,
+   "notes": "",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.5167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.5167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Walk_Backward",
+   "take": "Walk_Backward",
+   "seconds": 0.5167,
+   "frames": 31,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 1.5097,
+   "direction": [
+    0.0,
+    -1.0
+   ],
+   "cycle": 0.5167,
+   "notes": "",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.5167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.5167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Walk_Left",
+   "take": "Walk_Left",
+   "seconds": 0.5167,
+   "frames": 31,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 1.5097,
+   "direction": [
+    -1.0,
+    0.0
+   ],
+   "cycle": 0.5167,
+   "notes": "",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.5167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.5167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Walk_Right",
+   "take": "Walk_Right",
+   "seconds": 0.5167,
+   "frames": 31,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 1.5097,
+   "direction": [
+    1.0,
+    0.0
+   ],
+   "cycle": 0.5167,
+   "notes": "",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.5167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.5167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Run_Forward",
+   "take": "Run_Forward",
+   "seconds": 0.4167,
+   "frames": 25,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 6.552,
+   "direction": [
+    0.0,
+    1.0
+   ],
+   "cycle": 0.4167,
+   "notes": "",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.4167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.4167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Run_Backward",
+   "take": "Run_Backward",
+   "seconds": 0.4167,
+   "frames": 25,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 6.552,
+   "direction": [
+    0.0,
+    -1.0
+   ],
+   "cycle": 0.4167,
+   "notes": "",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.4167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.4167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Run_Left",
+   "take": "Run_Left",
+   "seconds": 0.4167,
+   "frames": 25,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 6.552,
+   "direction": [
+    -1.0,
+    0.0
+   ],
+   "cycle": 0.4167,
+   "notes": "",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.4167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.4167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Run_Right",
+   "take": "Run_Right",
+   "seconds": 0.4167,
+   "frames": 25,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 6.552,
+   "direction": [
+    1.0,
+    0.0
+   ],
+   "cycle": 0.4167,
+   "notes": "",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.4167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.4167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Sprint",
+   "take": "Sprint",
+   "seconds": 0.3833,
+   "frames": 23,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 9.4174,
+   "direction": [
+    0.0,
+    1.0
+   ],
+   "cycle": 0.3833,
+   "notes": "",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.3833
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.3833
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Jump_Start",
+   "take": "Jump_Start",
+   "seconds": 0.2167,
+   "frames": 13,
+   "fps": 60,
+   "loop": false,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "take-off: the motor launches at once, so this is the push, not a wind-up",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.2167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.2167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Jump_Loop",
+   "take": "Jump_Loop",
+   "seconds": 0.6,
+   "frames": 36,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "rising / apex, knees tucked",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.6
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.6
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Fall",
+   "take": "Fall",
+   "seconds": 0.6,
+   "frames": 36,
+   "fps": 60,
+   "loop": true,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "legs reach for the floor; tail balance is procedural in Unity",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.6
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.6
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Land",
+   "take": "Land",
+   "seconds": 0.2833,
+   "frames": 17,
+   "fps": 60,
+   "loop": false,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "knees absorb the impact, then back to the stance; rabbit: 70% of the fox's time",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.2833
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.2833
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Dash_Forward",
+   "take": "Dash_Forward",
+   "seconds": 0.3167,
+   "frames": 19,
+   "fps": 60,
+   "loop": false,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    1.0
+   ],
+   "cycle": 0.0,
+   "notes": "0.16 s dash at 19 m/s plus recovery; rabbit: lower and leaning harder; rabbit: the gun kept clear of the head",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.3167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.3167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Dash_Backward",
+   "take": "Dash_Backward",
+   "seconds": 0.3167,
+   "frames": 19,
+   "fps": 60,
+   "loop": false,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    -1.0
+   ],
+   "cycle": 0.0,
+   "notes": "0.16 s dash at 19 m/s plus recovery; rabbit: lower and leaning harder; rabbit: the gun kept clear of the head",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.3167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.3167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Dash_Left",
+   "take": "Dash_Left",
+   "seconds": 0.3167,
+   "frames": 19,
+   "fps": 60,
+   "loop": false,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    -1.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "0.16 s dash at 19 m/s plus recovery; rabbit: lower and leaning harder; rabbit: the gun kept clear of the head",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.3167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.3167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Dash_Right",
+   "take": "Dash_Right",
+   "seconds": 0.3167,
+   "frames": 19,
+   "fps": 60,
+   "loop": false,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    1.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "0.16 s dash at 19 m/s plus recovery; rabbit: lower and leaning harder; rabbit: the gun kept clear of the head",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.3167
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.3167
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Slide",
+   "take": "Slide",
+   "seconds": 1.0,
+   "frames": 60,
+   "fps": 60,
+   "loop": false,
+   "layer": "Base",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "drop into a feet-first slide, hold, get up (no slide mechanic yet: hook only); rabbit: the gun kept clear of the head",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      1.0
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      1.0
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Rifle_Idle",
+   "take": "Rifle_Idle",
+   "seconds": 3.2,
+   "frames": 192,
+   "fps": 60,
+   "loop": true,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "same pose as Combat_Idle (upper body)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      3.2
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      3.2
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Rifle_Fire",
+   "take": "Rifle_Fire",
+   "seconds": 0.1667,
+   "frames": 10,
+   "fps": 60,
+   "loop": false,
+   "layer": "Additive",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "additive recoil; restarted on every shot (600 rpm)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.1667
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.1667
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Rifle_Reload",
+   "take": "Rifle_Reload",
+   "seconds": 1.7,
+   "frames": 102,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "energy cell swap; WD_AssaultRifle.reloadTime = 1.7 s",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      1.4333,
+      1.4667,
+      1.5,
+      1.5333,
+      1.5667,
+      1.6,
+      1.6333,
+      1.6667,
+      1.7
+     ],
+     "values": [
+      1.0,
+      0.8879,
+      0.6238,
+      0.3164,
+      0.0741,
+      0.0,
+      0.0,
+      0.0294,
+      0.1352,
+      0.2941,
+      0.4808,
+      0.67,
+      0.8365,
+      0.9549,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      1.4333,
+      1.4667,
+      1.5,
+      1.5333,
+      1.5667,
+      1.6,
+      1.6333,
+      1.6667,
+      1.7
+     ],
+     "values": [
+      0.0,
+      0.1121,
+      0.3762,
+      0.6836,
+      0.9259,
+      1.0,
+      1.0,
+      0.9706,
+      0.8648,
+      0.7059,
+      0.5192,
+      0.33,
+      0.1635,
+      0.0451,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Rifle_ADS_Enter",
+   "take": "Rifle_ADS_Enter",
+   "seconds": 0.1833,
+   "frames": 11,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "rifle up to the eye (no ADS input in the game yet: hook only)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.1833
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.1833
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Rifle_ADS_Idle",
+   "take": "Rifle_ADS_Idle",
+   "seconds": 2.4,
+   "frames": 144,
+   "fps": 60,
+   "loop": true,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "aim-down-sights hold (added so ADS can loop)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      2.4
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      2.4
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Rifle_ADS_Exit",
+   "take": "Rifle_ADS_Exit",
+   "seconds": 0.1833,
+   "frames": 11,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "back to the shared rifle pose",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.1833
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.1833
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Rifle_Equip",
+   "take": "Rifle_Equip",
+   "seconds": 0.6,
+   "frames": 36,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "rifle swings up from low on the right; plays on spawn/revive",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.3,
+      0.3333,
+      0.3667,
+      0.4,
+      0.4333,
+      0.6
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.1886,
+      0.583,
+      0.9259,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.3,
+      0.3333,
+      0.3667,
+      0.4,
+      0.4333,
+      0.6
+     ],
+     "values": [
+      1.0,
+      1.0,
+      0.8114,
+      0.417,
+      0.0741,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Rifle_Inspect",
+   "take": "Rifle_Inspect",
+   "seconds": 2.4,
+   "frames": 144,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "idle flourish: look at both sides of the rifle; rabbit: the gun kept clear of the head",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7,
+      0.7333,
+      0.7667,
+      0.8333,
+      0.8667,
+      0.9333,
+      0.9667,
+      2.4
+     ],
+     "values": [
+      1.0,
+      1.0,
+      0.9657,
+      0.6639,
+      0.2593,
+      0.0089,
+      0.0,
+      0.0,
+      0.1262,
+      0.8738,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7,
+      0.7333,
+      0.7667,
+      0.8333,
+      0.8667,
+      0.9333,
+      0.9667,
+      2.4
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0343,
+      0.3361,
+      0.7407,
+      0.9911,
+      1.0,
+      1.0,
+      0.8738,
+      0.1262,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Skill_QuickCast",
+   "take": "Skill_QuickCast",
+   "seconds": 0.5,
+   "frames": 30,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "left palm strike; fireball / ice lance / thunderbolt",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.3,
+      0.3333,
+      0.3667,
+      0.4,
+      0.4333,
+      0.4667,
+      0.5
+     ],
+     "values": [
+      1.0,
+      0.3433,
+      0.0,
+      0.0,
+      0.1262,
+      0.417,
+      0.7407,
+      0.9657,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.3,
+      0.3333,
+      0.3667,
+      0.4,
+      0.4333,
+      0.4667,
+      0.5
+     ],
+     "values": [
+      0.0,
+      0.6567,
+      1.0,
+      1.0,
+      0.8738,
+      0.583,
+      0.2593,
+      0.0343,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Skill_Charged_Start",
+   "take": "Skill_Charged_Start",
+   "seconds": 0.35,
+   "frames": 21,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "left hand gathers energy at the hip (palm up)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.2333,
+      0.2667,
+      0.3,
+      0.35
+     ],
+     "values": [
+      1.0,
+      0.9609,
+      0.8569,
+      0.7085,
+      0.5357,
+      0.3589,
+      0.1983,
+      0.0741,
+      0.0066,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.2333,
+      0.2667,
+      0.3,
+      0.35
+     ],
+     "values": [
+      0.0,
+      0.0391,
+      0.1431,
+      0.2915,
+      0.4643,
+      0.6411,
+      0.8017,
+      0.9259,
+      0.9934,
+      1.0,
+      1.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Skill_Charged_Loop",
+   "take": "Skill_Charged_Loop",
+   "seconds": 0.8,
+   "frames": 48,
+   "fps": 60,
+   "loop": true,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "holding the charge, trembling hand",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.8
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.8
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Skill_Charged_Release",
+   "take": "Skill_Charged_Release",
+   "seconds": 0.45,
+   "frames": 27,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "charged thrust forward, torso uncoils",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.2,
+      0.2333,
+      0.2667,
+      0.3,
+      0.3333,
+      0.3667,
+      0.4,
+      0.4333,
+      0.45
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0619,
+      0.2198,
+      0.432,
+      0.6567,
+      0.8522,
+      0.9767,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.2,
+      0.2333,
+      0.2667,
+      0.3,
+      0.3333,
+      0.3667,
+      0.4,
+      0.4333,
+      0.45
+     ],
+     "values": [
+      1.0,
+      1.0,
+      0.9381,
+      0.7802,
+      0.568,
+      0.3433,
+      0.1478,
+      0.0233,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Skill_AreaCast",
+   "take": "Skill_AreaCast",
+   "seconds": 0.7,
+   "frames": 42,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "left hand raised, slams a field onto the ground ahead",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.4333,
+      0.4667,
+      0.5,
+      0.5333,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7
+     ],
+     "values": [
+      1.0,
+      0.9098,
+      0.6901,
+      0.417,
+      0.1668,
+      0.0156,
+      0.0,
+      0.0,
+      0.0405,
+      0.1826,
+      0.3872,
+      0.6128,
+      0.8174,
+      0.9595,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.4333,
+      0.4667,
+      0.5,
+      0.5333,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7
+     ],
+     "values": [
+      0.0,
+      0.0902,
+      0.3099,
+      0.583,
+      0.8332,
+      0.9844,
+      1.0,
+      1.0,
+      0.9595,
+      0.8174,
+      0.6128,
+      0.3872,
+      0.1826,
+      0.0405,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Skill_SelfBuff",
+   "take": "Skill_SelfBuff",
+   "seconds": 0.7,
+   "frames": 42,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "palm to chest, then an outward sweep (shield / buff / heal)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.4333,
+      0.4667,
+      0.5,
+      0.5333,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7
+     ],
+     "values": [
+      1.0,
+      0.9098,
+      0.6901,
+      0.417,
+      0.1668,
+      0.0156,
+      0.0,
+      0.0,
+      0.0405,
+      0.1826,
+      0.3872,
+      0.6128,
+      0.8174,
+      0.9595,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.4333,
+      0.4667,
+      0.5,
+      0.5333,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7
+     ],
+     "values": [
+      0.0,
+      0.0902,
+      0.3099,
+      0.583,
+      0.8332,
+      0.9844,
+      1.0,
+      1.0,
+      0.9595,
+      0.8174,
+      0.6128,
+      0.3872,
+      0.1826,
+      0.0405,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Skill_Ultimate",
+   "take": "Skill_Ultimate",
+   "seconds": 1.6,
+   "frames": 96,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "legendary cards: coil, rise, burst; tail fan is procedural",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.2333,
+      0.2667,
+      0.3,
+      1.1,
+      1.1333,
+      1.1667,
+      1.2,
+      1.2333,
+      1.2667,
+      1.3333,
+      1.3667,
+      1.4,
+      1.4333,
+      1.4667,
+      1.5,
+      1.6
+     ],
+     "values": [
+      1.0,
+      0.9657,
+      0.8738,
+      0.7407,
+      0.583,
+      0.417,
+      0.2593,
+      0.1262,
+      0.0343,
+      0.0,
+      0.0,
+      0.0197,
+      0.0741,
+      0.1562,
+      0.2593,
+      0.3762,
+      0.6238,
+      0.7407,
+      0.8438,
+      0.9259,
+      0.9803,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.2333,
+      0.2667,
+      0.3,
+      1.1,
+      1.1333,
+      1.1667,
+      1.2,
+      1.2333,
+      1.2667,
+      1.3333,
+      1.3667,
+      1.4,
+      1.4333,
+      1.4667,
+      1.5,
+      1.6
+     ],
+     "values": [
+      0.0,
+      0.0343,
+      0.1262,
+      0.2593,
+      0.417,
+      0.583,
+      0.7407,
+      0.8738,
+      0.9657,
+      1.0,
+      1.0,
+      0.9803,
+      0.9259,
+      0.8438,
+      0.7407,
+      0.6238,
+      0.3762,
+      0.2593,
+      0.1562,
+      0.0741,
+      0.0197,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Hit_Light",
+   "take": "Hit_Light",
+   "seconds": 0.3,
+   "frames": 18,
+   "fps": 60,
+   "loop": false,
+   "layer": "Additive",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "additive flinch; the aim barely moves",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.3
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.3
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Hit_Heavy",
+   "take": "Hit_Heavy",
+   "seconds": 0.6,
+   "frames": 36,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "big stagger of the upper body; legs keep moving",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.3,
+      0.3333,
+      0.3667,
+      0.4,
+      0.4333,
+      0.4667,
+      0.5,
+      0.5333,
+      0.6
+     ],
+     "values": [
+      1.0,
+      1.0,
+      0.9873,
+      0.648,
+      0.1754,
+      0.0,
+      0.0,
+      0.0619,
+      0.2198,
+      0.432,
+      0.6567,
+      0.8522,
+      0.9767,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.3,
+      0.3333,
+      0.3667,
+      0.4,
+      0.4333,
+      0.4667,
+      0.5,
+      0.5333,
+      0.6
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0127,
+      0.352,
+      0.8246,
+      1.0,
+      1.0,
+      0.9381,
+      0.7802,
+      0.568,
+      0.3433,
+      0.1478,
+      0.0233,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Knockback",
+   "take": "Knockback",
+   "seconds": 1.1,
+   "frames": 66,
+   "fps": 60,
+   "loop": false,
+   "layer": "Reaction",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "blown back, airborne, skid landing, recover (motion from ForceReceiver)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7,
+      0.7333,
+      0.7667,
+      0.8,
+      0.8333,
+      0.8667,
+      0.9,
+      0.9333,
+      0.9667,
+      1.1
+     ],
+     "values": [
+      1.0,
+      0.7407,
+      0.2593,
+      0.0,
+      0.0,
+      0.0048,
+      0.0543,
+      0.1478,
+      0.2728,
+      0.417,
+      0.568,
+      0.7134,
+      0.8409,
+      0.9381,
+      0.9926,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7,
+      0.7333,
+      0.7667,
+      0.8,
+      0.8333,
+      0.8667,
+      0.9,
+      0.9333,
+      0.9667,
+      1.1
+     ],
+     "values": [
+      0.0,
+      0.2593,
+      0.7407,
+      1.0,
+      1.0,
+      0.9952,
+      0.9457,
+      0.8522,
+      0.7272,
+      0.583,
+      0.432,
+      0.2866,
+      0.1591,
+      0.0619,
+      0.0074,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Downed_Start",
+   "take": "Downed_Start",
+   "seconds": 1.0,
+   "frames": 60,
+   "fps": 60,
+   "loop": false,
+   "layer": "Reaction",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "knees buckle, drop to sitting, left hand catches the fall",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1667,
+      0.2,
+      0.2333,
+      0.2667,
+      0.3,
+      0.3333,
+      0.3667,
+      0.4,
+      0.4667,
+      0.5,
+      0.5333,
+      0.5667,
+      0.6,
+      0.6333,
+      1.0
+     ],
+     "values": [
+      1.0,
+      0.9879,
+      0.9561,
+      0.912,
+      0.8148,
+      0.776,
+      0.7532,
+      0.7456,
+      0.7126,
+      0.653,
+      0.5733,
+      0.4801,
+      0.2797,
+      0.1855,
+      0.1042,
+      0.0423,
+      0.0063,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      1.0
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Downed_Loop",
+   "take": "Downed_Loop",
+   "seconds": 2.4,
+   "frames": 144,
+   "fps": 60,
+   "loop": true,
+   "layer": "Reaction",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "waiting for a revive: heavy breathing, head low",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      2.4
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      2.4
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Revived",
+   "take": "Revived",
+   "seconds": 1.2,
+   "frames": 72,
+   "fps": 60,
+   "loop": false,
+   "layer": "Reaction",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "push up from the floor, rise through a crouch to the stance",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.4333,
+      0.4667,
+      0.5,
+      0.5333,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7,
+      0.7667,
+      0.8333,
+      0.8667,
+      0.9,
+      0.9333,
+      0.9667,
+      1.0,
+      1.0333,
+      1.0667,
+      1.1,
+      1.2
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0019,
+      0.0168,
+      0.0451,
+      0.0851,
+      0.1352,
+      0.1938,
+      0.2593,
+      0.33,
+      0.4808,
+      0.6332,
+      0.7059,
+      0.7742,
+      0.8365,
+      0.891,
+      0.9363,
+      0.9706,
+      0.9924,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      1.2
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Death",
+   "take": "Death",
+   "seconds": 1.6,
+   "frames": 96,
+   "fps": 60,
+   "loop": false,
+   "layer": "Reaction",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "from the downed pose: the arm gives way, falls back, rifle slips; rabbit: SMG on the floor by the right hand",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      1.6
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      1.6
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Pickup",
+   "take": "Pickup",
+   "seconds": 0.7,
+   "frames": 42,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "left hand snags an item at hip height and stows it (hook only)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.2333,
+      0.2667,
+      0.4667,
+      0.5,
+      0.5333,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7
+     ],
+     "values": [
+      1.0,
+      0.9475,
+      0.8114,
+      0.6238,
+      0.417,
+      0.223,
+      0.0741,
+      0.0023,
+      0.0,
+      0.0,
+      0.0343,
+      0.2113,
+      0.4722,
+      0.7407,
+      0.9407,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.2333,
+      0.2667,
+      0.4667,
+      0.5,
+      0.5333,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7
+     ],
+     "values": [
+      0.0,
+      0.0525,
+      0.1886,
+      0.3762,
+      0.583,
+      0.777,
+      0.9259,
+      0.9977,
+      1.0,
+      1.0,
+      0.9657,
+      0.7887,
+      0.5278,
+      0.2593,
+      0.0593,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Interact",
+   "take": "Interact",
+   "seconds": 0.8,
+   "frames": 48,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "press and turn something in front (hook only)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.5333,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7,
+      0.7333,
+      0.7667,
+      0.8
+     ],
+     "values": [
+      1.0,
+      0.9098,
+      0.6901,
+      0.417,
+      0.1668,
+      0.0156,
+      0.0,
+      0.0,
+      0.0033,
+      0.104,
+      0.3047,
+      0.5499,
+      0.784,
+      0.9514,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.5333,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7,
+      0.7333,
+      0.7667,
+      0.8
+     ],
+     "values": [
+      0.0,
+      0.0902,
+      0.3099,
+      0.583,
+      0.8332,
+      0.9844,
+      1.0,
+      1.0,
+      0.9967,
+      0.896,
+      0.6953,
+      0.4501,
+      0.216,
+      0.0486,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Revive_Ally",
+   "take": "Revive_Ally",
+   "seconds": 1.2,
+   "frames": 72,
+   "fps": 60,
+   "loop": true,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "reaching down to a downed ally, channelling (loop)",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      1.2
+     ],
+     "values": [
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      1.2
+     ],
+     "values": [
+      1.0,
+      1.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Use_Item",
+   "take": "Use_Item",
+   "seconds": 0.8,
+   "frames": 48,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "take a gauge crystal from the belt and crush it",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7,
+      0.7333,
+      0.7667,
+      0.8
+     ],
+     "values": [
+      1.0,
+      0.9098,
+      0.6901,
+      0.417,
+      0.1668,
+      0.0156,
+      0.0,
+      0.0,
+      0.028,
+      0.1754,
+      0.4006,
+      0.648,
+      0.8621,
+      0.9873,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.5667,
+      0.6,
+      0.6333,
+      0.6667,
+      0.7,
+      0.7333,
+      0.7667,
+      0.8
+     ],
+     "values": [
+      0.0,
+      0.0902,
+      0.3099,
+      0.583,
+      0.8332,
+      0.9844,
+      1.0,
+      1.0,
+      0.972,
+      0.8246,
+      0.5994,
+      0.352,
+      0.1379,
+      0.0127,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A_LightningRabbit_Emote",
+   "take": "Emote",
+   "seconds": 2.0,
+   "frames": 120,
+   "fps": 60,
+   "loop": false,
+   "layer": "UpperBody",
+   "speed": 0.0,
+   "direction": [
+    0.0,
+    0.0
+   ],
+   "cycle": 0.0,
+   "notes": "wave to a teammate, rifle rested on the shoulder",
+   "curves": [
+    {
+     "name": "LeftHandIK",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.2333,
+      0.2667,
+      0.3,
+      0.3333,
+      1.5333,
+      1.5667,
+      1.6,
+      1.6333,
+      1.6667,
+      1.7,
+      1.7667,
+      1.8,
+      1.8333,
+      1.8667,
+      1.9,
+      1.9333,
+      2.0
+     ],
+     "values": [
+      1.0,
+      0.9697,
+      0.8879,
+      0.7681,
+      0.6238,
+      0.4688,
+      0.3164,
+      0.1803,
+      0.0741,
+      0.0112,
+      0.0,
+      0.0,
+      0.0059,
+      0.0498,
+      0.1293,
+      0.2356,
+      0.3598,
+      0.6271,
+      0.7527,
+      0.8611,
+      0.9437,
+      0.9916,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "name": "CastHand",
+     "times": [
+      0.0,
+      0.0333,
+      0.0667,
+      0.1,
+      0.1333,
+      0.1667,
+      0.2,
+      0.2333,
+      0.2667,
+      0.3,
+      0.3333,
+      1.5333,
+      1.5667,
+      1.6,
+      1.6333,
+      1.6667,
+      1.7,
+      1.7667,
+      1.8,
+      1.8333,
+      1.8667,
+      1.9,
+      1.9333,
+      2.0
+     ],
+     "values": [
+      0.0,
+      0.0303,
+      0.1121,
+      0.2319,
+      0.3762,
+      0.5312,
+      0.6836,
+      0.8197,
+      0.9259,
+      0.9888,
+      1.0,
+      1.0,
+      0.9941,
+      0.9502,
+      0.8707,
+      0.7644,
+      0.6402,
+      0.3729,
+      0.2473,
+      0.1389,
+      0.0563,
+      0.0084,
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  }
+ ]
+}

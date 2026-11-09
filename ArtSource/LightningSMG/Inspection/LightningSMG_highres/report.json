@@ -1,0 +1,74 @@
+{
+  "model": {
+    "file": "LightningSMG_highres.glb",
+    "objects": [
+      {
+        "name": "Mesh_0",
+        "type": "MESH"
+      }
+    ],
+    "bounds_min": [
+      -0.9509,
+      -0.1227,
+      -0.4504
+    ],
+    "bounds_max": [
+      0.9497,
+      0.1272,
+      0.4505
+    ],
+    "size_xyz_m": [
+      1.9006,
+      0.2499,
+      0.9009
+    ],
+    "height_m": 0.9009,
+    "feet_z": -0.4504,
+    "meshes": [
+      {
+        "name": "Mesh_0",
+        "vertices": 213721,
+        "triangles": 427470,
+        "polygons": 427470,
+        "non_manifold_edges": 0,
+        "boundary_edges": 0,
+        "loose_vertices": 0,
+        "degenerate_faces": 0,
+        "connected_parts": 1,
+        "largest_parts": [
+          213721
+        ],
+        "near_duplicate_vertices": 2,
+        "vertex_groups": 0,
+        "unweighted_vertices": 213721,
+        "max_influences": 0,
+        "vertices_over_4_influences": 0,
+        "uv_layers": [],
+        "uv_coords_outside_0_1": 0,
+        "materials": [
+          {
+            "name": "Material_0",
+            "images": [],
+            "metallic": 0.0,
+            "roughness": 1.0,
+            "blend_method": "DITHERED"
+          }
+        ],
+        "object_scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "object_rotation_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "parent": null
+      }
+    ],
+    "armatures": [],
+    "actions": []
+  },
+  "animations": []
+}

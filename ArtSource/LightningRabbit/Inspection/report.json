@@ -1,0 +1,459 @@
+{
+  "model": {
+    "file": "LightningRabbit_rigged.glb",
+    "objects": [
+      {
+        "name": "Armature",
+        "type": "ARMATURE"
+      },
+      {
+        "name": "char1",
+        "type": "MESH"
+      }
+    ],
+    "bounds_min": [
+      -0.654,
+      -0.2551,
+      0.0
+    ],
+    "bounds_max": [
+      0.654,
+      0.2551,
+      1.7
+    ],
+    "size_xyz_m": [
+      1.3079,
+      0.5102,
+      1.7
+    ],
+    "height_m": 1.7,
+    "feet_z": 0.0,
+    "meshes": [
+      {
+        "name": "char1",
+        "vertices": 45544,
+        "triangles": 30862,
+        "polygons": 30862,
+        "non_manifold_edges": 43908,
+        "boundary_edges": 43908,
+        "loose_vertices": 0,
+        "degenerate_faces": 0,
+        "connected_parts": 8186,
+        "largest_parts": [
+          152,
+          149,
+          134,
+          120,
+          118,
+          101,
+          99,
+          96
+        ],
+        "near_duplicate_vertices": 43021,
+        "vertex_groups": 24,
+        "unweighted_vertices": 0,
+        "max_influences": 4,
+        "vertices_over_4_influences": 0,
+        "uv_layers": [
+          "UVMap"
+        ],
+        "uv_coords_outside_0_1": 0,
+        "materials": [
+          {
+            "name": "Material_0",
+            "images": [
+              {
+                "name": "Image_0",
+                "size": [
+                  4096,
+                  4096
+                ],
+                "colorspace": "sRGB",
+                "alpha_mode": "CHANNEL_PACKED",
+                "feeds": [
+                  "Base Color"
+                ]
+              }
+            ],
+            "metallic": 0.0,
+            "roughness": 0.8,
+            "blend_method": "DITHERED"
+          }
+        ],
+        "object_scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "object_rotation_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "parent": "Armature"
+      }
+    ],
+    "armatures": [
+      {
+        "name": "Armature",
+        "bone_count": 24,
+        "roots": [
+          "Hips"
+        ],
+        "max_depth": 7,
+        "bones": [
+          {
+            "name": "Hips",
+            "parent": null,
+            "head_world": [
+              -0.004,
+              -0.064,
+              0.75
+            ]
+          },
+          {
+            "name": "Spine02",
+            "parent": "Hips",
+            "head_world": [
+              -0.002,
+              -0.059,
+              0.822
+            ]
+          },
+          {
+            "name": "Spine01",
+            "parent": "Spine02",
+            "head_world": [
+              -0.001,
+              -0.053,
+              0.894
+            ]
+          },
+          {
+            "name": "Spine",
+            "parent": "Spine01",
+            "head_world": [
+              0.0,
+              -0.048,
+              0.969
+            ]
+          },
+          {
+            "name": "neck",
+            "parent": "Spine",
+            "head_world": [
+              0.001,
+              -0.046,
+              0.997
+            ]
+          },
+          {
+            "name": "Head",
+            "parent": "neck",
+            "head_world": [
+              0.004,
+              -0.041,
+              1.065
+            ]
+          },
+          {
+            "name": "head_end",
+            "parent": "Head",
+            "head_world": [
+              0.018,
+              -0.063,
+              1.334
+            ]
+          },
+          {
+            "name": "headfront",
+            "parent": "Head",
+            "head_world": [
+              0.004,
+              -0.191,
+              1.065
+            ]
+          },
+          {
+            "name": "LeftShoulder",
+            "parent": "Spine",
+            "head_world": [
+              0.029,
+              -0.047,
+              0.986
+            ]
+          },
+          {
+            "name": "LeftArm",
+            "parent": "LeftShoulder",
+            "head_world": [
+              0.143,
+              -0.052,
+              0.986
+            ]
+          },
+          {
+            "name": "LeftForeArm",
+            "parent": "LeftArm",
+            "head_world": [
+              0.282,
+              -0.04,
+              0.953
+            ]
+          },
+          {
+            "name": "LeftHand",
+            "parent": "LeftForeArm",
+            "head_world": [
+              0.458,
+              -0.046,
+              0.949
+            ]
+          },
+          {
+            "name": "RightShoulder",
+            "parent": "Spine",
+            "head_world": [
+              -0.029,
+              -0.047,
+              0.982
+            ]
+          },
+          {
+            "name": "RightArm",
+            "parent": "RightShoulder",
+            "head_world": [
+              -0.148,
+              -0.045,
+              0.984
+            ]
+          },
+          {
+            "name": "RightForeArm",
+            "parent": "RightArm",
+            "head_world": [
+              -0.315,
+              -0.043,
+              0.949
+            ]
+          },
+          {
+            "name": "RightHand",
+            "parent": "RightForeArm",
+            "head_world": [
+              -0.477,
+              -0.044,
+              0.942
+            ]
+          },
+          {
+            "name": "LeftUpLeg",
+            "parent": "Hips",
+            "head_world": [
+              0.084,
+              -0.064,
+              0.687
+            ]
+          },
+          {
+            "name": "LeftLeg",
+            "parent": "LeftUpLeg",
+            "head_world": [
+              0.128,
+              -0.119,
+              0.436
+            ]
+          },
+          {
+            "name": "LeftFoot",
+            "parent": "LeftLeg",
+            "head_world": [
+              0.161,
+              -0.092,
+              0.131
+            ]
+          },
+          {
+            "name": "LeftToeBase",
+            "parent": "LeftFoot",
+            "head_world": [
+              0.213,
+              -0.16,
+              0.046
+            ]
+          },
+          {
+            "name": "RightUpLeg",
+            "parent": "Hips",
+            "head_world": [
+              -0.089,
+              -0.064,
+              0.685
+            ]
+          },
+          {
+            "name": "RightLeg",
+            "parent": "RightUpLeg",
+            "head_world": [
+              -0.132,
+              -0.119,
+              0.428
+            ]
+          },
+          {
+            "name": "RightFoot",
+            "parent": "RightLeg",
+            "head_world": [
+              -0.169,
+              -0.084,
+              0.131
+            ]
+          },
+          {
+            "name": "RightToeBase",
+            "parent": "RightFoot",
+            "head_world": [
+              -0.216,
+              -0.157,
+              0.046
+            ]
+          }
+        ],
+        "object_scale": [
+          0.01,
+          0.01,
+          0.01
+        ],
+        "object_rotation_deg": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "name": "Armature|clip0|baselayer",
+        "frame_range": [
+          0.8,
+          0.8
+        ]
+      }
+    ]
+  },
+  "fbx": {
+    "file": "LightningRabbit_rigged.fbx",
+    "height_m": 1.7,
+    "size_xyz_m": [
+      1.3079,
+      0.5102,
+      1.7
+    ],
+    "objects": [
+      {
+        "name": "Armature",
+        "type": "ARMATURE"
+      },
+      {
+        "name": "char1",
+        "type": "MESH"
+      }
+    ],
+    "armatures": [
+      {
+        "name": "Armature",
+        "bone_count": 24,
+        "object_scale": [
+          0.01,
+          0.01,
+          0.01
+        ],
+        "object_rotation_deg": [
+          -0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "meshes": [
+      {
+        "name": "char1",
+        "triangles": 30862,
+        "object_scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "materials": [
+          {
+            "name": "Material_0",
+            "images": [
+              {
+                "name": "Material_0_baseColor.jpg",
+                "size": [
+                  4096,
+                  4096
+                ],
+                "colorspace": "sRGB",
+                "alpha_mode": "STRAIGHT",
+                "feeds": [
+                  "Base Color"
+                ]
+              }
+            ],
+            "metallic": 0.0,
+            "roughness": 0.553,
+            "blend_method": "DITHERED"
+          }
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "name": "Armature|Armature|Armature|clip0|baselayer",
+        "frame_range": [
+          1.0,
+          2.0
+        ]
+      }
+    ]
+  },
+  "animations": [
+    {
+      "file": "LightningRabbit_Walking.glb",
+      "actions": [
+        {
+          "name": "Armature|walking_man|baselayer",
+          "frame_range": [
+            0.8,
+            25.6
+          ]
+        }
+      ],
+      "hips_travel_m": [
+        -0.002,
+        -0.005,
+        -0.007
+      ],
+      "fps": 24
+    },
+    {
+      "file": "LightningRabbit_Running.glb",
+      "actions": [
+        {
+          "name": "Armature|running|baselayer",
+          "frame_range": [
+            0.8,
+            16.0
+          ]
+        }
+      ],
+      "hips_travel_m": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "fps": 24
+    }
+  ]
+}

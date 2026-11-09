@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_LightningRabbit_Afterimage
+  m_Shader: {fileID: 4800000, guid: 24de1f19f52ffae41831dcdbb66ade44, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 3000
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _BandDensity: 28
+    - _BandSpeed: 1.5
+    - _Fade: 1
+    - _Fill: 0.08
+    - _Intensity: 1.6
+    - _RimPower: 2.2
+    m_Colors:
+    - _GhostColor: {r: 0.42000002, g: 1.008, b: 1.14, a: 1.2}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

@@ -1,0 +1,59 @@
+﻿11:25:13 | INFO: Data are loaded, start creating Blender stuff
+11:25:13 | INFO: Blender create Mesh node LightningSMG_Body
+11:25:13 | INFO: glTF import finished in 0.08s
+11:25:13 | INFO: Data are loaded, start creating Blender stuff
+11:25:13 | INFO: Blender create Mesh node 0
+11:25:14 | INFO: glTF import finished in 0.95s
+blender.exe : C:\dev\CoopDeckFPS\ArtSource\Tools\rebuild_weapon_hq.py:151: DeprecationWarning: 'Material.use_nodes' is 
+expected to be removed in Blender 6.0
+At line:1 char:496
++ ... | Out-Null; & $b -b --factory-startup -P ArtSource\Tools\rebuild_weap ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\dev\CoopDeck... in Blender 6.0:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  dst.use_nodes = True
+C:\dev\CoopDeckFPS\ArtSource\Tools\rebuild_weapon_hq.py:402: DeprecationWarning: 'Material.use_nodes' is expected to be
+ removed in Blender 6.0
+  mat.use_nodes = True
+04:45.984  render           | Saved: 'C:\dev\CoopDeckFPS\ArtSource\LightningSMG\Export\HQ2\check\fp_single_old.png'
+04:46.297  render           | Saved: 'C:\dev\CoopDeckFPS\ArtSource\LightningSMG\Export\HQ2\check\fp_single_new.png'
+04:46.656  render           | Saved: 'C:\dev\CoopDeckFPS\ArtSource\LightningSMG\Export\HQ2\check\fp_texture_old.png'
+04:47.234  render           | Saved: 'C:\dev\CoopDeckFPS\ArtSource\LightningSMG\Export\HQ2\check\fp_texture_new.png'
+  sculpt fitted: scale 0.2736; distance to the prepared prop mean 0.07 mm, 95% 0.17 mm
+Info: Removed 0 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+  decimated 427470 -> 55000 triangles, 27486 vertices
+Info: Removed: 0 vertices, 0 edges, 0 faces
+  bevel 1.0 mm on creases over 50 deg: 55000 -> 91292 triangles
+  UVs: texel density 5/50/95% 4985/5594/5775 texels/m at 4096, 39.8% used
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+  colour: 2.095% of texels missed after a wider search, 674 left after filling inside the islands
+Info: Baking map saved to internal image, save it externally or pack it
+  baked 4096x4096 tangent normals -> C:\dev\CoopDeckFPS\ArtSource\LightningSMG\Export\HQ2\T_LightningSMG_Normal.png; lean from the low mesh: median 1.7 deg, 90% 7.1 deg; 0.9% of texels over 75 deg reset to flat
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+  texel curvature (1/m) over the patches 50/90/99/99.9%: 12/150/424/751
+Info: Baking map saved to internal image, save it externally or pack it
+  surface: convex edge share 6.8%, concave 7.1%, AO mean 0.877 (5% 0.444)
+  surface map -> C:\dev\CoopDeckFPS\ArtSource\LightningSMG\Export\HQ2\T_LightningSMG_Surface.png
+  material classes: white paint 12.2%, coloured paint 28.3%, dark polymer 51.0%, bare metal 3.0%, accent 5.6%
+INFO Draco is available, use library at C:\Program Files\Blender Foundation\Blender 5.2\5.2\scripts\addons_core\io_scene_gltf2\bf_intern_draco_bridge.dll
+INFO MeshOptimizer is available, use library at C:\Program Files\Blender Foundation\Blender 5.2\5.2\scripts\addons_core\io_scene_gltf2\bf_intern_meshopt_bridge.dll
+11:30:00 | INFO: Starting glTF 2.0 export
+11:30:00 | INFO: Extracting primitive: LightningSMG_Body.001
+11:30:00 | INFO: Primitives created: 1
+11:30:00 | INFO: Finished glTF 2.0 export in 0.42221760749816895 s
+
+
+FBX export starting... 'C:\\dev\\CoopDeckFPS\\ArtSource\\LightningSMG\\Export\\HQ2\\LightningSMG.fbx'
+export finished in 0.2652 sec.
+  LightningSMG_Body_LOD0: 91292 triangles, 45632 vertices
+  LightningSMG_Body_LOD1: 30000 triangles, 14986 vertices
+  wrote C:\dev\CoopDeckFPS\ArtSource\LightningSMG\Export\HQ2\LightningSMG.fbx
+REBUILD_WEAPON_DONE
+Blender 5.2.3 LTS (hash e13b728c6880 built 2026-10-22 01:37:16)
+
+Blender quit

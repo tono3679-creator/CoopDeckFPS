@@ -1,0 +1,130 @@
+{
+  "highres": {
+    "triangles": 939370,
+    "vertices": 469587,
+    "faceting": {
+      "median_deg": 7.48,
+      "p90_deg": 29.09,
+      "p99_deg": 62.33,
+      "edges_over_20deg": 0.1897,
+      "open_edges": 0
+    }
+  },
+  "samples": {
+    "head_ears": 21981,
+    "hands": 769,
+    "rest": 97250
+  },
+  "40000": {
+    "triangles": 40000,
+    "vertices": 19902,
+    "faceting": {
+      "median_deg": 17.5,
+      "p90_deg": 69.86,
+      "p99_deg": 117.5,
+      "edges_over_20deg": 0.4651,
+      "open_edges": 0
+    },
+    "detail": {
+      "head_ears": {
+        "mean_mm": 0.192,
+        "p99_mm": 0.713,
+        "max_mm": 1.33
+      },
+      "hands": {
+        "mean_mm": 0.269,
+        "p99_mm": 0.829,
+        "max_mm": 1.19
+      },
+      "rest": {
+        "mean_mm": 0.187,
+        "p99_mm": 0.659,
+        "max_mm": 2.16
+      }
+    }
+  },
+  "80000": {
+    "triangles": 80000,
+    "vertices": 39902,
+    "faceting": {
+      "median_deg": 14.98,
+      "p90_deg": 53.56,
+      "p99_deg": 103.06,
+      "edges_over_20deg": 0.4154,
+      "open_edges": 0
+    },
+    "detail": {
+      "head_ears": {
+        "mean_mm": 0.114,
+        "p99_mm": 0.402,
+        "max_mm": 1.04
+      },
+      "hands": {
+        "mean_mm": 0.148,
+        "p99_mm": 0.417,
+        "max_mm": 0.58
+      },
+      "rest": {
+        "mean_mm": 0.114,
+        "p99_mm": 0.396,
+        "max_mm": 2.16
+      }
+    }
+  },
+  "120000": {
+    "triangles": 120000,
+    "vertices": 59902,
+    "faceting": {
+      "median_deg": 13.58,
+      "p90_deg": 46.29,
+      "p99_deg": 92.88,
+      "edges_over_20deg": 0.3796,
+      "open_edges": 0
+    },
+    "detail": {
+      "head_ears": {
+        "mean_mm": 0.085,
+        "p99_mm": 0.297,
+        "max_mm": 1.01
+      },
+      "hands": {
+        "mean_mm": 0.108,
+        "p99_mm": 0.325,
+        "max_mm": 0.39
+      },
+      "rest": {
+        "mean_mm": 0.084,
+        "p99_mm": 0.288,
+        "max_mm": 2.06
+      }
+    }
+  },
+  "160000": {
+    "triangles": 160000,
+    "vertices": 79902,
+    "faceting": {
+      "median_deg": 12.59,
+      "p90_deg": 42.21,
+      "p99_deg": 84.69,
+      "edges_over_20deg": 0.35,
+      "open_edges": 0
+    },
+    "detail": {
+      "head_ears": {
+        "mean_mm": 0.068,
+        "p99_mm": 0.235,
+        "max_mm": 0.84
+      },
+      "hands": {
+        "mean_mm": 0.084,
+        "p99_mm": 0.237,
+        "max_mm": 0.29
+      },
+      "rest": {
+        "mean_mm": 0.068,
+        "p99_mm": 0.232,
+        "max_mm": 1.89
+      }
+    }
+  }
+}
