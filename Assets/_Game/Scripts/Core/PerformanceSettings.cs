@@ -8,7 +8,7 @@ namespace CoopDeck.Core
         /// <summary>Main PC (RTX 4070 class): full effects, native resolution.</summary>
         High = 0,
 
-        /// <summary>ROG Ally X class handheld: ~900p internal, reduced shadows and particles, 60 fps.</summary>
+        /// <summary>ROG Ally X class handheld: native 1080p (render scale 1), reduced shadows, 60 fps.</summary>
         Handheld = 1,
     }
 
@@ -18,7 +18,7 @@ namespace CoopDeck.Core
         /// <summary>Fewest particles, no effect lights, secondary layers off, half screen shake.</summary>
         Low = 0,
 
-        /// <summary>Handheld default: reduced particles, no effect lights.</summary>
+        /// <summary>Handheld default: slightly fewer particles; effect lights on (the Ally X has GPU to spare: ~3.4 of 16.7 ms).</summary>
         Medium = 1,
 
         /// <summary>Main PC default: authored particle counts and effect lights.</summary>
@@ -47,8 +47,8 @@ namespace CoopDeck.Core
         /// <summary>Multiplier for particle counts and emission rates (1 = authored values).</summary>
         public static float EffectDensity => DensityFor(Vfx);
 
-        /// <summary>Whether short-lived effect lights (muzzle flash, explosions) are allowed.</summary>
-        public static bool EffectLightsEnabled => Vfx == VfxQuality.High;
+        /// <summary>Whether short-lived effect lights (muzzle flash, explosions) are allowed (medium and high).</summary>
+        public static bool EffectLightsEnabled => Vfx >= VfxQuality.Medium;
 
         /// <summary>Scale for camera shake from explosions and combos (0 disables it).</summary>
         public static float ScreenShakeScale { get; set; } = 1f;
@@ -61,7 +61,7 @@ namespace CoopDeck.Core
             switch (quality)
             {
                 case VfxQuality.Low: return 0.3f;
-                case VfxQuality.Medium: return 0.55f;
+                case VfxQuality.Medium: return 0.8f; // 0.55 until 2026-11-09: effects looked thin on the Ally X
                 default: return 1f;
             }
         }

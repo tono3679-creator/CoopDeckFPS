@@ -41,12 +41,14 @@ float FbNoise(float3 p)
                 lerp(lerp(e, g, u.x), lerp(h, k, u.x), u.y), u.z);
 }
 
-// Three octaves, stretched to roughly 0..1.
+// Four octaves, stretched to roughly 0..1. The fourth (2026-11-09) adds fine detail so flame edges and smoke stay
+// crisp at 1080p instead of reading as smooth blobs.
 float FbFbm(float3 p)
 {
-    float s = FbNoise(p) * 0.5333;
-    s += FbNoise(p * 2.03 + 17.17) * 0.2667;
-    s += FbNoise(p * 4.07 + 41.31) * 0.2;
+    float s = FbNoise(p) * 0.5;
+    s += FbNoise(p * 2.03 + 17.17) * 0.25;
+    s += FbNoise(p * 4.07 + 41.31) * 0.15;
+    s += FbNoise(p * 8.11 + 73.9) * 0.1;
     return saturate((s - 0.2) * 1.65);
 }
 

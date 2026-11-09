@@ -34,9 +34,9 @@ MonoBehaviour:
     pullSpeed: 0
   icon: {fileID: 21300000, guid: 499cbbf1f77fa1d41b84b142a0bfdaf5, type: 3}
   beamFx: {fileID: 0}
-  impactFx: {fileID: 8613244698021814228, guid: 4199e2b3f4326a24fa0b0cbb29f2746e, type: 3}
+  impactFx: {fileID: 4974113830724021555, guid: 94d8eb12355c4e04c8fa7a9e85ad37cf, type: 3}
   areaFx: {fileID: 0}
-  auraFx: {fileID: 1676657845778844969, guid: d47015e197e9848479581a61bf09eb88, type: 3}
+  auraFx: {fileID: 8506875022030294999, guid: 8e63d66cfd24c744186ca13cf632a965, type: 3}
   telegraphFx: {fileID: 0}
   attachImpactFx: 0
   projectile:
@@ -44,5 +44,5 @@ MonoBehaviour:
     radius: 0
     launchDelay: 0
     visualScale: 0
-  castFx: {fileID: 0}
+  castFx: {fileID: 414590341156665584, guid: e8e735e4c90231f47b38e51fb405cecb, type: 3}
   projectileFx: {fileID: 0}

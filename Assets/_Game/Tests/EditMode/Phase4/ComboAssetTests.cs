@@ -197,13 +197,14 @@ namespace CoopDeck.Tests
                 PerformanceSettings.ResetVfxQuality();
                 PerformanceSettings.SetTier(PerformanceTier.Handheld);
                 Assert.That(PerformanceSettings.Vfx, Is.EqualTo(VfxQuality.Medium));
-                Assert.That(PerformanceSettings.EffectDensity, Is.EqualTo(0.55f), "same as before the setting existed");
-                Assert.That(PerformanceSettings.EffectLightsEnabled, Is.False);
+                Assert.That(PerformanceSettings.EffectDensity, Is.EqualTo(0.8f), "the handheld keeps most particles");
+                Assert.That(PerformanceSettings.EffectLightsEnabled, Is.True, "the handheld lights explosions too");
 
                 PerformanceSettings.SetVfxQuality(VfxQuality.Low);
                 PerformanceSettings.SetTier(PerformanceTier.High);
                 Assert.That(PerformanceSettings.Vfx, Is.EqualTo(VfxQuality.Low), "an explicit choice sticks");
                 Assert.That(PerformanceSettings.EffectDensity, Is.EqualTo(0.3f));
+                Assert.That(PerformanceSettings.EffectLightsEnabled, Is.False, "low has no effect lights");
                 Assert.That(PerformanceSettings.ShakeFor(VfxQuality.Low), Is.EqualTo(0.5f));
 
                 Assert.That(PerformanceSettings.CycleVfxQuality(), Is.EqualTo(VfxQuality.High));

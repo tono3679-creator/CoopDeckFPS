@@ -4,7 +4,7 @@ namespace CoopDeck.Effects
 {
     /// <summary>A short bright streak that travels from the muzzle to the impact point.</summary>
     [RequireComponent(typeof(LineRenderer))]
-    public class TracerFx : MonoBehaviour
+    public class TracerFx : MonoBehaviour, IBeamFx
     {
         [SerializeField, Min(1f)] float speed = 320f;
         [SerializeField, Min(0.1f)] float streakLength = 5f;

@@ -165,6 +165,7 @@ namespace CoopDeck.Skills
                 return BeginProjectile(card, upgradeLevel);
             }
 
+            PlayCastFx(card); // the release at the palm (first-person feedback for every skill)
             Ray ray = aim.GetAimRay();
             Vector3 origin = castOrigin != null ? castOrigin.position : ray.origin;
             Health primary = null;
@@ -184,7 +185,11 @@ namespace CoopDeck.Skills
 
             if (card.impactDelay > 0f)
             {
-                PlayFx(card.telegraphFx, point + Vector3.up * 0.05f, Quaternion.identity, card.MaxRadius);
+                // The warning sits on the ground even when the aim point is an enemy's chest (visual only).
+                Vector3 mark = TryGround(card.telegraphFx, point, out Vector3 ground, out Vector3 groundNormal)
+                    ? ground + groundNormal * 0.03f
+                    : point + Vector3.up * 0.05f;
+                PlayFx(card.telegraphFx, mark, Quaternion.FromToRotation(Vector3.up, groundNormal), card.MaxRadius);
                 StartCoroutine(ResolveLater(card, point, primary, upgradeLevel));
                 return new SkillCastReport { Card = card, Point = point, PrimaryTarget = primary, Delayed = true };
             }
@@ -232,15 +237,23 @@ namespace CoopDeck.Skills
         /// <summary>Instantiates a projectile card's effects into the pool up front (several shots and blasts can overlap).</summary>
         public void Prewarm(CardDefinition card)
         {
-            if (card == null || !card.projectile.IsProjectile || !prewarmed.Add(card))
+            if (card == null || !prewarmed.Add(card))
             {
                 return;
             }
 
-            FxPool.Prewarm(card.castFx, 2);
-            FxPool.Prewarm(card.projectileFx, 4);
-            FxPool.Prewarm(card.areaFx, 3);
+            if (card.projectile.IsProjectile)
+            {
+                FxPool.Prewarm(card.castFx, 2);
+                FxPool.Prewarm(card.projectileFx, 4);
+            }
+
+            // Every card's effects: the first cast of a skill does not hitch on instantiating its (large) prefabs.
+            FxPool.Prewarm(card.areaFx, 2);
             FxPool.Prewarm(card.impactFx, 3);
+            FxPool.Prewarm(card.beamFx, 2);
+            FxPool.Prewarm(card.auraFx, 1);
+            FxPool.Prewarm(card.telegraphFx, 1);
         }
 
         SkillCastReport BeginProjectile(CardDefinition card, int upgradeLevel)
@@ -633,7 +646,7 @@ namespace CoopDeck.Skills
                             if (status != null)
                             {
                                 status.AddVulnerability(effect.amount, effect.duration);
-                                PlayFx(card.impactFx, enemy.transform.position + Vector3.up * FxHeight, Quaternion.identity, 0f);
+                                PlayImpact(card, enemy, enemy.transform.position + Vector3.up * FxHeight); // rides on the enemy when attachImpactFx
                                 Count(enemy, ref report, isEnemy: true);
                             }
                         }
@@ -659,17 +672,30 @@ namespace CoopDeck.Skills
             {
                 // Projectile: the blast sits exactly where it hit, turned to the surface; on a character it stands
                 // upright and faces back toward the shot (its ring is a vertical impact ring, not a halo at chest height).
+                // A blast built to stand on the ground (GroundedFx: a tornado, burning ground, a gravity well) drops onto the
+                // ground under the hit instead, so its rings and scorch do not float at chest height (gameplay keeps the hit point).
                 Vector3 up = onCharacter ? FacingBack(origin - center) : surfaceNormal.Value.sqrMagnitude < 1e-6f ? Vector3.up : surfaceNormal.Value.normalized;
                 GameObject blast = radius > 0f ? card.areaFx : primary == null ? card.impactFx : null;
-                PooledFx fx = PlayFx(blast, center, Quaternion.FromToRotation(Vector3.up, up), radius);
+                Vector3 at = center;
+                bool grounded = TryGround(blast, center, out Vector3 ground, out Vector3 groundNormal);
+                if (grounded)
+                {
+                    at = ground;
+                    up = groundNormal;
+                }
+
+                PooledFx fx = PlayFx(blast, at, Quaternion.FromToRotation(Vector3.up, up), radius);
                 if (fx != null && fx.TryGetComponent(out ISurfaceFx surface))
                 {
-                    surface.SetSurface(up, onCharacter);
+                    surface.SetSurface(up, onCharacter && !grounded);
                 }
             }
             else if (radius > 0f)
             {
-                PlayFx(card.areaFx, center + Vector3.up * 0.1f, Quaternion.identity, radius);
+                Vector3 at = TryGround(card.areaFx, center, out Vector3 ground, out Vector3 groundNormal)
+                    ? ground + groundNormal * 0.03f
+                    : center + Vector3.up * 0.1f;
+                PlayFx(card.areaFx, at, Quaternion.FromToRotation(Vector3.up, groundNormal), radius);
             }
             else if (primary == null && card.targeting != CardTargeting.Self)
             {
@@ -880,9 +906,19 @@ namespace CoopDeck.Skills
             return best;
         }
 
-        void PlayAura(CardDefinition card, Health ally)
+        /// <summary>An ally's effect (shield, buff, heal) is parented to the ally so it follows them for its whole life.</summary>
+        static void PlayAura(CardDefinition card, Health ally)
         {
-            PlayFx(card.auraFx, ally.transform.position + Vector3.up * 0.05f, Quaternion.identity, 0f);
+            if (card.auraFx == null)
+            {
+                return;
+            }
+
+            PooledFx fx = FxPool.Spawn(card.auraFx, ally.transform.position + Vector3.up * 0.05f, ally.transform.rotation, ally.transform);
+            if (fx != null)
+            {
+                fx.transform.localScale = Vector3.one;
+            }
         }
 
         static void PlayBeam(GameObject prefab, Vector3 from, Vector3 to)
@@ -893,7 +929,7 @@ namespace CoopDeck.Skills
             }
 
             PooledFx beam = FxPool.Spawn(prefab, from, Quaternion.identity);
-            if (beam != null && beam.TryGetComponent(out TracerFx tracer))
+            if (beam != null && beam.TryGetComponent(out IBeamFx tracer))
             {
                 tracer.Play(from, to);
             }
@@ -908,6 +944,43 @@ namespace CoopDeck.Skills
         {
             Vector3 flat = Vector3.ProjectOnPlane(towardShooter, Vector3.up);
             return flat.sqrMagnitude > 1e-6f ? flat.normalized : Vector3.up;
+        }
+
+        static readonly RaycastHit[] GroundHits = new RaycastHit[8];
+
+        /// <summary>
+        /// Visual only: where an effect built standing on the ground (<see cref="GroundedFx"/>) goes for a hit at
+        /// <paramref name="point"/> - the world straight below it, characters skipped whatever their layer, within the
+        /// prefab's reach. False (and the point itself) for other prefabs or with no ground in reach.
+        /// </summary>
+        static bool TryGround(GameObject prefab, Vector3 point, out Vector3 ground, out Vector3 normal)
+        {
+            ground = point;
+            normal = Vector3.up;
+            if (prefab == null || !prefab.TryGetComponent(out GroundedFx grounded))
+            {
+                return false;
+            }
+
+            int count = Physics.RaycastNonAlloc(point + Vector3.up * GroundedFx.RayLift, Vector3.down, GroundHits,
+                grounded.MaxDrop + GroundedFx.RayLift, GameLayers.SightBlockingMask, QueryTriggerInteraction.Ignore);
+            float nearest = float.MaxValue;
+            bool found = false;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = GroundHits[i];
+                if (hit.distance >= nearest || hit.collider.GetComponentInParent<Health>() != null)
+                {
+                    continue;
+                }
+
+                nearest = hit.distance;
+                ground = hit.point;
+                normal = hit.normal;
+                found = true;
+            }
+
+            return found;
         }
 
         static PooledFx PlayFx(GameObject prefab, Vector3 position, Quaternion rotation, float radius)

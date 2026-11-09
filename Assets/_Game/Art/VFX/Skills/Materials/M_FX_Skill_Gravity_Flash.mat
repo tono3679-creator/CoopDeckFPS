@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_FX_Skill_Gravity_Flash
+  m_Shader: {fileID: -6465566751694194690, guid: 4090ba7aa1ca3104196cf55639fd04d2, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 3000
+  stringTagMap: {}
+  disabledShaderPasses:
+  - MOTIONVECTORS
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - unity_Lightmaps:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_LightmapsInd:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_ShadowMasks:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _CoreBoost: 4.55
+    - _CoreWidth: 0.24
+    - _FlowSpeed: 9
+    - _GlowFalloff: 10
+    - _HaloOpacity: 1
+    - _Intensity: 1
+    - _Mode: 0
+    - _NoiseScale: 6
+    - _PulseCount: 1.5
+    - _PulseSpeed: 5
+    - _QueueControl: 1
+    - _QueueOffset: 0
+    - _Rays: 5
+    - _Seed: 0
+    m_Colors:
+    - _CoreColor: {r: 0.92156863, g: 0.8666667, b: 1, a: 1}
+    - _EdgeColor: {r: 0.16862746, g: 0.05882353, b: 0.34117648, a: 1}
+    - _GlowColor: {r: 0.7811765, g: 0.48000002, b: 1.2, a: 1.2}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
+--- !u!114 &3073417368987564610
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Editor::UnityEditor.Rendering.Universal.AssetVersion
+  version: 10

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace CoopDeck.Effects
 {
-    /// <summary>Short light pulse for muzzle flashes and explosions. Disabled on the Handheld tier.</summary>
+    /// <summary>Short light pulse for muzzle flashes and explosions. Off at low effect quality (PerformanceSettings.EffectLightsEnabled).</summary>
     [RequireComponent(typeof(Light))]
     public class LightFlash : MonoBehaviour
     {
